@@ -66,22 +66,13 @@ export function AudioEngineProvider({ children }: { children: React.ReactNode })
       const store = usePlayerStore.getState();
       const podcastStore = usePodcastStore.getState();
 
-      if (modeRef.current === 'radio') {
-        setTimeout(() => {
-          const s = usePlayerStore.getState();
-          if (s.audioUrl && s.playbackMode === 'radio') {
-            const aa = getAudio();
-            aa.src = s.audioUrl;
-            aa.load();
-            aa.play().catch(() => {});
-          }
-        }, 1000);
-      } else if (modeRef.current === 'music') {
+      if (modeRef.current === 'music') {
         store.next();
       } else if (modeRef.current === 'podcast' && podcastStore.currentEpisode) {
         podcastStore.markEpisodePlayed(podcastStore.currentEpisode.id);
         usePlayerStore.setState({ isPlaying: false });
       }
+      // Radio: proxy handles reconnection — no action needed here
     };
 
     const onError = (e: Event) => {
@@ -92,14 +83,18 @@ export function AudioEngineProvider({ children }: { children: React.ReactNode })
       usePlayerStore.setState({ isBuffering: false });
 
       if (modeRef.current === 'radio') {
-        setTimeout(() => {
-          const s = usePlayerStore.getState();
-          if (s.audioUrl && s.playbackMode === 'radio') {
-            const aa = getAudio();
-            aa.src = s.audioUrl;
-            aa.play().catch(() => {});
-          }
-        }, 3000);
+        // Radio: stop playback on error — don't silently loop retries
+        const currentState = usePlayerStore.getState();
+        if (currentState.playbackMode === 'radio' && currentState.isPlaying) {
+          console.warn('[AudioEngine] Radio stream error — stopping playback');
+          usePlayerStore.setState({
+            isPlaying: false,
+            isBuffering: false,
+            currentRadioStationId: null,
+          });
+        }
+      } else if (modeRef.current === 'podcast') {
+        usePlayerStore.setState({ isPlaying: false });
       }
     };
 
