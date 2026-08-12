@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useUIStore } from '@/store/ui';
+import { usePlayerStore } from '@/store/player';
 import { playlists, tracks, formatDuration, getCoverGradient } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
