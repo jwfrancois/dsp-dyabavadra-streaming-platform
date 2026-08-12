@@ -128,8 +128,8 @@ export function PodcastsView() {
       const res = await fetch(`/api/podcasts/search?q=${encodeURIComponent(query.trim())}&limit=25`);
       if (!res.ok) throw new Error(`Search failed (${res.status})`);
       const data = await res.json();
-      setITunesResults((data.results || []).map((r: Record<string, unknown>) => ({
-        id: String(r.collectionId || r.trackId || ''),
+      setITunesResults((data.results || []).map((r: Record<string, unknown>, idx: number) => ({
+        id: String(r.collectionId || r.trackId || `result-${idx}`),
         itunesId: Number(r.collectionId || r.trackId || 0),
         title: String(r.collectionName || r.trackName || 'Unknown'),
         author: String(r.artistName || 'Unknown Author'),
