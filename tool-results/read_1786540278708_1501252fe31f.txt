@@ -1,0 +1,577 @@
+     1→'use client';
+     2→
+     3→import React from 'react';
+     4→import { useUIStore } from '@/store/ui';
+     5→import { usePodcastStore } from '@/store/podcast';
+     6→import {
+     7→  podcastShows, podcastEpisodes, iTunesSearchResults,
+     8→  getEpisodesByShow, getUnplayedEpisodes, getInProgressEpisodes,
+     9→  getDownloadedEpisodes, getAllNewEpisodes, getSubscribedShows,
+    10→  formatEpisodeDuration, formatDate,
+    11→} from '@/lib/podcast-data';
+    12→import { Card, CardContent } from '@/components/ui/card';
+    13→import { Button } from '@/components/ui/button';
+    14→import { Badge } from '@/components/ui/badge';
+    15→import { Input } from '@/components/ui/input';
+    16→import { ScrollArea } from '@/components/ui/scroll-area';
+    17→import { Separator } from '@/components/ui/separator';
+    18→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    19→import { Slider } from '@/components/ui/slider';
+    20→import {
+    21→  Podcast, Play, Pause, SkipForward, Search, Plus, Check, Download,
+    22→  Clock, Radio, Rss, RefreshCw, Headphones, ArrowRight,
+    23→  Circle, CircleCheck, Heart, MoreHorizontal, Wifi, WifiOff,
+    24→  FastForward, Moon, Scissors, Bell, BellOff, Settings,
+    25→} from 'lucide-react';
+    26→import { getCoverGradient } from '@/lib/data';
+    27→
+    28→// Shape of an iTunes API result returned from our proxy
+    29→interface ITunesAPIResult {
+    30→  id: string;
+    31→  itunesId: number;
+    32→  title: string;
+    33→  author: string;
+    34→  artworkUrl: string;
+    35→  artworkUrlSmall: string;
+    36→  artworkUrlMedium: string;
+    37→  artworkUrlLarge: string;
+    38→  genre: string;
+    39→  category: string;
+    40→  feedUrl: string;
+    41→  episodeCount: number;
+    42→  description: string;
+    43→  rating: string;
+    44→  storeUrl: string;
+    45→}
+    46→
+    47→export function PodcastsView() {
+    48→  const { navigate } = useUIStore();
+    49→  const {
+    50→    episodeStates, subscribedShowIds, toggleSubscribe,
+    51→    playEpisode, markEpisodePlayed, markAllPlayed,
+    52→    playbackSpeed, cyclePlaybackSpeed, skipSilence, toggleSkipSilence,
+    53→    sleepTimerMinutes, setSleepTimer, toggleEpisodeDownload,
+    54→  } = usePodcastStore();
+    55→
+    56→  const [searchQuery, setSearchQuery] = React.useState('');
+    57→  const [iTunesSearch, setITunesSearch] = React.useState('');
+    58→  const [activeTab, setActiveTab] = React.useState('subscriptions');
+    59→  const [showSleepTimer, setShowSleepTimer] = React.useState(false);
+    60→
+    61→  // iTunes API search state
+    62→  const [apiResults, setApiResults] = React.useState<ITunesAPIResult[]>([]);
+    63→  const [apiLoading, setApiLoading] = React.useState(false);
+    64→  const [apiError, setApiError] = React.useState('');
+    65→  const searchTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+    66→
+    67→  const subscribedShows = podcastShows.filter(s => subscribedShowIds.includes(s.id));
+    68→  const inProgress = getInProgressEpisodes();
+    69→  const newEpisodes = getAllNewEpisodes();
+    70→  const downloaded = getDownloadedEpisodes();
+    71→
+    72→  // Local mock fallback
+    73→  const filteredITunes = iTunesSearch.length > 1
+    74→    ? iTunesSearchResults.filter(r =>
+    75→        r.title.toLowerCase().includes(iTunesSearch.toLowerCase()) ||
+    76→        r.author.toLowerCase().includes(iTunesSearch.toLowerCase())
+    77→      )
+    78→    : [];
+    79→
+    80→  // Debounced iTunes API search
+    81→  React.useEffect(() => {
+    82→    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    83→
+    84→    if (iTunesSearch.length > 2) {
+    85→      setApiLoading(true);
+    86→      setApiError('');
+    87→      searchTimerRef.current = setTimeout(async () => {
+    88→        try {
+    89→          const res = await fetch(`/api/podcasts/search?q=${encodeURIComponent(iTunesSearch)}&limit=25`);
+    90→          if (!res.ok) throw new Error(`API returned ${res.status}`);
+    91→          const data = await res.json();
+    92→          if (data.error) throw new Error(data.error);
+    93→          setApiResults(data.results || []);
+    94→        } catch (err) {
+    95→          console.error('iTunes search error:', err);
+    96→          setApiError(err instanceof Error ? err.message : 'Search failed');
+    97→          // Fallback to local mock data
+    98→          setApiResults([]);
+    99→        } finally {
+   100→          setApiLoading(false);
+   101→        }
+   102→      }, 400);
+   103→    } else {
+   104→      setApiResults([]);
+   105→      setApiError('');
+   106→    }
+   107→
+   108→    return () => {
+   109→      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+   110→    };
+   111→  }, [iTunesSearch]);
+   112→
+   113→  const playEpisodeInPlayer = (ep: typeof podcastEpisodes[0]) => {
+   114→    const resumePos = episodeStates[ep.id]?.resumePosition || 0;
+   115→    playEpisode(ep);
+   116→  };
+   117→
+   118→  return (
+   119→    <ScrollArea className="h-full">
+   120→      <div className="p-6 max-w-5xl mx-auto">
+   121→        <div className="flex items-center justify-between mb-6">
+   122→          <h1 className="text-2xl font-bold flex items-center gap-2">
+   123→            <Podcast className="w-6 h-6 text-primary" /> Podcasts
+   124→          </h1>
+   125→          <div className="flex items-center gap-2">
+   126→            {newEpisodes.length > 0 && (
+   127→              <Badge variant="outline" className="text-xs text-signal-red border-signal-red/30">
+   128→                <Circle className="w-2 h-2 mr-1 fill-signal-red text-signal-red" />
+   129→                {newEpisodes.length} new
+   130→              </Badge>
+   131→            )}
+   132→            <Badge variant="secondary" className="text-xs">{subscribedShows.length} subscribed</Badge>
+   133→          </div>
+   134→        </div>
+   135→
+   136→        {/* Playback Controls Strip */}
+   137→        <Card className="bg-card border-border mb-6">
+   138→          <CardContent className="p-3">
+   139→            <div className="flex items-center gap-4 flex-wrap">
+   140→              <div className="flex items-center gap-2">
+   141→                <span className="text-[11px] text-muted-foreground">Speed:</span>
+   142→                <Button variant="outline" size="sm" className="h-7 text-xs font-mono min-w-[48px] justify-center" onClick={cyclePlaybackSpeed}>
+   143→                  {playbackSpeed}x
+   144→                </Button>
+   145→              </div>
+   146→              <div className="flex items-center gap-2">
+   147→                <Button
+   148→                  variant={skipSilence ? 'secondary' : 'ghost'}
+   149→                  size="sm"
+   150→                  className="h-7 gap-1.5 text-xs"
+   151→                  onClick={toggleSkipSilence}
+   152→                >
+   153→                  <Scissors className="w-3.5 h-3.5" />
+   154→                  Skip Silence
+   155→                </Button>
+   156→              </div>
+   157→              <div className="flex items-center gap-2">
+   158→                <Button
+   159→                  variant={sleepTimerMinutes !== null ? 'secondary' : 'ghost'}
+   160→                  size="sm"
+   161→                  className="h-7 gap-1.5 text-xs"
+   162→                  onClick={() => {
+   163→                    if (sleepTimerMinutes !== null) {
+   164→                      setSleepTimer(null);
+   165→                    } else {
+   166→                      setShowSleepTimer(!showSleepTimer);
+   167→                    }
+   168→                  }}
+   169→                >
+   170→                  <Moon className="w-3.5 h-3.5" />
+   171→                  {sleepTimerMinutes !== null ? `Sleep: ${sleepTimerMinutes}m` : 'Sleep Timer'}
+   172→                </Button>
+   173→              </div>
+   174→              {showSleepTimer && (
+   175→                <div className="flex items-center gap-2">
+   176→                  {[15, 30, 45, 60, 90].map(min => (
+   177→                    <Button
+   178→                      key={min}
+   179→                      variant={sleepTimerMinutes === min ? 'default' : 'outline'}
+   180→                      size="sm"
+   181→                      className="h-7 text-xs px-2"
+   182→                      onClick={() => { setSleepTimer(min); setShowSleepTimer(false); }}
+   183→                    >
+   184→                      {min}m
+   185→                    </Button>
+   186→                  ))}
+   187→                </div>
+   188→              )}
+   189→            </div>
+   190→          </CardContent>
+   191→        </Card>
+   192→
+   193→        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+   194→          <TabsList className="bg-surface">
+   195→            <TabsTrigger value="subscriptions" className="text-xs gap-1.5">
+   196→              <Podcast className="w-3.5 h-3.5" /> Subscriptions
+   197→            </TabsTrigger>
+   198→            <TabsTrigger value="new" className="text-xs gap-1.5">
+   199→              <Circle className="w-3.5 h-3.5 text-signal-red" /> New Episodes
+   200→              {newEpisodes.length > 0 && (
+   201→                <Badge variant="secondary" className="h-4 min-w-[16px] px-1 text-[10px]">{newEpisodes.length}</Badge>
+   202→              )}
+   203→            </TabsTrigger>
+   204→            <TabsTrigger value="in-progress" className="text-xs gap-1.5">
+   205→              <Clock className="w-3.5 h-3.5" /> In Progress
+   206→              {inProgress.length > 0 && (
+   207→                <Badge variant="secondary" className="h-4 min-w-[16px] px-1 text-[10px]">{inProgress.length}</Badge>
+   208→              )}
+   209→            </TabsTrigger>
+   210→            <TabsTrigger value="discover" className="text-xs gap-1.5">
+   211→              <Search className="w-3.5 h-3.5" /> Discover
+   212→            </TabsTrigger>
+   213→          </TabsList>
+   214→
+   215→          {/* SUBSCRIPTIONS TAB */}
+   216→          <TabsContent value="subscriptions" className="space-y-6">
+   217→            {subscribedShows.length === 0 ? (
+   218→              <div className="text-center py-12">
+   219→                <Podcast className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+   220→                <p className="text-lg text-muted-foreground">No subscriptions yet</p>
+   221→                <p className="text-sm text-muted-foreground mt-1">Search the iTunes directory to find podcasts</p>
+   222→                <Button variant="outline" className="mt-4" onClick={() => setActiveTab('discover')}>
+   223→                  <Search className="w-4 h-4 mr-2" /> Discover Podcasts
+   224→                </Button>
+   225→              </div>
+   226→            ) : (
+   227→              <div className="space-y-3">
+   228→                {subscribedShows.map(show => {
+   229→                  const episodes = getEpisodesByShow(show.id);
+   230→                  const unplayed = episodes.filter(ep => {
+   231→                    const state = episodeStates[ep.id];
+   232→                    return state && !state.isPlayed && !state.completed;
+   233→                  });
+   234→                  const latestEp = episodes[0];
+   235→                  const latestState = latestEp ? episodeStates[latestEp.id] : null;
+   236→
+   237→                  return (
+   238→                    <Card
+   239→                      key={show.id}
+   240→                      className="bg-card border-border hover:border-muted-foreground/20 cursor-pointer transition-all"
+   241→                      onClick={() => navigate('podcast-detail', { showId: show.id })}
+   242→                    >
+   243→                      <CardContent className="p-4">
+   244→                        <div className="flex gap-4">
+   245→                          {/* Show Artwork */}
+   246→                          <div className={`w-20 h-20 rounded-lg bg-gradient-to-br ${getCoverGradient(show.id)} flex-shrink-0 cover-art-hover relative`}>
+   247→                            {unplayed.length > 0 && (
+   248→                              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-signal-red text-[10px] font-bold text-white flex items-center justify-center">
+   249→                                {unplayed.length > 9 ? '9+' : unplayed.length}
+   250→                              </span>
+   251→                            )}
+   252→                          </div>
+   253→
+   254→                          {/* Show Info */}
+   255→                          <div className="flex-1 min-w-0">
+   256→                            <h3 className="text-sm font-semibold truncate">{show.title}</h3>
+   257→                            <p className="text-xs text-muted-foreground">{show.author}</p>
+   258→                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{show.description}</p>
+   259→
+   260→                            <div className="flex items-center gap-3 mt-2">
+   261→                              <Badge variant="outline" className="text-[10px]">{show.genre}</Badge>
+   262→                              <span className="text-[11px] text-muted-foreground">{show.episodeCount} episodes</span>
+   263→                              {latestEp && (
+   264→                                <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+   265→                                  <Rss className="w-3 h-3" />
+   266→                                  {formatDate(latestEp.publishDate)}
+   267→                                </span>
+   268→                              )}
+   269→                            </div>
+   270→                          </div>
+   271→
+   272→                          {/* Actions */}
+   273→                          <div className="flex flex-col items-end gap-2 flex-shrink-0">
+   274→                            {latestEp && latestState && !latestState.completed && (
+   275→                              <Button
+   276→                                variant="default"
+   277→                                size="sm"
+   278→                                className="h-8 gap-1.5"
+   279→                                onClick={(e) => {
+   280→                                  e.stopPropagation();
+   281→                                  playEpisode(latestEp);
+   282→                                }}
+   283→                              >
+   284→                                <Play className="w-3.5 h-3.5" />
+   285→                                {latestState.resumePosition > 0 ? 'Resume' : 'Play Latest'}
+   286→                              </Button>
+   287→                            )}
+   288→                            {latestEp && latestState && (
+   289→                              <div className="flex items-center gap-2">
+   290→                                <Button
+   291→                                  variant="ghost"
+   292→                                  size="icon"
+   293→                                  className="h-7 w-7"
+   294→                                  onClick={(e) => {
+   295→                                    e.stopPropagation();
+   296→                                    markAllPlayed(show.id);
+   297→                                  }}
+   298→                                >
+   299→                                  <CircleCheck className="w-3.5 h-3.5 text-muted-foreground" />
+   300→                                </Button>
+   301→                              </div>
+   302→                            )}
+   303→                            {latestEp && latestState && latestState.resumePosition > 0 && !latestState.completed && (
+   304→                              <div className="text-[10px] text-muted-foreground">
+   305→                                {Math.round((latestState.resumePosition / latestEp.duration) * 100)}% listened
+   306→                              </div>
+   307→                            )}
+   308→                          </div>
+   309→                        </div>
+   310→                      </CardContent>
+   311→                    </Card>
+   312→                  );
+   313→                })}
+   314→              </div>
+   315→            )}
+   316→          </TabsContent>
+   317→
+   318→          {/* NEW EPISODES TAB */}
+   319→          <TabsContent value="new" className="space-y-2">
+   320→            {newEpisodes.length === 0 ? (
+   321→              <div className="text-center py-12">
+   322→                <CircleCheck className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+   323→                <p className="text-lg text-muted-foreground">All caught up!</p>
+   324→                <p className="text-sm text-muted-foreground mt-1">No new episodes to listen to</p>
+   325→              </div>
+   326→            ) : (
+   327→              newEpisodes.sort((a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime()).map(ep => {
+   328→                const show = podcastShows.find(s => s.id === ep.showId);
+   329→                const state = episodeStates[ep.id];
+   330→                return (
+   331→                  <div
+   332→                    key={ep.id}
+   333→                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors group"
+   334→                    onClick={() => playEpisode(ep)}
+   335→                  >
+   336→                    <div className={`w-12 h-12 rounded bg-gradient-to-br ${getCoverGradient(ep.showId)} flex-shrink-0`} />
+   337→                    <div className="flex-1 min-w-0">
+   338→                      <p className="text-sm font-medium truncate">{ep.title}</p>
+   339→                      <p className="text-xs text-muted-foreground truncate">
+   340→                        {show?.title} · {formatDate(ep.publishDate)}
+   341→                      </p>
+   342→                    </div>
+   343→                    <span className="text-xs text-muted-foreground hidden sm:inline">{formatEpisodeDuration(ep.duration)}</span>
+   344→                    {state?.isDownloaded ? (
+   345→                      <Badge variant="outline" className="text-[10px]"><WifiOff className="w-2.5 h-2.5 mr-0.5" />Local</Badge>
+   346→                    ) : (
+   347→                      <Badge variant="outline" className="text-[10px]"><Wifi className="w-2.5 h-2.5 mr-0.5" />Stream</Badge>
+   348→                    )}
+   349→                    <Button
+   350→                      variant="ghost"
+   351→                      size="icon"
+   352→                      className="h-8 w-8 opacity-0 group-hover:opacity-100"
+   353→                      onClick={(e) => { e.stopPropagation(); toggleEpisodeDownload(ep.id); }}
+   354→                    >
+   355→                      <Download className="w-3.5 h-3.5" />
+   356→                    </Button>
+   357→                  </div>
+   358→                );
+   359→              })
+   360→            )}
+   361→          </TabsContent>
+   362→
+   363→          {/* IN PROGRESS TAB */}
+   364→          <TabsContent value="in-progress" className="space-y-2">
+   365→            {inProgress.length === 0 ? (
+   366→              <div className="text-center py-12">
+   367→                <Clock className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+   368→                <p className="text-lg text-muted-foreground">Nothing in progress</p>
+   369→                <p className="text-sm text-muted-foreground mt-1">Start listening to an episode to see it here</p>
+   370→              </div>
+   371→            ) : (
+   372→              inProgress.sort((a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime()).map(ep => {
+   373→                const show = podcastShows.find(s => s.id === ep.showId);
+   374→                const state = episodeStates[ep.id];
+   375→                const progress = state ? (state.resumePosition / ep.duration) * 100 : 0;
+   376→                return (
+   377→                  <div
+   378→                    key={ep.id}
+   379→                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors group"
+   380→                    onClick={() => playEpisode(ep)}
+   381→                  >
+   382→                    <div className={`w-12 h-12 rounded bg-gradient-to-br ${getCoverGradient(ep.showId)} flex-shrink-0 relative`}>
+   383→                      <div className="absolute inset-0 flex items-center justify-center">
+   384→                        <div className="w-6 h-6 rounded-full bg-black/60 flex items-center justify-center">
+   385→                          <Play className="w-3 h-3 text-white ml-0.5" />
+   386→                        </div>
+   387→                      </div>
+   388→                    </div>
+   389→                    <div className="flex-1 min-w-0">
+   390→                      <p className="text-sm font-medium truncate">{ep.title}</p>
+   391→                      <p className="text-xs text-muted-foreground truncate">{show?.title}</p>
+   392→                      <div className="mt-1 h-1 w-full bg-muted rounded-full overflow-hidden">
+   393→                        <div className="h-full bg-primary rounded-full" style={{ width: `${progress}%` }} />
+   394→                      </div>
+   395→                    </div>
+   396→                    <div className="text-right flex-shrink-0">
+   397→                      <span className="text-xs text-muted-foreground">{formatEpisodeDuration(state?.resumePosition || 0)}</span>
+   398→                      <span className="text-[11px] text-muted-foreground block">/ {formatEpisodeDuration(ep.duration)}</span>
+   399→                    </div>
+   400→                  </div>
+   401→                );
+   402→              })
+   403→            )}
+   404→          </TabsContent>
+   405→
+   406→          {/* DISCOVER TAB — iTunes Search */}
+   407→          <TabsContent value="discover" className="space-y-6">
+   408→            <div className="relative">
+   409→              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+   410→              <Input
+   411→                placeholder="Search the iTunes Podcast directory..."
+   412→                value={iTunesSearch}
+   413→                onChange={(e) => setITunesSearch(e.target.value)}
+   414→                className="pl-12 h-12 text-lg bg-card border-border rounded-xl"
+   415→              />
+   416→              {apiLoading && (
+   417→                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+   418→                  <RefreshCw className="w-5 h-5 text-primary animate-spin" />
+   419→                </div>
+   420→              )}
+   421→            </div>
+   422→
+   423→            {/* Loading state */}
+   424→            {apiLoading && (
+   425→              <div className="flex items-center justify-center py-8">
+   426→                <RefreshCw className="w-6 h-6 text-primary animate-spin mr-3" />
+   427→                <span className="text-sm text-muted-foreground">Searching iTunes...</span>
+   428→              </div>
+   429→            )}
+   430→
+   431→            {/* API Error with fallback notice */}
+   432→            {apiError && !apiLoading && (
+   433→              <div className="p-3 rounded-lg bg-signal-amber/10 border border-signal-amber/30">
+   434→                <p className="text-xs text-signal-amber">iTunes search unavailable: {apiError}</p>
+   435→                <p className="text-[11px] text-muted-foreground mt-1">Showing local results instead.</p>
+   436→              </div>
+   437→            )}
+   438→
+   439→            {/* API Results (real iTunes data) */}
+   440→            {iTunesSearch.length > 2 && !apiLoading && apiResults.length > 0 && (
+   441→              <div>
+   442→                <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+   443→                  <Rss className="w-4 h-4" /> iTunes Results ({apiResults.length})
+   444→                </h2>
+   445→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   446→                  {apiResults.map(result => {
+   447→                    const isSubscribed = subscribedShowIds.includes(result.id);
+   448→                    return (
+   449→                      <Card key={result.id} className="bg-card border-border hover:border-muted-foreground/20 transition-all">
+   450→                        <CardContent className="p-3">
+   451→                          <div className="flex gap-3">
+   452→                            {/* Use real artwork if available, otherwise gradient */}
+   453→                            {result.artworkUrlMedium ? (
+   454→                              <img
+   455→                                src={result.artworkUrlMedium}
+   456→                                alt={result.title}
+   457→                                className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+   458→                                onError={(e) => {
+   459→                                  (e.target as HTMLImageElement).style.display = 'none';
+   460→                                  (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+   461→                                }}
+   462→                              />
+   463→                            ) : null}
+   464→                            <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${getCoverGradient(result.id)} flex-shrink-0 ${result.artworkUrlMedium ? 'hidden' : ''}`} />
+   465→                            <div className="flex-1 min-w-0">
+   466→                              <p className="text-sm font-medium truncate">{result.title}</p>
+   467→                              <p className="text-xs text-muted-foreground truncate">{result.author}</p>
+   468→                              <div className="flex items-center gap-2 mt-1">
+   469→                                <Badge variant="outline" className="text-[10px]">{result.genre}</Badge>
+   470→                                <span className="text-[10px] text-muted-foreground">{result.episodeCount} episodes</span>
+   471→                              </div>
+   472→                              <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{result.description}</p>
+   473→                            </div>
+   474→                            <Button
+   475→                              variant={isSubscribed ? 'secondary' : 'default'}
+   476→                              size="sm"
+   477→                              className="h-8 gap-1.5 flex-shrink-0 self-start"
+   478→                              onClick={() => toggleSubscribe(result.id)}
+   479→                            >
+   480→                              {isSubscribed ? (
+   481→                                <><Check className="w-3.5 h-3.5" /> Subscribed</>
+   482→                              ) : (
+   483→                                <><Plus className="w-3.5 h-3.5" /> Subscribe</>
+   484→                              )}
+   485→                            </Button>
+   486→                          </div>
+   487→                        </CardContent>
+   488→                      </Card>
+   489→                    );
+   490→                  })}
+   491→                </div>
+   492→              </div>
+   493→            )}
+   494→
+   495→            {/* Fallback to local mock data when API has no results or not yet loaded */}
+   496→            {((iTunesSearch.length > 2 && !apiLoading && apiResults.length === 0) || (iTunesSearch.length > 1 && iTunesSearch.length <= 2)) && (
+   497→              <div>
+   498→                <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+   499→                  <Rss className="w-4 h-4" /> {iTunesSearch.length > 2 ? 'Local Results' : 'iTunes Results'} ({filteredITunes.length})
+   500→                </h2>
+   501→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   502→                  {filteredITunes.map(result => {
+   503→                    const isSubscribed = subscribedShowIds.includes(result.id);
+   504→                    return (
+   505→                      <Card key={result.id} className="bg-card border-border hover:border-muted-foreground/20 transition-all">
+   506→                        <CardContent className="p-3">
+   507→                          <div className="flex gap-3">
+   508→                            <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${getCoverGradient(result.id)} flex-shrink-0`} />
+   509→                            <div className="flex-1 min-w-0">
+   510→                              <p className="text-sm font-medium truncate">{result.title}</p>
+   511→                              <p className="text-xs text-muted-foreground truncate">{result.author}</p>
+   512→                              <div className="flex items-center gap-2 mt-1">
+   513→                                <Badge variant="outline" className="text-[10px]">{result.genre}</Badge>
+   514→                                <span className="text-[10px] text-muted-foreground">{result.episodeCount} eps</span>
+   515→                              </div>
+   516→                              <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{result.description}</p>
+   517→                            </div>
+   518→                            <Button
+   519→                              variant={isSubscribed ? 'secondary' : 'default'}
+   520→                              size="sm"
+   521→                              className="h-8 gap-1.5 flex-shrink-0 self-start"
+   522→                              onClick={() => toggleSubscribe(result.id)}
+   523→                            >
+   524→                              {isSubscribed ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+   525→                            </Button>
+   526→                          </div>
+   527→                        </CardContent>
+   528→                      </Card>
+   529→                    );
+   530→                  })}
+   531→                </div>
+   532→              </div>
+   533→            )}
+   534→
+   535→            {iTunesSearch.length <= 1 && (
+   536→              <div>
+   537→                <h2 className="text-sm font-semibold text-muted-foreground mb-3">Popular in Audio & Music</h2>
+   538→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   539→                  {iTunesSearchResults.slice(0, 6).map(result => {
+   540→                    const isSubscribed = subscribedShowIds.includes(result.id);
+   541→                    return (
+   542→                      <Card key={result.id} className="bg-card border-border hover:border-muted-foreground/20 cursor-pointer transition-all">
+   543→                        <CardContent className="p-3">
+   544→                          <div className="flex gap-3">
+   545→                            <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${getCoverGradient(result.id)} flex-shrink-0`} />
+   546→                            <div className="flex-1 min-w-0">
+   547→                              <p className="text-sm font-medium truncate">{result.title}</p>
+   548→                              <p className="text-xs text-muted-foreground truncate">{result.author}</p>
+   549→                              <div className="flex items-center gap-2 mt-1">
+   550→                                <Badge variant="outline" className="text-[10px]">{result.genre}</Badge>
+   551→                                <span className="text-[10px] text-muted-foreground">{result.episodeCount} eps</span>
+   552→                              </div>
+   553→                              <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{result.description}</p>
+   554→                            </div>
+   555→                            <Button
+   556→                              variant={isSubscribed ? 'secondary' : 'default'}
+   557→                              size="sm"
+   558→                              className="h-8 gap-1.5 flex-shrink-0 self-start"
+   559→                              onClick={() => toggleSubscribe(result.id)}
+   560→                            >
+   561→                              {isSubscribed ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+   562→                            </Button>
+   563→                          </div>
+   564→                        </CardContent>
+   565→                      </Card>
+   566→                    );
+   567→                  })}
+   568→                </div>
+   569→              </div>
+   570→            )}
+   571→          </TabsContent>
+   572→        </Tabs>
+   573→      </div>
+   574→    </ScrollArea>
+   575→  );
+   576→}
+   577→

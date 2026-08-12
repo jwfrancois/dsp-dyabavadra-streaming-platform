@@ -1,0 +1,611 @@
+     1→   601→            </div>
+     2→   602→
+     3→   603→            {/* Credits */}
+     4→   604→            {selectedTrack.performers.length > 0 && (
+     5→   605→              <div className="mt-4">
+     6→   606→                <p className="text-xs font-semibold mb-2">Credits</p>
+     7→   607→                <div className="space-y-1">
+     8→   608→                  {selectedTrack.performers.map((p, i) => (
+     9→   609→                    <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+    10→   610→                      <span className="font-medium">{p.name}</span>
+    11→   611→                      <span className="text-[10px]">— {p.role}{p.instrument ? ` (${p.instrument})` : ''}</span>
+    12→   612→                    </div>
+    13→   613→                  ))}
+    14→   614→                </div>
+    15→   615→              </div>
+    16→   616→            )}
+    17→   617→          </CardContent>
+    18→   618→        </Card>
+    19→   619→      )}
+    20→   620→
+    21→   621→      {/* Edit History */}
+    22→   622→      <Card className="bg-card border-border">
+    23→   623→        <CardHeader className="pb-3">
+    24→   624→          <CardTitle className="text-sm flex items-center gap-2"><History className="w-4 h-4" /> Recent Tag Edits</CardTitle>
+    25→   625→        </CardHeader>
+    26→   626→        <CardContent>
+    27→   627→          <div className="space-y-2">
+    28→   628→            {store.edits.length === 0 && <p className="text-xs text-muted-foreground">No edits yet.</p>}
+    29→   629→            {store.edits.map(edit => (
+    30→   630→              <div key={edit.id} className="flex items-center gap-3 p-2 rounded bg-surface/30 text-xs">
+    31→   631→                <Badge variant="outline" className="text-[9px] font-mono">{edit.field}</Badge>
+    32→   632→                <span className="text-muted-foreground line-through">{edit.oldValue || '(empty)'}</span>
+    33→   633→                <ChevronRight className="w-3 h-3" />
+    34→   634→                <span className="font-medium">{edit.newValue}</span>
+    35→   635→                <span className="ml-auto text-muted-foreground">{formatRelativeTime(edit.editedAt)}</span>
+    36→   636→                {edit.persisted ? (
+    37→   637→                  <CheckCircle2 className="w-3 h-3 text-signal-green" />
+    38→   638→                ) : (
+    39→   639→                  <AlertTriangle className="w-3 h-3 text-signal-amber" />
+    40→   640→                )}
+    41→   641→              </div>
+    42→   642→            ))}
+    43→   643→          </div>
+    44→   644→        </CardContent>
+    45→   645→      </Card>
+    46→   646→    </div>
+    47→   647→  );
+    48→   648→}
+    49→   649→
+    50→   650→// ═══════════════════════════════════════════════════════════
+    51→   651→// DEDUPLICATION PANEL
+    52→   652→// ═══════════════════════════════════════════════════════════
+    53→   653→
+    54→   654→function DedupPanel({ store }: { store: ReturnType<typeof useLibraryStore> }) {
+    55→   655→  return (
+    56→   656→    <div className="space-y-6">
+    57→   657→      <Card className="bg-card border-border">
+    58→   658→        <CardContent className="p-4">
+    59→   659→          <div className="flex items-start gap-3">
+    60→   660→            <Layers className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+    61→   661→            <div>
+    62→   662→              <h3 className="text-sm font-semibold">Deduplication & Source Linking</h3>
+    63→   663→              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+    64→   664→                When a locally-owned track is also available on a connected streaming service, DSP links them so you
+    65→   665→                can choose your preferred source or automatically fall back to streaming if the local file is unavailable.
+    66→   666→                Duplicate detection uses acoustic fingerprinting with configurable confidence thresholds.
+    67→   667→              </p>
+    68→   668→            </div>
+    69→   669→          </div>
+    70→   670→        </CardContent>
+    71→   671→      </Card>
+    72→   672→
+    73→   673→      {/* Stats */}
+    74→   674→      <div className="grid grid-cols-3 gap-3">
+    75→   675→        <Card className="bg-card border-border">
+    76→   676→          <CardContent className="p-3 text-center">
+    77→   677→            <p className="text-2xl font-bold">{store.duplicates.length}</p>
+    78→   678→            <p className="text-[10px] text-muted-foreground">Duplicate Groups</p>
+    79→   679→          </CardContent>
+    80→   680→        </Card>
+    81→   681→        <Card className="bg-card border-border">
+    82→   682→          <CardContent className="p-3 text-center">
+    83→   683→            <p className="text-2xl font-bold">{store.duplicates.filter(d => !d.resolved).length}</p>
+    84→   684→            <p className="text-[10px] text-muted-foreground">Unresolved</p>
+    85→   685→          </CardContent>
+    86→   686→        </Card>
+    87→   687→        <Card className="bg-card border-border">
+    88→   688→          <CardContent className="p-3 text-center">
+    89→   689→            <p className="text-2xl font-bold">{streamingAccounts.filter(a => a.connected).reduce((s, a) => s + a.linkedTrackCount, 0).toLocaleString()}</p>
+    90→   690→            <p className="text-[10px] text-muted-foreground">Streaming Links</p>
+    91→   691→          </CardContent>
+    92→   692→        </Card>
+    93→   693→      </div>
+    94→   694→
+    95→   695→      {/* Duplicate Groups */}
+    96→   696→      <div className="space-y-3">
+    97→   697→        <h2 className="text-sm font-semibold">Duplicate Groups</h2>
+    98→   698→        {store.duplicates.map(group => (
+    99→   699→          <Card key={group.id} className={`bg-card border ${group.resolved ? 'border-signal-green/20' : 'border-signal-amber/20'}`}>
+   100→   700→            <CardContent className="p-4">
+   101→   701→              <div className="flex items-center justify-between mb-2">
+   102→   702→                <div className="flex items-center gap-2">
+   103→   703→                  <Badge variant="outline" className={`text-[9px] ${group.matchType === 'exact' ? 'border-signal-green/30 text-signal-green' : group.matchType === 'same-recording' ? 'border-signal-amber/30 text-signal-amber' : 'border-muted-foreground/30 text-muted-foreground'}`}>
+   104→   704→                    {group.matchType}
+   105→   705→                  </Badge>
+   106→   706→                  <span className="text-xs text-muted-foreground">Confidence: {group.confidence}%</span>
+   107→   707→                </div>
+   108→   708→                {group.resolved ? (
+   109→   709→                  <Badge variant="outline" className="text-[9px] text-signal-green border-signal-green/30"><CheckCircle2 className="w-3 h-3 mr-0.5" /> Resolved</Badge>
+   110→   710→                ) : (
+   111→   711→                  <div className="flex gap-1">
+   112→   712→                    <Button size="sm" variant="outline" className="h-6 text-[10px]"><Merge className="w-3 h-3 mr-0.5" /> Merge</Button>
+   113→   713→                    <Button size="sm" variant="outline" className="h-6 text-[10px]"><Link2 className="w-3 h-3 mr-0.5" /> Link</Button>
+   114→   714→                    <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => store.resolveDuplicate(group.id, group.preferredId)}>
+   115→   715→                      <XCircle className="w-3 h-3 mr-0.5" /> Dismiss
+   116→   716→                    </Button>
+   117→   717→                  </div>
+   118→   718→                )}
+   119→   719→              </div>
+   120→   720→              <div className="space-y-1">
+   121→   721→                {group.trackIds.map((trackId, i) => {
+   122→   722→                  const t = tracks.find(tr => tr.id === trackId);
+   123→   723→                  if (!t) return null;
+   124→   724→                  const isPreferred = trackId === group.preferredId;
+   125→   725→                  return (
+   126→   726→                    <div key={trackId} className={`flex items-center gap-2 p-1.5 rounded text-xs ${isPreferred ? 'bg-primary/10' : 'bg-surface/30'}`}>
+   127→   727→                      {isPreferred && <Star className="w-3 h-3 text-primary" />}
+   128→   728→                      <span className="font-medium">{t.title}</span>
+   129→   729→                      <span className="text-muted-foreground">— {t.artistName}</span>
+   130→   730→                      <Badge variant="outline" className="text-[9px] font-mono ml-auto">{t.format} {t.bitDepth}bit/{formatSampleRate(t.sampleRate)}</Badge>
+   131→   731→                      <Badge variant="outline" className="text-[9px]">{t.source}</Badge>
+   132→   732→                    </div>
+   133→   733→                  );
+   134→   734→                })}
+   135→   735→              </div>
+   136→   736→            </CardContent>
+   137→   737→          </Card>
+   138→   738→        ))}
+   139→   739→      </div>
+   140→   740→    </div>
+   141→   741→  );
+   142→   742→}
+   143→   743→
+   144→   744→// ═══════════════════════════════════════════════════════════
+   145→   745→// PLAYLISTS PANEL
+   146→   746→// ═══════════════════════════════════════════════════════════
+   147→   747→
+   148→   748→function PlaylistsPanel({ play }: { play: (track?: typeof tracks[0]) => void }) {
+   149→   749→  const [showCreateDialog, setShowCreateDialog] = React.useState(false);
+   150→   750→  const [newPlaylistName, setNewPlaylistName] = React.useState('');
+   151→   751→
+   152→   752→  return (
+   153→   753→    <div className="space-y-6">
+   154→   754→      <div className="flex items-center justify-between">
+   155→   755→        <h2 className="text-sm font-semibold">Playlists ({playlists.length})</h2>
+   156→   756→        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+   157→   757→          <DialogTrigger asChild>
+   158→   758→            <Button size="sm" className="h-7 gap-1.5 text-xs"><Plus className="w-3.5 h-3.5" /> New Playlist</Button>
+   159→   759→          </DialogTrigger>
+   160→   760→          <DialogContent>
+   161→   761→            <DialogHeader>
+   162→   762→              <DialogTitle>Create Playlist</DialogTitle>
+   163→   763→            </DialogHeader>
+   164→   764→            <div className="space-y-3 mt-4">
+   165→   765→              <div><Label className="text-xs">Name</Label><Input placeholder="My Awesome Playlist" value={newPlaylistName} onChange={e => setNewPlaylistName(e.target.value)} className="mt-1" /></div>
+   166→   766→              <div><Label className="text-xs">Description (optional)</Label><Textarea placeholder="What is this playlist about?" className="mt-1" rows={2} /></div>
+   167→   767→              <Button className="w-full" disabled={!newPlaylistName}>Create</Button>
+   168→   768→            </div>
+   169→   769→          </DialogContent>
+   170→   770→        </Dialog>
+   171→   771→      </div>
+   172→   772→
+   173→   773→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+   174→   774→        {playlists.map(pl => (
+   175→   775→          <Card key={pl.id} className="bg-card border-border hover:border-muted-foreground/20 cursor-pointer transition-all group">
+   176→   776→            <CardContent className="p-4">
+   177→   777→              <div className="flex gap-3">
+   178→   778→                <div className={`w-14 h-14 rounded-lg bg-gradient-to-br ${getCoverGradient(pl.id)} flex-shrink-0`} />
+   179→   779→                <div className="flex-1 min-w-0">
+   180→   780→                  <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{pl.name}</p>
+   181→   781→                  <p className="text-[11px] text-muted-foreground">{pl.trackCount} tracks · {formatDuration(pl.duration)}</p>
+   182→   782→                  {pl.description && <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{pl.description}</p>}
+   183→   783→                </div>
+   184→   784→                <DropdownMenu>
+   185→   785→                  <DropdownMenuTrigger asChild>
+   186→   786→                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100"><MoreHorizontal className="w-3.5 h-3.5" /></Button>
+   187→   787→                  </DropdownMenuTrigger>
+   188→   788→                  <DropdownMenuContent align="end">
+   189→   789→                    <DropdownMenuItem><Edit3 className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
+   190→   790→                    <DropdownMenuItem><Copy className="w-4 h-4 mr-2" /> Duplicate</DropdownMenuItem>
+   191→   791→                    <DropdownMenuItem><Download className="w-4 h-4 mr-2" /> Export</DropdownMenuItem>
+   192→   792→                    <DropdownMenuSeparator />
+   193→   793→                    <DropdownMenuItem className="text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Delete</DropdownMenuItem>
+   194→   794→                  </DropdownMenuContent>
+   195→   795→                </DropdownMenu>
+   196→   796→              </div>
+   197→   797→              <div className="flex items-center gap-2 mt-3 text-[10px] text-muted-foreground">
+   198→   798→                <span>Created {formatRelativeTime(pl.createdAt)}</span>
+   199→   799→                <span>·</span>
+   200→   800→                <span>Updated {formatRelativeTime(pl.updatedAt)}</span>
+   201→   801→              </div>
+   202→   802→            </CardContent>
+   203→   803→          </Card>
+   204→   804→        ))}
+   205→   805→      </div>
+   206→   806→
+   207→   807→      <Card className="bg-card border-border">
+   208→   808→        <CardContent className="p-4">
+   209→   809→          <div className="flex items-start gap-3">
+   210→   810→            <ListMusic className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+   211→   811→            <div>
+   212→   812→              <h3 className="text-sm font-semibold">About Playlists</h3>
+   213→   813→              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+   214→   814→                DSP playlists can contain both local files and streaming tracks from connected services (Tidal, Qobuz).
+   215→   815→                Playlists are stored in the library database and can be exported for backup. When a local file becomes
+   216→   816→                unavailable, DSP automatically falls back to the streaming version if a link exists. Smart playlists
+   217→   817→                can be created in the Tags & Collections tab using rule-based filters.
+   218→   818→              </p>
+   219→   819→            </div>
+   220→   820→          </div>
+   221→   821→        </CardContent>
+   222→   822→      </Card>
+   223→   823→    </div>
+   224→   824→  );
+   225→   825→}
+   226→   826→
+   227→   827→// ═══════════════════════════════════════════════════════════
+   228→   828→// TAGS & COLLECTIONS PANEL
+   229→   829→// ═══════════════════════════════════════════════════════════
+   230→   830→
+   231→   831→function TagsCollectionsPanel({ store }: { store: ReturnType<typeof useLibraryStore> }) {
+   232→   832→  return (
+   233→   833→    <div className="space-y-6">
+   234→   834→      {/* Tags */}
+   235→   835→      <div>
+   236→   836→        <div className="flex items-center justify-between mb-3">
+   237→   837→          <h2 className="text-sm font-semibold">Tags ({store.tags.length})</h2>
+   238→   838→          <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs"><Plus className="w-3.5 h-3.5" /> New Tag</Button>
+   239→   839→        </div>
+   240→   840→        <div className="flex flex-wrap gap-2">
+   241→   841→          {store.tags.map(tag => (
+   242→   842→            <Badge
+   243→   843→              key={tag.id}
+   244→   844→              className="text-xs py-1 px-3 cursor-pointer hover:opacity-80 transition-opacity"
+   245→   845→              style={{ backgroundColor: tag.color + '22', color: tag.color, borderColor: tag.color + '44', borderWidth: 1 }}
+   246→   846→            >
+   247→   847→              <Tag className="w-3 h-3 mr-1" />
+   248→   848→              {tag.name}
+   249→   849→              <span className="ml-1 opacity-60">({tag.trackCount})</span>
+   250→   850→            </Badge>
+   251→   851→          ))}
+   252→   852→        </div>
+   253→   853→      </div>
+   254→   854→
+   255→   855→      <Separator />
+   256→   856→
+   257→   857→      {/* Bookmarks */}
+   258→   858→      <div>
+   259→   859→        <div className="flex items-center justify-between mb-3">
+   260→   860→          <h2 className="text-sm font-semibold">Bookmarks ({store.bookmarks.length})</h2>
+   261→   861→        </div>
+   262→   862→        <div className="space-y-1">
+   263→   863→          {store.bookmarks.map(bm => {
+   264→   864→            const track = tracks.find(t => t.id === bm.trackId);
+   265→   865→            if (!track) return null;
+   266→   866→            return (
+   267→   867→              <div key={bm.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/20 transition-colors group">
+   268→   868→                <div className="flex items-center justify-center w-8 h-8 rounded bg-primary/10 flex-shrink-0">
+   269→   869→                  <Bookmark className="w-3.5 h-3.5 text-primary fill-primary" />
+   270→   870→                </div>
+   271→   871→                <div className="flex-1 min-w-0">
+   272→   872→                  <p className="text-xs font-medium">{bm.name}</p>
+   273→   873→                  <p className="text-[11px] text-muted-foreground truncate">{track.title} — {track.artistName}</p>
+   274→   874→                </div>
+   275→   875→                <span className="text-[10px] font-mono text-muted-foreground">{formatDuration(bm.position)}</span>
+   276→   876→                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => store.removeBookmark(bm.id)}>
+   277→   877→                  <Trash2 className="w-3 h-3" />
+   278→   878→                </Button>
+   279→   879→              </div>
+   280→   880→            );
+   281→   881→          })}
+   282→   882→        </div>
+   283→   883→      </div>
+   284→   884→
+   285→   885→      <Separator />
+   286→   886→
+   287→   887→      {/* Smart Collections */}
+   288→   888→      <div>
+   289→   889→        <div className="flex items-center justify-between mb-3">
+   290→   890→          <h2 className="text-sm font-semibold">Smart Collections ({store.collections.length})</h2>
+   291→   891→          <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs"><Plus className="w-3.5 h-3.5" /> New Collection</Button>
+   292→   892→        </div>
+   293→   893→        <div className="space-y-2">
+   294→   894→          {store.collections.map(col => (
+   295→   895→            <Card key={col.id} className="bg-card border-border">
+   296→   896→              <CardContent className="p-3">
+   297→   897→                <div className="flex items-center justify-between">
+   298→   898→                  <div>
+   299→   899→                    <p className="text-sm font-medium">{col.name}</p>
+   300→   900→                    <p className="text-[11px] text-muted-foreground">{col.description}</p>
+   301→   901→                    <div className="flex gap-1 mt-1">
+   302→   902→                      {col.rules.map((rule, i) => (
+   303→   903→                        <Badge key={i} variant="outline" className="text-[9px] font-mono">
+   304→   904→                          {rule.field} {rule.operator} {String(rule.value)}
+   305→   905→                        </Badge>
+   306→   906→                      ))}
+   307→   907→                    </div>
+   308→   908→                  </div>
+   309→   909→                  <div className="text-right flex-shrink-0">
+   310→   910→                    <p className="text-lg font-bold">{col.trackCount}</p>
+   311→   911→                    <p className="text-[10px] text-muted-foreground">tracks</p>
+   312→   912→                  </div>
+   313→   913→                </div>
+   314→   914→              </CardContent>
+   315→   915→            </Card>
+   316→   916→          ))}
+   317→   917→        </div>
+   318→   918→      </div>
+   319→   919→    </div>
+   320→   920→  );
+   321→   921→}
+   322→   922→
+   323→   923→// ═══════════════════════════════════════════════════════════
+   324→   924→// HISTORY & STATS PANEL
+   325→   925→// ═══════════════════════════════════════════════════════════
+   326→   926→
+   327→   927→function HistoryStatsPanel({ store, play }: { store: ReturnType<typeof useLibraryStore>; play: (track?: typeof tracks[0]) => void }) {
+   328→   928→  const onThisDay = getOnThisDay();
+   329→   929→  const topTracks = [...tracks].sort((a, b) => b.playCount - a.playCount).slice(0, 10);
+   330→   930→  const totalPlayTime = tracks.reduce((s, t) => s + t.playCount * t.duration, 0);
+   331→   931→
+   332→   932→  return (
+   333→   933→    <div className="space-y-6">
+   334→   934→      {/* Quick Stats */}
+   335→   935→      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+   336→   936→        <Card className="bg-card border-border">
+   337→   937→          <CardContent className="p-3">
+   338→   938→            <div className="flex items-center gap-2">
+   339→   939→              <TrendingUp className="w-4 h-4 text-primary" />
+   340→   940→              <div>
+   341→   941→                <p className="text-sm font-bold">{formatDuration(totalPlayTime)}</p>
+   342→   942→                <p className="text-[10px] text-muted-foreground">Total Listening Time</p>
+   343→   943→              </div>
+   344→   944→            </div>
+   345→   945→          </CardContent>
+   346→   946→        </Card>
+   347→   947→        <Card className="bg-card border-border">
+   348→   948→          <CardContent className="p-3">
+   349→   949→            <div className="flex items-center gap-2">
+   350→   950→              <Heart className="w-4 h-4 text-red-500" />
+   351→   951→              <div>
+   352→   952→                <p className="text-sm font-bold">{tracks.filter(t => t.loved).length}</p>
+   353→   953→                <p className="text-[10px] text-muted-foreground">Loved Tracks</p>
+   354→   954→              </div>
+   355→   955→            </div>
+   356→   956→          </CardContent>
+   357→   957→        </Card>
+   358→   958→        <Card className="bg-card border-border">
+   359→   959→          <CardContent className="p-3">
+   360→   960→            <div className="flex items-center gap-2">
+   361→   961→              <Calendar className="w-4 h-4 text-purple-400" />
+   362→   962→              <div>
+   363→   963→                <p className="text-sm font-bold">{new Set(store.history.map(h => h.playedAt.slice(0, 10))).size}</p>
+   364→   964→                <p className="text-[10px] text-muted-foreground">Active Days (7d)</p>
+   365→   965→              </div>
+   366→   966→            </div>
+   367→   967→          </CardContent>
+   368→   968→        </Card>
+   369→   969→        <Card className="bg-card border-border">
+   370→   970→          <CardContent className="p-3">
+   371→   971→            <div className="flex items-center gap-2">
+   372→   972→              <Volume2 className="w-4 h-4 text-signal-green" />
+   373→   973→              <div>
+   374→   974→                <p className="text-sm font-bold">{store.history.filter(h => h.completed).length}</p>
+   375→   975→                <p className="text-[10px] text-muted-foreground">Completed Plays (7d)</p>
+   376→   976→              </div>
+   377→   977→            </div>
+   378→   978→          </CardContent>
+   379→   979→        </Card>
+   380→   980→      </div>
+   381→   981→
+   382→   982→      {/* On This Day */}
+   383→   983→      <Card className="bg-card border-purple-500/20">
+   384→   984→        <CardHeader className="pb-3">
+   385→   985→          <CardTitle className="text-sm flex items-center gap-2">
+   386→   986→            <Calendar className="w-4 h-4 text-purple-400" /> On This Day
+   387→   987→          </CardTitle>
+   388→   988→        </CardHeader>
+   389→   989→        <CardContent>
+   390→   990→          <div className="space-y-1">
+   391→   991→            {onThisDay.map((track, i) => (
+   392→   992→              <div key={i} className="flex items-center gap-3 p-2 rounded hover:bg-accent/20 cursor-pointer transition-colors" onClick={() => play(track)}>
+   393→   993→                <div className={`w-10 h-10 rounded bg-gradient-to-br ${getCoverGradient(track.id)} flex-shrink-0`} />
+   394→   994→                <div className="flex-1 min-w-0">
+   395→   995→                  <p className="text-xs font-medium truncate">{track.title}</p>
+   396→   996→                  <p className="text-[11px] text-muted-foreground truncate">{track.artistName}</p>
+   397→   997→                </div>
+   398→   998→                <span className="text-[10px] text-purple-400">{track._playedYearsAgo}y ago · {track._playCountThatDay} plays</span>
+   399→   999→              </div>
+   400→  1000→            ))}
+   401→  1001→          </div>
+   402→  1002→        </CardContent>
+   403→  1003→      </Card>
+   404→  1004→
+   405→  1005→      {/* Top Tracks */}
+   406→  1006→      <Card className="bg-card border-border">
+   407→  1007→        <CardHeader className="pb-3">
+   408→  1008→          <CardTitle className="text-sm flex items-center gap-2">
+   409→  1009→            <TrendingUp className="w-4 h-4 text-primary" /> Most Played Tracks
+   410→  1010→          </CardTitle>
+   411→  1011→        </CardHeader>
+   412→  1012→        <CardContent className="p-0">
+   413→  1013→          <Table>
+   414→  1014→            <TableBody>
+   415→  1015→              {topTracks.map((track, i) => (
+   416→  1016→                <TableRow key={track.id} className="cursor-pointer hover:bg-accent/20" onClick={() => play(track)}>
+   417→  1017→                  <TableCell className="w-8 text-center text-xs font-bold text-muted-foreground">{i + 1}</TableCell>
+   418→  1018→                  <TableCell className="text-xs font-medium">{track.title}</TableCell>
+   419→  1019→                  <TableCell className="text-xs text-muted-foreground">{track.artistName}</TableCell>
+   420→  1020→                  <TableCell className="text-xs text-muted-foreground">{track.albumName}</TableCell>
+   421→  1021→                  <TableCell className="text-xs font-mono text-right">{track.playCount}</TableCell>
+   422→  1022→                </TableRow>
+   423→  1023→              ))}
+   424→  1024→            </TableBody>
+   425→  1025→          </Table>
+   426→  1026→        </CardContent>
+   427→  1027→      </Card>
+   428→  1028→
+   429→  1029→      {/* Recent History */}
+   430→  1030→      <Card className="bg-card border-border">
+   431→  1031→        <CardHeader className="pb-3">
+   432→  1032→          <div className="flex items-center justify-between">
+   433→  1033→            <CardTitle className="text-sm flex items-center gap-2">
+   434→  1034→              <History className="w-4 h-4" /> Recent Play History
+   435→  1035→            </CardTitle>
+   436→  1036→            <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive" onClick={() => store.clearHistory()}>
+   437→  1037→              <Trash2 className="w-3 h-3 mr-1" /> Clear History
+   438→  1038→            </Button>
+   439→  1039→          </div>
+   440→  1040→        </CardHeader>
+   441→  1041→        <CardContent>
+   442→  1042→          <div className="space-y-1">
+   443→  1043→            {store.history.slice(0, 20).map(entry => {
+   444→  1044→              const track = tracks.find(t => t.id === entry.trackId);
+   445→  1045→              if (!track) return null;
+   446→  1046→              return (
+   447→  1047→                <div key={entry.id} className="flex items-center gap-3 p-2 rounded hover:bg-accent/20 cursor-pointer transition-colors" onClick={() => play(track)}>
+   448→  1048→                  <div className={`w-8 h-8 rounded bg-gradient-to-br ${getCoverGradient(track.id)} flex-shrink-0`} />
+   449→  1049→                  <div className="flex-1 min-w-0">
+   450→  1050→                    <p className="text-xs font-medium truncate">{track.title}</p>
+   451→  1051→                    <p className="text-[11px] text-muted-foreground truncate">{track.artistName}</p>
+   452→  1052→                  </div>
+   453→  1053→                  <span className="text-[10px] text-muted-foreground">{formatRelativeTime(entry.playedAt)}</span>
+   454→  1054→                  <Badge variant="outline" className="text-[9px]">{entry.source}</Badge>
+   455→  1055→                  {entry.completed ? <CheckCircle2 className="w-3 h-3 text-signal-green" /> : <Pause className="w-3 h-3 text-muted-foreground" />}
+   456→  1056→                </div>
+   457→  1057→              );
+   458→  1058→            })}
+   459→  1059→          </div>
+   460→  1060→        </CardContent>
+   461→  1061→      </Card>
+   462→  1062→    </div>
+   463→  1063→  );
+   464→  1064→}
+   465→  1065→
+   466→  1066→// ═══════════════════════════════════════════════════════════
+   467→  1067→// BACKUP & RESTORE PANEL
+   468→  1068→// ═══════════════════════════════════════════════════════════
+   469→  1069→
+   470→  1070→function BackupRestorePanel() {
+   471→  1071→  const [isExporting, setIsExporting] = React.useState(false);
+   472→  1072→
+   473→  1073→  return (
+   474→  1074→    <div className="space-y-6">
+   475→  1075→      <Card className="bg-card border-border">
+   476→  1076→        <CardContent className="p-4">
+   477→  1077→          <div className="flex items-start gap-3">
+   478→  1078→            <Shield className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+   479→  1079→            <div>
+   480→  1080→              <h3 className="text-sm font-semibold">Library Backup & Restore</h3>
+   481→  1081→              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+   482→  1082→                Your DSP library database contains all metadata edits, playlists, tags, bookmarks, play history,
+   483→  1083→                and settings — but not the audio files themselves (DSP indexes in place). Export a backup to
+   484→  1084→                preserve your library state independently of the audio files. You can restore this backup on
+   485→  1085→                the same or a different DSP Core instance.
+   486→  1086→              </p>
+   487→  1087→            </div>
+   488→  1088→          </div>
+   489→  1089→        </CardContent>
+   490→  1090→      </Card>
+   491→  1091→
+   492→  1092→      {/* Export */}
+   493→  1093→      <Card className="bg-card border-border">
+   494→  1094→        <CardHeader className="pb-3">
+   495→  1095→          <CardTitle className="text-sm flex items-center gap-2">
+   496→  1096→            <Download className="w-4 h-4 text-signal-green" /> Export Library
+   497→  1097→          </CardTitle>
+   498→  1098→        </CardHeader>
+   499→  1099→        <CardContent className="space-y-4">
+   500→  1100→          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+   501→  1101→            <div className="p-2 rounded bg-surface/50">
+   502→  1102→              <p className="text-xs text-muted-foreground">Tracks</p>
+   503→  1103→              <p className="text-sm font-bold">{tracks.length}</p>
+   504→  1104→            </div>
+   505→  1105→            <div className="p-2 rounded bg-surface/50">
+   506→  1106→              <p className="text-xs text-muted-foreground">Albums</p>
+   507→  1107→              <p className="text-sm font-bold">{albums.length}</p>
+   508→  1108→            </div>
+   509→  1109→            <div className="p-2 rounded bg-surface/50">
+   510→  1110→              <p className="text-xs text-muted-foreground">Playlists</p>
+   511→  1111→              <p className="text-sm font-bold">{playlists.length}</p>
+   512→  1112→            </div>
+   513→  1113→            <div className="p-2 rounded bg-surface/50">
+   514→  1114→              <p className="text-xs text-muted-foreground">History</p>
+   515→  1115→              <p className="text-sm font-bold">{playHistory.length}</p>
+   516→  1116→            </div>
+   517→  1117→          </div>
+   518→  1118→
+   519→  1119→          <div className="space-y-2">
+   520→  1120→            <Button className="w-full" onClick={() => setIsExporting(true)} disabled={isExporting}>
+   521→  1121→              <Download className="w-4 h-4 mr-2" />
+   522→  1122→              {isExporting ? 'Exporting...' : 'Export Full Library Backup'}
+   523→  1123→            </Button>
+   524→  1124→            {isExporting && (
+   525→  1125→              <div className="space-y-1">
+   526→  1126→                <Progress value={65} className="h-2" />
+   527→  1127→                <p className="text-[11px] text-muted-foreground text-center">Exporting library database... 65%</p>
+   528→  1128→              </div>
+   529→  1129→            )}
+   530→  1130→          </div>
+   531→  1131→
+   532→  1132→          <div className="flex gap-2">
+   533→  1133→            <Button variant="outline" size="sm" className="h-7 text-xs flex-1 gap-1">
+   534→  1134→              <FileText className="w-3 h-3" /> JSON Format
+   535→  1135→            </Button>
+   536→  1136→            <Button variant="outline" size="sm" className="h-7 text-xs flex-1 gap-1">
+   537→  1137→              <Database className="w-3 h-3" /> SQLite Backup
+   538→  1138→            </Button>
+   539→  1139→          </div>
+   540→  1140→        </CardContent>
+   541→  1141→      </Card>
+   542→  1142→
+   543→  1143→      {/* Import */}
+   544→  1144→      <Card className="bg-card border-border">
+   545→  1145→        <CardHeader className="pb-3">
+   546→  1146→          <CardTitle className="text-sm flex items-center gap-2">
+   547→  1147→            <Upload className="w-4 h-4 text-primary" /> Restore Library
+   548→  1148→          </CardTitle>
+   549→  1149→        </CardHeader>
+   550→  1150→        <CardContent className="space-y-3">
+   551→  1151→          <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer">
+   552→  1152→            <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+   553→  1153→            <p className="text-sm text-muted-foreground">Drop a DSP backup file here or click to browse</p>
+   554→  1154→            <p className="text-[11px] text-muted-foreground mt-1">Supports .json and .db formats</p>
+   555→  1155→          </div>
+   556→  1156→          <div className="space-y-2 p-3 rounded-lg bg-surface/50">
+   557→  1157→            <p className="text-xs font-medium">Restore Options</p>
+   558→  1158→            <div className="flex items-center justify-between">
+   559→  1159→              <span className="text-[11px] text-muted-foreground">Merge with existing library (keep both)</span>
+   560→  1160→              <Switch defaultChecked />
+   561→  1161→            </div>
+   562→  1162→            <div className="flex items-center justify-between">
+   563→  1163→              <span className="text-[11px] text-muted-foreground">Overwrite metadata edits</span>
+   564→  1164→              <Switch />
+   565→  1165→            </div>
+   566→  1166→            <div className="flex items-center justify-between">
+   567→  1167→              <span className="text-[11px] text-muted-foreground">Replace playlists</span>
+   568→  1168→              <Switch />
+   569→  1169→            </div>
+   570→  1170→          </div>
+   571→  1171→        </CardContent>
+   572→  1172→      </Card>
+   573→  1173→
+   574→  1174→      {/* Scheduled Backups */}
+   575→  1175→      <Card className="bg-card border-border">
+   576→  1176→        <CardHeader className="pb-3">
+   577→  1177→          <CardTitle className="text-sm flex items-center gap-2">
+   578→  1178→            <Clock className="w-4 h-4 text-signal-amber" /> Scheduled Backups
+   579→  1179→          </CardTitle>
+   580→  1180→        </CardHeader>
+   581→  1181→        <CardContent className="space-y-3">
+   582→  1182→          <div className="flex items-center justify-between">
+   583→  1183→            <div>
+   584→  1184→              <p className="text-xs font-medium">Automatic Daily Backup</p>
+   585→  1185→              <p className="text-[11px] text-muted-foreground">Keep last 7 days of automatic backups</p>
+   586→  1186→            </div>
+   587→  1187→            <Switch defaultChecked />
+   588→  1188→          </div>
+   589→  1189→          <div className="space-y-1">
+   590→  1190→            {['2026-08-12', '2026-08-11', '2026-08-10'].map(date => (
+   591→  1191→              <div key={date} className="flex items-center justify-between p-2 rounded bg-surface/30 text-xs">
+   592→  1192→                <div className="flex items-center gap-2">
+   593→  1193→                  <Database className="w-3 h-3 text-muted-foreground" />
+   594→  1194→                  <span className="font-mono">{date}</span>
+   595→  1195→                </div>
+   596→  1196→                <div className="flex gap-1">
+   597→  1197→                  <Button variant="ghost" size="sm" className="h-6 text-[10px]"><Download className="w-3 h-3 mr-0.5" /> Download</Button>
+   598→  1198→                  <Button variant="ghost" size="sm" className="h-6 text-[10px]"><Upload className="w-3 h-3 mr-0.5" /> Restore</Button>
+   599→  1199→                </div>
+   600→  1200→              </div>
+   601→  1201→            ))}
+   602→  1202→          </div>
+   603→  1203→        </CardContent>
+   604→  1204→      </Card>
+   605→  1205→    </div>
+   606→  1206→  );
+   607→  1207→}
+   608→  1208→
+   609→  1209→// Import for ListMusic used in PlaylistsPanel
+   610→  1210→import { ListMusic } from 'lucide-react';
+   611→  1211→

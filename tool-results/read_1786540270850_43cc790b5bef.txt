@@ -1,0 +1,620 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import React, { useState, useMemo } from 'react';
+     4→     4→import { usePlayerStore } from '@/store/player';
+     5→     5→import { useDiscoveryStore } from '@/store/discovery';
+     6→     6→import { tracks, artists, genres, playlists, getCoverGradient, formatDuration, getTrackById, getArtistById } from '@/lib/data';
+     7→     7→import { radioStations as allRadioStations, generateRadio } from '@/lib/metadata';
+     8→     8→import type { RadioSeed } from '@/lib/metadata';
+     9→     9→import { Card, CardContent } from '@/components/ui/card';
+    10→    10→import { Button } from '@/components/ui/button';
+    11→    11→import { Badge } from '@/components/ui/badge';
+    12→    12→import { ScrollArea } from '@/components/ui/scroll-area';
+    13→    13→import { Separator } from '@/components/ui/separator';
+    14→    14→import { Input } from '@/components/ui/input';
+    15→    15→import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+    16→    16→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+    17→    17→import { Play, Square, Star, Search, Radio, Shuffle, Music, User, ListMusic, Globe, Signal, Clock, Zap } from 'lucide-react';
+    18→    18→
+    19→    19→function AnimatedWaveform() {
+    20→    20→  return (
+    21→    21→    <div className="flex items-end gap-[3px] h-8">
+    22→    22→      {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+    23→    23→        <div
+    24→    24→          key={i}
+    25→    25→          className="w-[3px] bg-primary rounded-full"
+    26→    26→          style={{
+    27→    27→            animation: `waveform 1.2s ease-in-out ${i * 0.1}s infinite alternate`,
+    28→    28→          }}
+    29→    29→        />
+    30→    30→      ))}
+    31→    31→      <style jsx>{`
+    32→    32→        @keyframes waveform {
+    33→    33→          0% { height: 4px; opacity: 0.4; }
+    34→    34→          100% { height: 28px; opacity: 1; }
+    35→    35→        }
+    36→    36→      `}</style>
+    37→    37→    </div>
+    38→    38→  );
+    39→    39→}
+    40→    40→
+    41→    41→export function RadioView() {
+    42→    42→  const { currentTrack, setQueue } = usePlayerStore();
+    43→    43→  const {
+    44→    44→    isRadioPlaying,
+    45→    45→    currentRadioStation,
+    46→    46→    currentGeneratedRadio,
+    47→    47→    favoriteStationIds,
+    48→    48→    playRadioStation,
+    49→    49→    stopRadio,
+    50→    50→    startRadioFrom,
+    51→    51→    toggleStationFavorite,
+    52→    52→  } = useDiscoveryStore();
+    53→    53→
+    54→    54→  const [searchQuery, setSearchQuery] = useState('');
+    55→    55→  const [genreFilter, setGenreFilter] = useState('all');
+    56→    56→  const [seedType, setSeedType] = useState<'track' | 'artist' | 'genre' | 'playlist'>('track');
+    57→    57→  const [selectedSeedId, setSelectedSeedId] = useState('');
+    58→    58→
+    59→    59→  const allGenres = useMemo(() => {
+    60→    60→    const g = new Set(allRadioStations.map(s => s.genre));
+    61→    61→    return Array.from(g).sort();
+    62→    62→  }, []);
+    63→    63→
+    64→    64→  const favoriteStations = useMemo(
+    65→    65→    () => allRadioStations.filter(s => favoriteStationIds.includes(s.id)),
+    66→    66→    [favoriteStationIds]
+    67→    67→  );
+    68→    68→
+    69→    69→  const filteredStations = useMemo(() => {
+    70→    70→    let result = allRadioStations.filter(s => !favoriteStationIds.includes(s.id));
+    71→    71→    if (genreFilter !== 'all') {
+    72→    72→      result = result.filter(s => s.genre === genreFilter);
+    73→    73→    }
+    74→    74→    if (searchQuery.trim()) {
+    75→    75→      const q = searchQuery.toLowerCase();
+    76→    76→      result = result.filter(
+    77→    77→        s =>
+    78→    78→          s.name.toLowerCase().includes(q) ||
+    79→    79→          s.description.toLowerCase().includes(q) ||
+    80→    80→          s.genre.toLowerCase().includes(q) ||
+    81→    81→          s.country.toLowerCase().includes(q) ||
+    82→    82→          s.tags.some(t => t.toLowerCase().includes(q))
+    83→    83→      );
+    84→    84→    }
+    85→    85→    return result;
+    86→    86→  }, [searchQuery, genreFilter, favoriteStationIds]);
+    87→    87→
+    88→    88→  const seedOptions = useMemo(() => {
+    89→    89→    if (seedType === 'track') {
+    90→    90→      return tracks.slice(0, 30).map(t => ({ id: t.id, name: `${t.title} — ${t.artistName}` }));
+    91→    91→    }
+    92→    92→    if (seedType === 'artist') {
+    93→    93→      return artists.map(a => ({ id: a.id, name: a.name }));
+    94→    94→    }
+    95→    95→    if (seedType === 'genre') {
+    96→    96→      return genres.map(g => ({ id: g.id, name: g.name }));
+    97→    97→    }
+    98→    98→    if (seedType === 'playlist') {
+    99→    99→      return playlists.map(p => ({ id: p.id, name: p.name }));
+   100→   100→    }
+   101→   101→    return [];
+   102→   102→  }, [seedType]);
+   103→   103→
+   104→   104→  const handlePlayStation = (station: typeof allRadioStations[0]) => {
+   105→   105→    if (isRadioPlaying && currentRadioStation?.id === station.id) {
+   106→   106→      stopRadio();
+   107→   107→    } else {
+   108→   108→      playRadioStation(station);
+   109→   109→    }
+   110→   110→  };
+   111→   111→
+   112→   112→  const handleStartFromCurrentTrack = () => {
+   113→   113→    if (currentTrack) {
+   114→   114→      startRadioFrom({ type: 'track', id: currentTrack.id, name: currentTrack.title });
+   115→   115→    }
+   116→   116→  };
+   117→   117→
+   118→   118→  const handleStartFromArtist = () => {
+   119→   119→    if (currentTrack) {
+   120→   120→      const artist = getArtistById(currentTrack.artistId);
+   121→   121→      if (artist) {
+   122→   122→        startRadioFrom({ type: 'artist', id: artist.id, name: artist.name });
+   123→   123→      }
+   124→   124→    }
+   125→   125→  };
+   126→   126→
+   127→   127→  const handleCreateMix = () => {
+   128→   128→    if (!selectedSeedId) return;
+   129→   129→    const opt = seedOptions.find(o => o.id === selectedSeedId);
+   130→   130→    if (!opt) return;
+   131→   131→    startRadioFrom({ type: seedType, id: selectedSeedId, name: opt.name });
+   132→   132→  };
+   133→   133→
+   134→   134→  const generatedTracks = useMemo(() => {
+   135→   135→    if (!currentGeneratedRadio) return [];
+   136→   136→    return currentGeneratedRadio.trackIds
+   137→   137→      .map(id => getTrackById(id))
+   138→   138→      .filter(Boolean) as typeof tracks;
+   139→   139→  }, [currentGeneratedRadio]);
+   140→   140→
+   141→   141→  const handlePlayGeneratedTrack = (index: number) => {
+   142→   142→    if (generatedTracks.length > 0) {
+   143→   143→      setQueue(generatedTracks, index);
+   144→   144→    }
+   145→   145→  };
+   146→   146→
+   147→   147→  return (
+   148→   148→    <ScrollArea className="h-full">
+   149→   149→      <div className="max-w-5xl mx-auto p-6">
+   150→   150→        <div className="flex items-center gap-3 mb-6">
+   151→   151→          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-rose-900 to-orange-900 flex items-center justify-center">
+   152→   152→            <Radio className="w-5 h-5 text-rose-200" />
+   153→   153→          </div>
+   154→   154→          <div>
+   155→   155→            <h1 className="text-2xl font-bold">Radio</h1>
+   156→   156→            <p className="text-sm text-muted-foreground">Internet radio & algorithmic mixes</p>
+   157→   157→          </div>
+   158→   158→        </div>
+   159→   159→
+   160→   160→        <Tabs defaultValue="stations" className="w-full">
+   161→   161→          <TabsList className="mb-6">
+   162→   162→            <TabsTrigger value="stations">
+   163→   163→              <Radio className="w-4 h-4 mr-2" />
+   164→   164→              Stations
+   165→   165→            </TabsTrigger>
+   166→   166→            <TabsTrigger value="mix">
+   167→   167→              <Shuffle className="w-4 h-4 mr-2" />
+   168→   168→              Mix Radio
+   169→   169→            </TabsTrigger>
+   170→   170→            <TabsTrigger value="now-playing">
+   171→   171→              <Signal className="w-4 h-4 mr-2" />
+   172→   172→              Now Playing
+   173→   173→            </TabsTrigger>
+   174→   174→          </TabsList>
+   175→   175→
+   176→   176→          {/* ═══ STATIONS TAB ═══ */}
+   177→   177→          <TabsContent value="stations">
+   178→   178→            {/* Search & Filter */}
+   179→   179→            <div className="flex flex-col sm:flex-row gap-3 mb-6">
+   180→   180→              <div className="relative flex-1">
+   181→   181→                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+   182→   182→                <Input
+   183→   183→                  placeholder="Search stations..."
+   184→   184→                  value={searchQuery}
+   185→   185→                  onChange={(e) => setSearchQuery(e.target.value)}
+   186→   186→                  className="pl-9"
+   187→   187→                />
+   188→   188→              </div>
+   189→   189→              <Select value={genreFilter} onValueChange={setGenreFilter}>
+   190→   190→                <SelectTrigger className="w-[180px]">
+   191→   191→                  <SelectValue placeholder="Filter by genre" />
+   192→   192→                </SelectTrigger>
+   193→   193→                <SelectContent>
+   194→   194→                  <SelectItem value="all">All Genres</SelectItem>
+   195→   195→                  {allGenres.map(g => (
+   196→   196→                    <SelectItem key={g} value={g}>{g}</SelectItem>
+   197→   197→                  ))}
+   198→   198→                </SelectContent>
+   199→   199→              </Select>
+   200→   200→            </div>
+   201→   201→
+   202→   202→            {/* Favorites Section */}
+   203→   203→            {favoriteStations.length > 0 && (
+   204→   204→              <div className="mb-8">
+   205→   205→                <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+   206→   206→                  <Star className="w-4 h-4 text-amber-400" />
+   207→   207→                  Favorites
+   208→   208→                </h2>
+   209→   209→                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+   210→   210→                  {favoriteStations.map(station => (
+   211→   211→                    <StationCard
+   212→   212→                      key={station.id}
+   213→   213→                      station={station}
+   214→   214→                      isPlaying={isRadioPlaying && currentRadioStation?.id === station.id}
+   215→   215→                      isFavorite
+   216→   216→                      onPlay={() => handlePlayStation(station)}
+   217→   217→                      onToggleFavorite={() => toggleStationFavorite(station.id)}
+   218→   218→                    />
+   219→   219→                  ))}
+   220→   220→                </div>
+   221→   221→                <Separator className="mt-6" />
+   222→   222→              </div>
+   223→   223→            )}
+   224→   224→
+   225→   225→            {/* All Stations */}
+   226→   226→            <h2 className="text-lg font-semibold mb-3">
+   227→   227→              All Stations{genreFilter !== 'all' ? ` — ${genreFilter}` : ''}
+   228→   228→              <span className="text-sm font-normal text-muted-foreground ml-2">
+   229→   229→                ({filteredStations.length})
+   230→   230→              </span>
+   231→   231→            </h2>
+   232→   232→
+   233→   233→            {filteredStations.length === 0 ? (
+   234→   234→              <div className="text-center py-12 text-muted-foreground">
+   235→   235→                <Radio className="w-10 h-10 mx-auto mb-3 opacity-40" />
+   236→   236→                <p>No stations found matching your criteria</p>
+   237→   237→              </div>
+   238→   238→            ) : (
+   239→   239→              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+   240→   240→                {filteredStations.map(station => (
+   241→   241→                  <StationCard
+   242→   242→                    key={station.id}
+   243→   243→                    station={station}
+   244→   244→                    isPlaying={isRadioPlaying && currentRadioStation?.id === station.id}
+   245→   245→                    isFavorite={favoriteStationIds.includes(station.id)}
+   246→   246→                    onPlay={() => handlePlayStation(station)}
+   247→   247→                    onToggleFavorite={() => toggleStationFavorite(station.id)}
+   248→   248→                  />
+   249→   249→                ))}
+   250→   250→              </div>
+   251→   251→            )}
+   252→   252→          </TabsContent>
+   253→   253→
+   254→   254→          {/* ═══ MIX RADIO TAB ═══ */}
+   255→   255→          <TabsContent value="mix">
+   256→   256→            {/* Quick Start Buttons */}
+   257→   257→            <Card className="mb-6">
+   258→   258→              <CardContent className="p-5">
+   259→   259→                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+   260→   260→                  <Zap className="w-5 h-5 text-amber-400" />
+   261→   261→                  Quick Start
+   262→   262→                </h2>
+   263→   263→                <p className="text-sm text-muted-foreground mb-4">
+   264→   264→                  Generate an algorithmic radio mix from your current listening context.
+   265→   265→                </p>
+   266→   266→                <div className="flex flex-wrap gap-3">
+   267→   267→                  <Button
+   268→   268→                    variant="outline"
+   269→   269→                    onClick={handleStartFromCurrentTrack}
+   270→   270→                    disabled={!currentTrack}
+   271→   271→                  >
+   272→   272→                    <Music className="w-4 h-4 mr-2" />
+   273→   273→                    Start from Current Track
+   274→   274→                  </Button>
+   275→   275→                  <Button
+   276→   276→                    variant="outline"
+   277→   277→                    onClick={handleStartFromArtist}
+   278→   278→                    disabled={!currentTrack}
+   279→   279→                  >
+   280→   280→                    <User className="w-4 h-4 mr-2" />
+   281→   281→                    Start from Current Artist
+   282→   282→                  </Button>
+   283→   283→                </div>
+   284→   284→                {!currentTrack && (
+   285→   285→                  <p className="text-xs text-muted-foreground mt-2">
+   286→   286→                    Play a track first to use quick start options.
+   287→   287→                  </p>
+   288→   288→                )}
+   289→   289→              </CardContent>
+   290→   290→            </Card>
+   291→   291→
+   292→   292→            {/* Create Mix Section */}
+   293→   293→            <Card className="mb-6">
+   294→   294→              <CardContent className="p-5">
+   295→   295→                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+   296→   296→                  <ListMusic className="w-5 h-5 text-emerald-400" />
+   297→   297→                  Create Mix
+   298→   298→                </h2>
+   299→   299→                <p className="text-sm text-muted-foreground mb-4">
+   300→   300→                  Pick a seed to generate a personalized radio mix from your library.
+   301→   301→                </p>
+   302→   302→                <div className="flex flex-col sm:flex-row gap-3 mb-4">
+   303→   303→                  <Select
+   304→   304→                    value={seedType}
+   305→   305→                    onValueChange={(v) => {
+   306→   306→                      setSeedType(v as RadioSeed['type']);
+   307→   307→                      setSelectedSeedId('');
+   308→   308→                    }}
+   309→   309→                  >
+   310→   310→                    <SelectTrigger className="w-[160px]">
+   311→   311→                      <SelectValue />
+   312→   312→                    </SelectTrigger>
+   313→   313→                    <SelectContent>
+   314→   314→                      <SelectItem value="track">
+   315→   315→                        <span className="flex items-center gap-2"><Music className="w-3 h-3" /> Track</span>
+   316→   316→                      </SelectItem>
+   317→   317→                      <SelectItem value="artist">
+   318→   318→                        <span className="flex items-center gap-2"><User className="w-3 h-3" /> Artist</span>
+   319→   319→                      </SelectItem>
+   320→   320→                      <SelectItem value="genre">
+   321→   321→                        <span className="flex items-center gap-2"><Globe className="w-3 h-3" /> Genre</span>
+   322→   322→                      </SelectItem>
+   323→   323→                      <SelectItem value="playlist">
+   324→   324→                        <span className="flex items-center gap-2"><ListMusic className="w-3 h-3" /> Playlist</span>
+   325→   325→                      </SelectItem>
+   326→   326→                    </SelectContent>
+   327→   327→                  </Select>
+   328→   328→
+   329→   329→                  <Select value={selectedSeedId} onValueChange={setSelectedSeedId}>
+   330→   330→                    <SelectTrigger className="flex-1">
+   331→   331→                      <SelectValue placeholder={`Select a ${seedType}...`} />
+   332→   332→                    </SelectTrigger>
+   333→   333→                    <SelectContent>
+   334→   334→                      {seedOptions.map(opt => (
+   335→   335→                        <SelectItem key={opt.id} value={opt.id}>
+   336→   336→                          {opt.name}
+   337→   337→                        </SelectItem>
+   338→   338→                      ))}
+   339→   339→                    </SelectContent>
+   340→   340→                  </Select>
+   341→   341→
+   342→   342→                  <Button onClick={handleCreateMix} disabled={!selectedSeedId}>
+   343→   343→                    <Shuffle className="w-4 h-4 mr-2" />
+   344→   344→                    Generate
+   345→   345→                  </Button>
+   346→   346→                </div>
+   347→   347→              </CardContent>
+   348→   348→            </Card>
+   349→   349→
+   350→   350→            {/* Generated Radio Preview */}
+   351→   351→            {currentGeneratedRadio && (
+   352→   352→              <Card>
+   353→   353→                <CardContent className="p-5">
+   354→   354→                  <div className="flex items-center gap-3 mb-4">
+   355→   355→                    <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${getCoverGradient(currentGeneratedRadio.id)} flex items-center justify-center`}>
+   356→   356→                      <Shuffle className="w-5 h-5 text-white" />
+   357→   357→                    </div>
+   358→   358→                    <div className="flex-1 min-w-0">
+   359→   359→                      <h3 className="font-semibold truncate">{currentGeneratedRadio.name}</h3>
+   360→   360→                      <p className="text-xs text-muted-foreground">
+   361→   361→                        Seeded from {currentGeneratedRadio.seed.name} ({currentGeneratedRadio.seed.type})
+   362→   362→                      </p>
+   363→   363→                    </div>
+   364→   364→                    <AnimatedWaveform />
+   365→   365→                  </div>
+   366→   366→                  <p className="text-sm text-muted-foreground mb-4">
+   367→   367→                    {currentGeneratedRadio.description}
+   368→   368→                  </p>
+   369→   369→                  <Separator className="mb-4" />
+   370→   370→                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+   371→   371→                    <ListMusic className="w-4 h-4" />
+   372→   372→                    Track Preview
+   373→   373→                    <Badge variant="secondary" className="text-xs">
+   374→   374→                      {generatedTracks.length} tracks
+   375→   375→                    </Badge>
+   376→   376→                  </h4>
+   377→   377→                  <div className="space-y-1 max-h-96 overflow-y-auto">
+   378→   378→                    {generatedTracks.map((track, idx) => (
+   379→   379→                      <button
+   380→   380→                        key={track.id}
+   381→   381→                        className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-accent/30 text-left group"
+   382→   382→                        onClick={() => handlePlayGeneratedTrack(idx)}
+   383→   383→                      >
+   384→   384→                        <span className="text-xs text-muted-foreground w-6 text-right">
+   385→   385→                          {idx + 1}
+   386→   386→                        </span>
+   387→   387→                        <div className={`w-8 h-8 rounded bg-gradient-to-br ${getCoverGradient(track.albumId)} flex-shrink-0`} />
+   388→   388→                        <div className="flex-1 min-w-0">
+   389→   389→                          <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+   390→   390→                            {track.title}
+   391→   391→                          </p>
+   392→   392→                          <p className="text-xs text-muted-foreground truncate">
+   393→   393→                            {track.artistName} — {track.albumName}
+   394→   394→                          </p>
+   395→   395→                        </div>
+   396→   396→                        <span className="text-xs text-muted-foreground">
+   397→   397→                          {formatDuration(track.duration)}
+   398→   398→                        </span>
+   399→   399→                        <Play className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+   400→   400→                      </button>
+   401→   401→                    ))}
+   402→   402→                  </div>
+   403→   403→                </CardContent>
+   404→   404→              </Card>
+   405→   405→            )}
+   406→   406→          </TabsContent>
+   407→   407→
+   408→   408→          {/* ═══ NOW PLAYING TAB ═══ */}
+   409→   409→          <TabsContent value="now-playing">
+   410→   410→            {!isRadioPlaying ? (
+   411→   411→              <div className="text-center py-16 text-muted-foreground">
+   412→   412→                <Radio className="w-14 h-14 mx-auto mb-4 opacity-30" />
+   413→   413→                <h2 className="text-lg font-semibold mb-2">Nothing Playing</h2>
+   414→   414→                <p className="text-sm">Tune into a station or start a mix to begin listening.</p>
+   415→   415→              </div>
+   416→   416→            ) : currentRadioStation ? (
+   417→   417→              <Card>
+   418→   418→                <CardContent className="p-6">
+   419→   419→                  <div className="flex flex-col sm:flex-row gap-6">
+   420→   420→                    <div className={`w-40 h-40 rounded-xl bg-gradient-to-br ${getCoverGradient(currentRadioStation.id)} flex-shrink-0 flex items-center justify-center shadow-lg`}>
+   421→   421→                      <Radio className="w-14 h-14 text-white/80" />
+   422→   422→                    </div>
+   423→   423→                    <div className="flex-1">
+   424→   424→                      <div className="flex items-center gap-3 mb-2">
+   425→   425→                        <AnimatedWaveform />
+   426→   426→                        <Badge variant="destructive" className="text-xs">LIVE</Badge>
+   427→   427→                      </div>
+   428→   428→                      <h2 className="text-2xl font-bold mb-1">{currentRadioStation.name}</h2>
+   429→   429→                      <p className="text-sm text-muted-foreground mb-4">
+   430→   430→                        {currentRadioStation.description}
+   431→   431→                      </p>
+   432→   432→                      <div className="flex flex-wrap gap-2 mb-4">
+   433→   433→                        <Badge variant="secondary">{currentRadioStation.genre}</Badge>
+   434→   434→                        <Badge variant="outline" className="gap-1">
+   435→   435→                          <Globe className="w-3 h-3" />
+   436→   436→                          {currentRadioStation.country}
+   437→   437→                        </Badge>
+   438→   438→                        <Badge variant="outline" className="gap-1">
+   439→   439→                          <Signal className="w-3 h-3" />
+   440→   440→                          {currentRadioStation.codec} / {currentRadioStation.bitrate}kbps
+   441→   441→                        </Badge>
+   442→   442→                      </div>
+   443→   443→                      <div className="flex flex-wrap gap-2 mb-4">
+   444→   444→                        {currentRadioStation.tags.map(tag => (
+   445→   445→                          <Badge key={tag} variant="outline" className="text-xs">
+   446→   446→                            {tag}
+   447→   447→                          </Badge>
+   448→   448→                        ))}
+   449→   449→                      </div>
+   450→   450→                      <Button variant="destructive" size="sm" onClick={stopRadio}>
+   451→   451→                        <Square className="w-4 h-4 mr-2" />
+   452→   452→                        Stop
+   453→   453→                      </Button>
+   454→   454→                    </div>
+   455→   455→                  </div>
+   456→   456→                </CardContent>
+   457→   457→              </Card>
+   458→   458→            ) : currentGeneratedRadio ? (
+   459→   459→              <Card>
+   460→   460→                <CardContent className="p-6">
+   461→   461→                  <div className="flex flex-col sm:flex-row gap-6 mb-6">
+   462→   462→                    <div className={`w-40 h-40 rounded-xl bg-gradient-to-br ${getCoverGradient(currentGeneratedRadio.id)} flex-shrink-0 flex items-center justify-center shadow-lg`}>
+   463→   463→                      <Shuffle className="w-14 h-14 text-white/80" />
+   464→   464→                    </div>
+   465→   465→                    <div className="flex-1">
+   466→   466→                      <div className="flex items-center gap-3 mb-2">
+   467→   467→                        <AnimatedWaveform />
+   468→   468→                        <Badge variant="secondary" className="text-xs">MIX RADIO</Badge>
+   469→   469→                      </div>
+   470→   470→                      <h2 className="text-2xl font-bold mb-1">{currentGeneratedRadio.name}</h2>
+   471→   471→                      <p className="text-sm text-muted-foreground mb-2">
+   472→   472→                        {currentGeneratedRadio.description}
+   473→   473→                      </p>
+   474→   474→                      <p className="text-xs text-muted-foreground">
+   475→   475→                        Seed: {currentGeneratedRadio.seed.name} ({currentGeneratedRadio.seed.type})
+   476→   476→                      </p>
+   477→   477→                      <Button variant="destructive" size="sm" className="mt-4" onClick={stopRadio}>
+   478→   478→                        <Square className="w-4 h-4 mr-2" />
+   479→   479→                        Stop
+   480→   480→                      </Button>
+   481→   481→                    </div>
+   482→   482→                  </div>
+   483→   483→
+   484→   484→                  {generatedTracks.length > 0 && (
+   485→   485→                    <>
+   486→   486→                      <Separator className="mb-4" />
+   487→   487→                      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+   488→   488→                        <Clock className="w-4 h-4" />
+   489→   489→                        Up Next
+   490→   490→                      </h3>
+   491→   491→                      <div className="space-y-1 max-h-96 overflow-y-auto">
+   492→   492→                        {generatedTracks.map((track, idx) => (
+   493→   493→                          <button
+   494→   494→                            key={track.id}
+   495→   495→                            className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-accent/30 text-left group"
+   496→   496→                            onClick={() => handlePlayGeneratedTrack(idx)}
+   497→   497→                          >
+   498→   498→                            <span className="text-xs text-muted-foreground w-6 text-right">
+   499→   499→                              {idx + 1}
+   500→   500→                            </span>
+   501→   501→                            <div className={`w-8 h-8 rounded bg-gradient-to-br ${getCoverGradient(track.albumId)} flex-shrink-0`} />
+   502→   502→                            <div className="flex-1 min-w-0">
+   503→   503→                              <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+   504→   504→                                {track.title}
+   505→   505→                              </p>
+   506→   506→                              <p className="text-xs text-muted-foreground truncate">
+   507→   507→                                {track.artistName} — {track.albumName}
+   508→   508→                              </p>
+   509→   509→                            </div>
+   510→   510→                            <span className="text-xs text-muted-foreground">
+   511→   511→                              {formatDuration(track.duration)}
+   512→   512→                            </span>
+   513→   513→                            <Play className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+   514→   514→                          </button>
+   515→   515→                        ))}
+   516→   516→                      </div>
+   517→   517→                    </>
+   518→   518→                  )}
+   519→   519→                </CardContent>
+   520→   520→              </Card>
+   521→   521→            ) : null}
+   522→   522→          </TabsContent>
+   523→   523→        </Tabs>
+   524→   524→      </div>
+   525→   525→    </ScrollArea>
+   526→   526→  );
+   527→   527→}
+   528→   528→
+   529→   529→// ─── Station Card Sub-component ───
+   530→   530→
+   531→   531→function StationCard({
+   532→   532→  station,
+   533→   533→  isPlaying,
+   534→   534→  isFavorite,
+   535→   535→  onPlay,
+   536→   536→  onToggleFavorite,
+   537→   537→}: {
+   538→   538→  station: typeof allRadioStations[0];
+   539→   539→  isPlaying: boolean;
+   540→   540→  isFavorite: boolean;
+   541→   541→  onPlay: () => void;
+   542→   542→  onToggleFavorite: () => void;
+   543→   543→}) {
+   544→   544→  return (
+   545→   545→    <Card className={`group transition-colors ${isPlaying ? 'border-primary/50 bg-primary/5' : ''}`}>
+   546→   546→      <CardContent className="p-4">
+   547→   547→        <div className="flex items-center gap-3">
+   548→   548→          {/* Logo placeholder */}
+   549→   549→          <div className={`w-14 h-14 rounded-lg bg-gradient-to-br ${getCoverGradient(station.id)} flex-shrink-0 flex items-center justify-center relative`}>
+   550→   550→            <Radio className="w-6 h-6 text-white/70" />
+   551→   551→            {isPlaying && (
+   552→   552→              <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+   553→   553→            )}
+   554→   554→          </div>
+   555→   555→
+   556→   556→          {/* Info */}
+   557→   557→          <div className="flex-1 min-w-0">
+   558→   558→            <div className="flex items-center gap-2">
+   559→   559→              <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
+   560→   560→                {station.name}
+   561→   561→              </h3>
+   562→   562→              {isPlaying && <AnimatedWaveform />}
+   563→   563→            </div>
+   564→   564→            <p className="text-xs text-muted-foreground truncate mt-0.5">
+   565→   565→              {station.description}
+   566→   566→            </p>
+   567→   567→            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+   568→   568→              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+   569→   569→                {station.genre}
+   570→   570→              </Badge>
+   571→   571→              <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+   572→   572→                <Globe className="w-2.5 h-2.5" />
+   573→   573→                {station.country}
+   574→   574→              </span>
+   575→   575→              <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+   576→   576→                <Signal className="w-2.5 h-2.5" />
+   577→   577→                {station.codec} {station.bitrate}kbps
+   578→   578→              </span>
+   579→   579→            </div>
+   580→   580→          </div>
+   581→   581→
+   582→   582→          {/* Actions */}
+   583→   583→          <div className="flex items-center gap-1 flex-shrink-0">
+   584→   584→            <Button
+   585→   585→              variant="ghost"
+   586→   586→              size="icon"
+   587→   587→              className="h-8 w-8"
+   588→   588→              onClick={(e) => {
+   589→   589→                e.stopPropagation();
+   590→   590→                onToggleFavorite();
+   591→   591→              }}
+   592→   592→            >
+   593→   593→              <Star
+   594→   594→                className={`w-4 h-4 ${isFavorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground'}`}
+   595→   595→              />
+   596→   596→            </Button>
+   597→   597→            <Button
+   598→   598→              variant={isPlaying ? 'destructive' : 'default'}
+   599→   599→              size="icon"
+   600→   600→              className="h-8 w-8"
+   601→   601→              onClick={onPlay}
+   602→   602→            >
+   603→   603→              {isPlaying ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+   604→   604→            </Button>
+   605→   605→          </div>
+   606→   606→        </div>
+   607→   607→
+   608→   608→        {/* Tags */}
+   609→   609→        <div className="flex flex-wrap gap-1 mt-2 ml-[68px]">
+   610→   610→          {station.tags.map(tag => (
+   611→   611→            <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">
+   612→   612→              {tag}
+   613→   613→            </Badge>
+   614→   614→          ))}
+   615→   615→        </div>
+   616→   616→      </CardContent>
+   617→   617→    </Card>
+   618→   618→  );
+   619→   619→}
+   620→   620→

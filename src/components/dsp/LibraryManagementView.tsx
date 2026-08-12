@@ -4,6 +4,7 @@ import React from 'react';
 import { useUIStore } from '@/store/ui';
 import { useLibraryStore } from '@/store/library';
 import { usePlayerStore } from '@/store/player';
+import { useLocalLibraryStore } from '@/store/local-library';
 import {
   storageLocations, streamingAccounts, libraryScan, userTags,
   smartCollections, bookmarks, playHistory, duplicateGroups, metadataEdits,
@@ -13,6 +14,7 @@ import {
   getOnThisDay,
 } from '@/lib/library-data';
 import { tracks, albums, artists, playlists, formatDuration, getCoverGradient, formatSampleRate, formatFileSize } from '@/lib/data';
+import type { Track } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,20 +37,98 @@ import {
   Play, Pause, Heart, Star, Tag, Bookmark, Clock, History, Download,
   Upload, AlertTriangle, CheckCircle2, XCircle, Wifi, WifiOff,
   FolderClosed, ExternalLink, Edit3, Copy, Link2, Unlink, ChevronRight,
-  Database, Archive, Shield, FileText, Music2, Disc3, Mic2,
+  Database, Archive, Shield, FileText, Music2, Disc3, Mic2, ListMusic,
   BarChart3, TrendingUp, Calendar, Volume2, Zap, Search, MoreHorizontal,
-  Scissors, Merge, Split, Layers, Radio, Cloud, Settings,
+  Scissors, Merge, Split, Layers, Radio, Cloud, Settings, Loader2,
+  ChevronLeft, Disc, User, Album as AlbumIcon, Library as LibraryIcon,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+// ═══════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════
+
+type LocalTrack = {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  albumArtist: string;
+  trackNumber: number;
+  discNumber: number;
+  duration: number;
+  format: string;
+  sampleRate: number;
+  bitDepth: number;
+  channels: number;
+  bitrate: number;
+  filePath: string;
+  fileSize: number;
+  year: number;
+  genre: string;
+  composer: string;
+  coverArt: string | null;
+};
+
+type BrowseLocalView = 'artists' | 'albums' | 'tracks';
+type BreadcrumbItem = { label: string; onClick: () => void };
+
+// ═══════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════
+
+function localTrackToTrack(lt: LocalTrack): Track {
+  return {
+    id: lt.id,
+    title: lt.title,
+    albumId: lt.album,
+    albumName: lt.album,
+    artistId: lt.artist,
+    artistName: lt.artist,
+    trackNumber: lt.trackNumber,
+    discNumber: lt.discNumber,
+    duration: lt.duration,
+    format: lt.format,
+    bitDepth: lt.bitDepth,
+    sampleRate: lt.sampleRate,
+    channels: lt.channels,
+    bitrate: lt.bitrate,
+    filePath: lt.filePath,
+    fileSize: lt.fileSize,
+    composers: lt.composer ? [lt.composer] : [],
+    performers: [],
+    genre: lt.genre,
+    loved: false,
+    playCount: 0,
+    source: 'local',
+    isAvailable: true,
+  };
+}
+
+function playLocalTrack(lt: LocalTrack) {
+  const track = localTrackToTrack(lt);
+  usePlayerStore.getState().play(track);
+}
+
+function playLocalTracks(lts: LocalTrack[]) {
+  if (lts.length === 0) return;
+  const first = localTrackToTrack(lts[0]);
+  const queue = lts.slice(1).map(localTrackToTrack);
+  usePlayerStore.getState().play(first, queue);
+}
+
+// ═══════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════
+
 export function LibraryManagementView() {
   const { navigate } = useUIStore();
   const { play } = usePlayerStore();
   const store = useLibraryStore();
-  const [activeTab, setActiveTab] = React.useState('sources');
+  const [activeTab, setActiveTab] = React.useState('browse-local');
 
   const stats = getTotalLibraryStats();
 
@@ -131,6 +211,8 @@ export function LibraryManagementView() {
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-surface w-full justify-start overflow-x-auto">
+            <TabsTrigger value="browse-local" className="text-xs gap-1.5"><LibraryIcon className="w-3.5 h-3.5" /> Browse Local</TabsTrigger>
+            <TabsTrigger value="scan-folders" className="text-xs gap-1.5"><FolderOpen className="w-3.5 h-3.5" /> Scan Folders</TabsTrigger>
             <TabsTrigger value="sources" className="text-xs gap-1.5"><FolderOpen className="w-3.5 h-3.5" /> Sources</TabsTrigger>
             <TabsTrigger value="scanner" className="text-xs gap-1.5"><ScanSearch className="w-3.5 h-3.5" /> Scanner</TabsTrigger>
             <TabsTrigger value="metadata" className="text-xs gap-1.5"><Edit3 className="w-3.5 h-3.5" /> Metadata</TabsTrigger>
@@ -140,6 +222,16 @@ export function LibraryManagementView() {
             <TabsTrigger value="history" className="text-xs gap-1.5"><History className="w-3.5 h-3.5" /> History</TabsTrigger>
             <TabsTrigger value="backup" className="text-xs gap-1.5"><Archive className="w-3.5 h-3.5" /> Backup</TabsTrigger>
           </TabsList>
+
+          {/* ═══ BROWSE LOCAL TAB ═══ */}
+          <TabsContent value="browse-local" className="mt-6">
+            <BrowseLocalPanel />
+          </TabsContent>
+
+          {/* ═══ SCAN FOLDERS TAB ═══ */}
+          <TabsContent value="scan-folders" className="mt-6">
+            <ScanFoldersPanel />
+          </TabsContent>
 
           {/* ═══ SOURCES TAB ═══ */}
           <TabsContent value="sources" className="space-y-6 mt-6">
@@ -183,6 +275,568 @@ export function LibraryManagementView() {
         </Tabs>
       </div>
     </ScrollArea>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// BROWSE LOCAL PANEL (NEW)
+// ═══════════════════════════════════════════════════════════
+
+function BrowseLocalPanel() {
+  const localStore = useLocalLibraryStore();
+  const [view, setView] = React.useState<BrowseLocalView>('artists');
+  const [searchQuery, setSearchQuery] = React.useState('');
+
+  // Breadcrumb navigation state
+  const [selectedArtist, setSelectedArtist] = React.useState<string | null>(null);
+  const [selectedAlbum, setSelectedAlbum] = React.useState<string | null>(null);
+
+  const allArtists = localStore.getArtists();
+  const allAlbums = localStore.getAlbums();
+  const allTracks = localStore.tracks;
+
+  // Derived data based on navigation state
+  const breadcrumbs: BreadcrumbItem[] = [{ label: 'Artists', onClick: () => { setSelectedArtist(null); setSelectedAlbum(null); setView('artists'); } }];
+
+  let displayedArtists = allArtists;
+  let displayedAlbums = allAlbums;
+  let displayedTracks = allTracks;
+
+  if (searchQuery.trim()) {
+    displayedTracks = localStore.searchTracks(searchQuery.trim());
+    displayedAlbums = allAlbums.filter(a =>
+      displayedTracks.some(t => t.album === a.name && t.artist === a.artist)
+    );
+    displayedArtists = allArtists.filter(a =>
+      displayedTracks.some(t => t.artist === a)
+    );
+  } else if (selectedArtist && selectedAlbum) {
+    // Artist > Album > Tracks
+    breadcrumbs.push(
+      { label: selectedArtist, onClick: () => { setSelectedAlbum(null); } },
+      { label: selectedAlbum, onClick: () => {} },
+    );
+    displayedTracks = localStore.getTracksByAlbum(selectedAlbum).filter(t => t.artist === selectedArtist);
+  } else if (selectedArtist) {
+    // Artist > Albums
+    breadcrumbs.push({ label: selectedArtist, onClick: () => {} });
+    displayedAlbums = allAlbums.filter(a => a.artist === selectedArtist);
+    displayedTracks = localStore.getTracksByArtist(selectedArtist);
+  } else if (selectedAlbum) {
+    // Albums > Tracks
+    breadcrumbs.push({ label: selectedAlbum, onClick: () => {} });
+    displayedTracks = localStore.getTracksByAlbum(selectedAlbum);
+  }
+
+  const showArtistsView = !selectedArtist && !selectedAlbum && view === 'artists' && !searchQuery.trim();
+  const showAlbumsView = (selectedArtist || view === 'albums') && !selectedAlbum && !searchQuery.trim();
+  const showTracksView = selectedAlbum || view === 'tracks' || searchQuery.trim();
+
+  return (
+    <div className="space-y-4">
+      {/* Search and View Switcher */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search local library..."
+            value={searchQuery}
+            onChange={e => { setSearchQuery(e.target.value); if (e.target.value) { setSelectedArtist(null); setSelectedAlbum(null); } }}
+            className="pl-9 h-9 text-sm"
+          />
+        </div>
+        <div className="flex items-center bg-surface rounded-lg p-0.5">
+          {([['artists', User, 'Artists'], ['albums', Disc3, 'Albums'], ['tracks', Music2, 'Tracks']] as const).map(([key, Icon, label]) => (
+            <Button
+              key={key}
+              variant={view === key ? 'default' : 'ghost'}
+              size="sm"
+              className="h-8 text-xs gap-1.5 rounded-md"
+              onClick={() => { setView(key as BrowseLocalView); setSelectedArtist(null); setSelectedAlbum(null); setSearchQuery(''); }}
+            >
+              <Icon className="w-3.5 h-3.5" /> {label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Breadcrumb */}
+      {(selectedArtist || selectedAlbum) && !searchQuery.trim() && (
+        <div className="flex items-center gap-1 text-xs">
+          {breadcrumbs.map((crumb, i) => (
+            <React.Fragment key={i}>
+              {i > 0 && <ChevronRight className="w-3 h-3 text-muted-foreground" />}
+              <button
+                className={`${i === breadcrumbs.length - 1 ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'} transition-colors`}
+                onClick={crumb.onClick}
+              >
+                {crumb.label}
+              </button>
+            </React.Fragment>
+          ))}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {allTracks.length === 0 && (
+        <Card className="bg-card border-border">
+          <CardContent className="p-12 text-center">
+            <LibraryIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground/30" />
+            <h3 className="text-sm font-semibold mb-1">No Local Tracks</h3>
+            <p className="text-xs text-muted-foreground max-w-md mx-auto">
+              Scan your music folders to build your local library. Go to the &quot;Scan Folders&quot; tab to add directories and start scanning.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Artists Grid */}
+      {showArtistsView && allTracks.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold">Artists ({displayedArtists.length})</h2>
+          </div>
+          {displayedArtists.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-8 text-center">No artists found.</p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {displayedArtists.sort().map(artist => {
+                const artistAlbums = allAlbums.filter(a => a.artist === artist);
+                const artistTrackCount = artistAlbums.reduce((s, a) => s + a.trackCount, 0);
+                return (
+                  <Card
+                    key={artist}
+                    className="bg-card border-border hover:border-primary/30 cursor-pointer transition-all group"
+                    onClick={() => { setSelectedArtist(artist); setSelectedAlbum(null); setView('albums'); }}
+                  >
+                    <CardContent className="p-4 text-center">
+                      <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-3 group-hover:from-primary/30 group-hover:to-primary/10 transition-all">
+                        <User className="w-7 h-7 text-primary/60" />
+                      </div>
+                      <p className="text-xs font-medium truncate">{artist}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{artistAlbums.length} album{artistAlbums.length !== 1 ? 's' : ''} · {artistTrackCount} tracks</p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Albums Grid */}
+      {showAlbumsView && allTracks.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold">{selectedArtist ? `${selectedArtist} — ` : ''}Albums ({displayedAlbums.length})</h2>
+          </div>
+          {displayedAlbums.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-8 text-center">No albums found.</p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {displayedAlbums.map(album => {
+                const albumTracks = localStore.getTracksByAlbum(album.name).filter(t => !selectedArtist || t.artist === selectedArtist);
+                const firstTrack = albumTracks[0];
+                return (
+                  <Card
+                    key={`${album.artist}-${album.name}`}
+                    className="bg-card border-border hover:border-primary/30 cursor-pointer transition-all group"
+                    onDoubleClick={() => playLocalTracks(albumTracks.sort((a, b) => a.trackNumber - b.trackNumber))}
+                    onClick={() => { setSelectedAlbum(album.name); if (selectedArtist) { /* keep artist */ } else { setSelectedArtist(album.artist); } }}
+                  >
+                    <CardContent className="p-3">
+                      {/* Cover Art */}
+                      <div className="relative aspect-square rounded-lg overflow-hidden mb-3">
+                        {firstTrack?.coverArt ? (
+                          <img
+                            src={`data:image/jpeg;base64,${firstTrack.coverArt}`}
+                            alt={album.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className={`w-full h-full bg-gradient-to-br ${getCoverGradient(album.name + album.artist)} flex items-center justify-center`}>
+                            <Disc3 className="w-10 h-10 text-white/20" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                          <Button size="icon" className="h-10 w-10 rounded-full bg-primary/90 hover:bg-primary text-primary-foreground shadow-lg">
+                            <Play className="w-5 h-5 ml-0.5" />
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-xs font-medium truncate">{album.name}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{album.artist}</p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className="text-[10px] text-muted-foreground">{album.trackCount} tracks</span>
+                        {firstTrack?.year && (
+                          <>
+                            <span className="text-[10px] text-muted-foreground">·</span>
+                            <span className="text-[10px] text-muted-foreground">{firstTrack.year}</span>
+                          </>
+                        )}
+                        {firstTrack?.format && (
+                          <Badge variant="outline" className="text-[8px] h-4 ml-auto font-mono">
+                            {firstTrack.format}
+                          </Badge>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tracks Table */}
+      {showTracksView && allTracks.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold">
+              {searchQuery.trim() ? `Search Results (${displayedTracks.length})` : selectedAlbum ? `${selectedAlbum} — Tracks` : `All Tracks (${displayedTracks.length})`}
+            </h2>
+            {selectedAlbum && displayedTracks.length > 0 && (
+              <Button size="sm" className="h-7 text-xs gap-1.5" onClick={() => playLocalTracks(displayedTracks.sort((a, b) => (a.discNumber - b.discNumber) || (a.trackNumber - b.trackNumber)))}>
+                <Play className="w-3 h-3" /> Play All
+              </Button>
+            )}
+          </div>
+          <Card className="bg-card border-border">
+            <CardContent className="p-0">
+              <ScrollArea className="max-h-[500px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs w-12">#</TableHead>
+                      <TableHead className="text-xs">Title</TableHead>
+                      <TableHead className="text-xs">Artist</TableHead>
+                      <TableHead className="text-xs">Album</TableHead>
+                      <TableHead className="text-xs w-16">Duration</TableHead>
+                      <TableHead className="text-xs w-16">Format</TableHead>
+                      <TableHead className="text-xs w-20">Sample Rate</TableHead>
+                      <TableHead className="text-xs w-16">Bit Depth</TableHead>
+                      <TableHead className="text-xs w-20">Size</TableHead>
+                      <TableHead className="text-xs w-10"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {displayedTracks.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={10} className="text-center text-xs text-muted-foreground py-8">
+                          {searchQuery.trim() ? 'No tracks match your search.' : 'No tracks found.'}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      displayedTracks.sort((a, b) => (a.discNumber - b.discNumber) || (a.trackNumber - b.trackNumber)).map((track, i) => (
+                        <TableRow
+                          key={track.id}
+                          className="cursor-pointer hover:bg-accent/20 group"
+                          onDoubleClick={() => playLocalTrack(track)}
+                        >
+                          <TableCell className="text-xs font-mono text-muted-foreground">
+                            {track.trackNumber || i + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-3.5 h-3.5 rounded flex-shrink-0 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={(e) => { e.stopPropagation(); playLocalTrack(track); }}
+                              >
+                                <Play className="w-3.5 h-3.5 text-primary" />
+                              </div>
+                              <div className="flex items-center gap-2 min-w-0">
+                                {track.coverArt ? (
+                                  <img src={`data:image/jpeg;base64,${track.coverArt}`} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
+                                ) : (
+                                  <div className={`w-8 h-8 rounded bg-gradient-to-br ${getCoverGradient(track.album + track.artist)} flex items-center justify-center flex-shrink-0`}>
+                                    <Music2 className="w-3.5 h-3.5 text-white/20" />
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium truncate">{track.title}</p>
+                                  {track.composer && track.composer !== track.artist && (
+                                    <p className="text-[10px] text-muted-foreground truncate">{track.composer}</p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{track.artist}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{track.album}</TableCell>
+                          <TableCell className="text-xs font-mono text-muted-foreground">{formatDuration(track.duration)}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-[9px] font-mono h-5">{track.format}</Badge>
+                          </TableCell>
+                          <TableCell className="text-xs font-mono text-muted-foreground">{formatSampleRate(track.sampleRate)}</TableCell>
+                          <TableCell className="text-xs font-mono text-muted-foreground">{track.bitDepth}bit</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{formatFileSize(track.fileSize)}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                              onClick={(e) => { e.stopPropagation(); playLocalTrack(track); }}
+                            >
+                              <Play className="w-3 h-3" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// SCAN FOLDERS PANEL (NEW)
+// ═══════════════════════════════════════════════════════════
+
+function ScanFoldersPanel() {
+  const localStore = useLocalLibraryStore();
+  const [directoryInput, setDirectoryInput] = React.useState('');
+
+  const { tracks, isScanning, scanProgress, scanError, directories, lastScanTime } = localStore;
+
+  const handleScan = React.useCallback(async () => {
+    const dir = directoryInput.trim();
+    if (!dir) return;
+    localStore.addDirectory(dir);
+    setDirectoryInput('');
+    await localStore.startScan(dir);
+  }, [directoryInput, localStore]);
+
+  // Compute scan stats
+  const totalDuration = tracks.reduce((s, t) => s + t.duration, 0);
+  const formatBreakdown = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    tracks.forEach(t => {
+      const fmt = t.format.toUpperCase();
+      counts[fmt] = (counts[fmt] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [tracks]);
+
+  const avgSampleRate = tracks.length > 0
+    ? Math.round(tracks.reduce((s, t) => s + t.sampleRate, 0) / tracks.length)
+    : 0;
+  const avgBitDepth = tracks.length > 0
+    ? (tracks.reduce((s, t) => s + t.bitDepth, 0) / tracks.length).toFixed(1)
+    : '0';
+
+  return (
+    <div className="space-y-6">
+      {/* Add Folder */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <FolderOpen className="w-4 h-4 text-primary" /> Add Folder & Scan
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <FolderClosed className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="/path/to/your/music/folder"
+                value={directoryInput}
+                onChange={e => setDirectoryInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleScan()}
+                className="pl-9 h-9 text-sm font-mono"
+                disabled={isScanning}
+              />
+            </div>
+            <Button
+              onClick={handleScan}
+              disabled={!directoryInput.trim() || isScanning}
+              className="h-9 gap-1.5"
+            >
+              {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <ScanSearch className="w-4 h-4" />}
+              {isScanning ? 'Scanning...' : 'Scan'}
+            </Button>
+          </div>
+
+          {/* Scan Progress */}
+          {isScanning && (
+            <div className="space-y-2 p-4 rounded-lg bg-primary/5 border border-primary/10">
+              <div className="flex items-center gap-3">
+                <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                <span className="text-sm font-medium">Scanning...</span>
+                <span className="text-xs text-muted-foreground ml-auto font-mono">{Math.round(scanProgress)}%</span>
+              </div>
+              <Progress value={scanProgress} className="h-2" />
+              <p className="text-[11px] text-muted-foreground">
+                Discovering and indexing audio files. This may take a while for large libraries.
+              </p>
+            </div>
+          )}
+
+          {/* Scan Error */}
+          {scanError && (
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-signal-red/5 border border-signal-red/20">
+              <AlertTriangle className="w-4 h-4 text-signal-red flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-medium text-signal-red">Scan Error</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{scanError}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Last Scan Completion */}
+          {!isScanning && lastScanTime && tracks.length > 0 && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <CheckCircle2 className="w-3.5 h-3.5 text-signal-green" />
+              <span>Last scan completed at {new Date(lastScanTime).toLocaleString()} — {tracks.length} tracks indexed</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Configured Folders */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <FolderClosed className="w-4 h-4" /> Configured Folders ({directories.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {directories.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-6">No folders configured. Add a folder above to start scanning.</p>
+          ) : (
+            <div className="space-y-2">
+              {directories.map(dir => (
+                <div key={dir} className="flex items-center gap-3 p-3 rounded-lg bg-surface/50 group">
+                  <HardDrive className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-mono truncate">{dir}</p>
+                  </div>
+                  <Button
+                    variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive"
+                    onClick={() => localStore.removeDirectory(dir)}
+                    disabled={isScanning}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Scan Results / Library Stats */}
+      {tracks.length > 0 && (
+        <>
+          {/* Overview Stats */}
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-primary" /> Scan Results
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="p-3 rounded-lg bg-surface/50">
+                  <p className="text-[10px] text-muted-foreground">Total Tracks</p>
+                  <p className="text-lg font-bold">{tracks.length.toLocaleString()}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-surface/50">
+                  <p className="text-[10px] text-muted-foreground">Total Duration</p>
+                  <p className="text-lg font-bold">{formatDuration(totalDuration)}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-surface/50">
+                  <p className="text-[10px] text-muted-foreground">Avg Sample Rate</p>
+                  <p className="text-lg font-bold font-mono">{formatSampleRate(avgSampleRate)}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-surface/50">
+                  <p className="text-[10px] text-muted-foreground">Avg Bit Depth</p>
+                  <p className="text-lg font-bold font-mono">{avgBitDepth} bit</p>
+                </div>
+              </div>
+
+              {/* Format Breakdown */}
+              <div>
+                <p className="text-xs font-medium mb-2">Format Breakdown</p>
+                <div className="flex flex-wrap gap-2">
+                  {formatBreakdown.map(([fmt, count]) => (
+                    <Badge
+                      key={fmt}
+                      variant="outline"
+                      className="text-xs py-1.5 px-3 font-mono"
+                    >
+                      <Disc3 className="w-3 h-3 mr-1" />
+                      {fmt}: {count}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick Play - Recently Discovered Tracks */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium">Quick Play — Discovered Tracks</p>
+                  <Button
+                    size="sm" variant="ghost" className="h-6 text-[10px]"
+                    onClick={() => playLocalTracks(tracks.slice(0, 20))}
+                  >
+                    <Play className="w-3 h-3 mr-0.5" /> Play First 20
+                  </Button>
+                </div>
+                <ScrollArea className="max-h-[300px]">
+                  <div className="space-y-1">
+                    {tracks.slice(0, 50).map((track, i) => (
+                      <div
+                        key={track.id}
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/20 cursor-pointer transition-colors group"
+                        onClick={() => playLocalTrack(track)}
+                      >
+                        {track.coverArt ? (
+                          <img src={`data:image/jpeg;base64,${track.coverArt}`} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
+                        ) : (
+                          <div className={`w-8 h-8 rounded bg-gradient-to-br ${getCoverGradient(track.album + track.artist)} flex items-center justify-center flex-shrink-0`}>
+                            <Music2 className="w-3.5 h-3.5 text-white/20" />
+                          </div>
+                        )}
+                        <span className="text-[10px] text-muted-foreground w-5 text-right font-mono">{i + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">{track.title}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{track.artist} — {track.album}</p>
+                        </div>
+                        <Badge variant="outline" className="text-[8px] font-mono h-4 flex-shrink-0">{track.format}</Badge>
+                        <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">{track.bitDepth}bit/{formatSampleRate(track.sampleRate)}</span>
+                        <span className="text-[10px] text-muted-foreground flex-shrink-0">{formatDuration(track.duration)}</span>
+                        <Button
+                          variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0 opacity-0 group-hover:opacity-100"
+                          onClick={(e) => { e.stopPropagation(); playLocalTrack(track); }}
+                        >
+                          <Play className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Clear Library */}
+          <div className="flex justify-end">
+            <Button
+              variant="destructive" size="sm" className="h-8 text-xs gap-1.5"
+              onClick={() => localStore.clearLibrary()}
+              disabled={isScanning}
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Clear Entire Local Library
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -1205,6 +1859,3 @@ function BackupRestorePanel() {
     </div>
   );
 }
-
-// Import for ListMusic used in PlaylistsPanel
-import { ListMusic } from 'lucide-react';

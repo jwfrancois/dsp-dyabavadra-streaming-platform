@@ -14,7 +14,9 @@ import {
   Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Repeat1,
   Volume2, VolumeX, Volume1, ChevronUp, ListMusic, Heart,
   Maximize2, Gauge, Podcast, FastForward, Scissors, Moon,
+  Radio, Square, Loader2,
 } from 'lucide-react';
+import { audioSeekTo, audioSetPlaybackSpeed } from './AudioEngineProvider';
 
 export function PlayerBar() {
   const {
@@ -30,7 +32,14 @@ export function PlayerBar() {
   } = usePodcastStore();
   const activeZone = zones.find(z => z.id === activeZoneId);
 
+  const playbackMode = usePlayerStore(s => s.playbackMode);
+  const isBuffering = usePlayerStore(s => s.isBuffering);
+  const currentRadioStationId = usePlayerStore(s => s.currentRadioStationId);
+  const stopRadio = usePlayerStore(s => s.stopRadio);
+
   const handleProgressChange = useCallback((value: number[]) => {
+    // Use real audio seek
+    audioSeekTo(value[0]);
     seek(value[0]);
   }, [seek]);
 
@@ -40,8 +49,54 @@ export function PlayerBar() {
 
   // Determine what we're showing
   const showingPodcast = isPodcastMode && currentEpisode;
-  const showingMusic = currentTrack && !showingPodcast;
-  if (!showingPodcast && !showingMusic) return null;
+  const showingRadio = playbackMode === 'radio' && currentTrack;
+  const showingMusic = currentTrack && !showingPodcast && !showingRadio;
+  if (!showingPodcast && !showingRadio && !showingMusic) return null;
+
+  // ── RADIO MODE ──
+  if (showingRadio && currentTrack) {
+    return (
+      <div className="h-20 border-t border-border bg-card flex items-center px-4 gap-4">
+        <div className="flex items-center gap-3 w-64 flex-shrink-0">
+          <div className={`w-12 h-12 rounded-md bg-gradient-to-br from-purple-600 to-pink-500 flex items-center justify-center flex-shrink-0`}>
+            <Radio className="w-6 h-6 text-white" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium truncate">{currentTrack.title}</p>
+            <p className="text-xs text-muted-foreground truncate">{currentTrack.albumName}</p>
+          </div>
+          <Badge className="text-[9px] bg-red-500/20 text-red-400 border-red-500/30 h-5 px-1.5 gap-1 flex-shrink-0 animate-pulse">
+            <Radio className="w-3 h-3" /> LIVE
+          </Badge>
+        </div>
+        <div className="flex-1 flex flex-col items-center gap-1 max-w-2xl mx-auto">
+          <div className="flex items-center gap-2">
+            {isBuffering && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={stopRadio}>
+              <Square className="w-4 h-4" />
+            </Button>
+            <Button variant="default" size="icon" className="h-9 w-9 rounded-full" onClick={togglePlay}>
+              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+            </Button>
+          </div>
+          <div className="flex items-center gap-2 w-full">
+            <span className="text-[11px] text-muted-foreground w-full text-center">{isBuffering ? 'Buffering...' : 'Live Stream'}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 w-64 justify-end flex-shrink-0">
+          <Badge variant="outline" className="text-[10px] h-5 px-1.5 font-mono">{currentTrack.bitrate}kbps</Badge>
+          <div className="flex items-center gap-1.5">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
+              {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-muted-foreground" /> : volume < 50 ? <Volume1 className="w-4 h-4 text-muted-foreground" /> : <Volume2 className="w-4 h-4 text-muted-foreground" />}
+            </Button>
+            <Slider value={[isMuted ? 0 : volume]} min={0} max={100} step={1} onValueChange={handleVolumeChange} className="w-20" />
+          </div>
+          {activeZone && <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground" onClick={() => navigate('zones')}><Gauge className="w-3.5 h-3.5" /><span className="hidden sm:inline">{activeZone.name}</span></Button>}
+          <Button variant={queueDrawerOpen ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8" onClick={toggleQueueDrawer}><ListMusic className="w-4 h-4" /></Button>
+        </div>
+      </div>
+    );
+  }
 
   // Podcast mode: derive display values from episode
   if (showingPodcast) {
@@ -201,8 +256,9 @@ export function PlayerBar() {
     );
   }
 
-  // Music mode: existing behavior
-  const trackProgress = (currentTime / currentTrack!.duration) * 100;
+  // Music mode: existing behavior — use duration from store (set by audio engine)
+  const dur = usePlayerStore.getState().duration || currentTrack!.duration;
+  const trackProgress = dur > 0 ? (currentTime / dur) * 100 : 0;
 
   return (
     <div className="h-20 border-t border-border bg-card flex items-center px-4 gap-4">
@@ -297,7 +353,7 @@ export function PlayerBar() {
             className="flex-1 cursor-pointer [&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
           />
           <span className="text-[11px] text-muted-foreground w-10 tabular-nums">
-            {formatDuration(currentTrack!.duration)}
+            {formatDuration(dur > 0 ? dur : currentTrack!.duration)}
           </span>
         </div>
       </div>

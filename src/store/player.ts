@@ -4,6 +4,8 @@ import { tracks as allTracks } from '@/lib/data';
 
 export type ViewName = 'home' | 'browse-artists' | 'browse-albums' | 'browse-tracks' | 'browse-genres' | 'browse-playlists' | 'podcasts' | 'podcast-detail' | 'library' | 'now-playing' | 'artist-detail' | 'album-detail' | 'performer-detail' | 'search' | 'zones' | 'settings' | 'radio' | 'composer-detail' | 'genre-detail' | 'editorial' | 'streaming' | 'work-detail' | 'system' | 'dsp-config' | 'signal-path' | 'endpoints' | 'play-history' | 'profiles' | 'system-health' | 'security' | 'plugins' | 'licensing';
 
+export type PlaybackMode = 'music' | 'radio' | 'podcast';
+
 interface PlayerState {
   isPlaying: boolean;
   currentTrack: Track | null;
@@ -12,10 +14,15 @@ interface PlayerState {
   activeZoneId: string;
   progress: number; // 0-100
   currentTime: number; // seconds
+  duration: number; // actual duration from audio element
   volume: number; // 0-100
   isShuffle: boolean;
   repeatMode: 'off' | 'one' | 'all';
   isMuted: boolean;
+  playbackMode: PlaybackMode;
+  isBuffering: boolean;
+  currentRadioStationId: string | null;
+  audioUrl: string | null; // current URL loaded in audio element
 
   play: (track?: Track) => void;
   pause: () => void;
@@ -33,10 +40,22 @@ interface PlayerState {
   toggleRepeat: () => void;
   setActiveZone: (zoneId: string) => void;
   setProgress: (progress: number) => void;
+  setDuration: (duration: number) => void;
+  setPlaybackMode: (mode: PlaybackMode) => void;
+  setBuffering: (buffering: boolean) => void;
+  setCurrentTime: (time: number) => void;
+  setAudioUrl: (url: string | null) => void;
+  playRadioStation: (stationId: string, stationName: string, streamUrl: string, genre: string) => void;
+  stopRadio: () => void;
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
-  isPlaying: true,
+  isPlaying: false,
+  playbackMode: 'music',
+  isBuffering: false,
+  currentRadioStationId: null,
+  audioUrl: null,
+  duration: 0,
   currentTrack: allTracks.find(t => t.id === 'track-3-4') || null,
   queue: [
     allTracks.find(t => t.id === 'track-3-4')!,
@@ -170,4 +189,36 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   })),
   setActiveZone: (zoneId) => set({ activeZoneId: zoneId }),
   setProgress: (progress) => set({ progress }),
+  setDuration: (duration) => set({ duration }),
+  setPlaybackMode: (mode) => set({ playbackMode: mode }),
+  setBuffering: (buffering) => set({ isBuffering: buffering }),
+  setCurrentTime: (time) => set({ currentTime: time }),
+  setAudioUrl: (url) => set({ audioUrl: url }),
+
+  playRadioStation: (stationId, stationName, streamUrl, genre) => {
+    const radioTrack: Track = {
+      id: `radio-${stationId}`,
+      title: stationName,
+      albumId: 'radio',
+      albumName: genre || 'Internet Radio',
+      artistId: 'radio',
+      artistName: 'Live Broadcast',
+      trackNumber: 0, discNumber: 0,
+      duration: 0, format: 'MP3', bitDepth: 16, sampleRate: 44100, channels: 2, bitrate: 128,
+      filePath: streamUrl, fileSize: 0, composers: [], performers: [],
+      genre: genre || 'Radio', loved: false, playCount: 0, source: 'local', isAvailable: true,
+    };
+    set({
+      isPlaying: true, currentTrack: radioTrack, playbackMode: 'radio',
+      currentRadioStationId: stationId, audioUrl: streamUrl,
+      queue: [radioTrack], queueIndex: 0, progress: 0, currentTime: 0,
+    });
+  },
+
+  stopRadio: () => {
+    set({
+      playbackMode: 'music', currentRadioStationId: null, audioUrl: null,
+      isPlaying: false,
+    });
+  },
 }));

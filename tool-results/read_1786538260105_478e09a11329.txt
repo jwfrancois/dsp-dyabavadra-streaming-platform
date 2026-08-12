@@ -1,0 +1,1297 @@
+     1→// ─── Metadata & Discovery Data for Sections 6 & 7 ───
+     2→// Classical music, Radio stations, Editorial content, Streaming services
+     3→
+     4→import { getCoverGradient } from './data';
+     5→
+     6→// ═══════════════════════════════════════════
+     7→// CLASSICAL MUSIC
+     8→// ═══════════════════════════════════════════
+     9→
+    10→export interface Composer {
+    11→  id: string;
+    12→  name: string;
+    13→  nameFull: string; // e.g., "Ludwig van Beethoven"
+    14→  born: string;
+    15→  died?: string;
+    16→  period: string; // "Classical", "Romantic", "Baroque", "Modern", etc.
+    17→  nationality: string;
+    18→  imageUrl: string;
+    19→  bio: string;
+    20→  works: string[]; // Work IDs
+    21→  portrait?: string;
+    22→  similarComposers: string[];
+    23→}
+    24→
+    25→export interface Work {
+    26→  id: string;
+    27→  title: string;
+    28→  titleFull: string; // e.g., "Symphony No. 9 in D minor, Op. 125"
+    29→  composerId: string;
+    30→  composerName: string;
+    31→  catalogNumber?: string; // Op., BWV, K., etc.
+    32→  genre: string; // "Symphony", "Concerto", "Sonata", "String Quartet", etc.
+    33→  key: string; // "D minor", "C major", etc.
+    34→  yearComposed?: number;
+    35→  yearFirstPerformed?: number;
+    36→  movements: Movement[];
+    37→  duration: number; // total seconds
+    38→  recordings: WorkRecording[];
+    39→  description?: string;
+    40→}
+    41→
+    42→export interface Movement {
+    43→  number: number;
+    44→  title: string;
+    45→  tempoMarking: string; // "Allegro", "Andante", etc.
+    46→  key?: string;
+    47→  duration: number;
+    48→}
+    49→
+    50→export interface WorkRecording {
+    51→  id: string;
+    52→  workId: string;
+    53→  performers: string[]; // artist IDs
+    54→  performerNames: string[];
+    55→  conductor?: string;
+    56→  orchestra?: string;
+    57→  albumId: string;
+    58→  albumName: string;
+    59→  year: number;
+    60→  format: string;
+    61→  sampleRate: number;
+    62→  bitDepth: number;
+    63→  label: string;
+    64→  rating: number;
+    65→}
+    66→
+    67→// ═══════════════════════════════════════════
+    68→// RADIO STATIONS
+    69→// ═══════════════════════════════════════════
+    70→
+    71→export interface RadioStation {
+    72→  id: string;
+    73→  name: string;
+    74→  description: string;
+    75→  genre: string;
+    76→  country: string;
+    77→  streamUrl: string;
+    78→  codec: string;
+    79→  bitrate: number;
+    80→  sampleRate: number;
+    81→  logoUrl: string;
+    82→  isFavorite: boolean;
+    83→  tags: string[];
+    84→  website?: string;
+    85→}
+    86→
+    87→// ═══════════════════════════════════════════
+    88→// EDITORIAL CONTENT
+    89→// ═══════════════════════════════════════════
+    90→
+    91→export interface EditorialCollection {
+    92→  id: string;
+    93→  title: string;
+    94→  subtitle: string;
+    95→  description: string;
+    96→  type: 'new-releases' | 'genre-primer' | 'best-of' | 'curated' | 'staff-picks' | 'on-this-day';
+    97→  coverUrl: string;
+    98→  curator?: string;
+    99→  trackIds: string[];
+   100→  albumIds: string[];
+   101→  tags: string[];
+   102→  publishedAt: string;
+   103→  featured: boolean;
+   104→}
+   105→
+   106→export interface GenreDetail {
+   107→  id: string;
+   108→  name: string;
+   109→  description: string;
+   110→  imageUrl: string;
+   111→  moods: string[];
+   112→  relatedGenres: string[];
+   113→  topArtists: string[];
+   114→  essentialAlbums: string[];
+   115→  editorialCollections: string[];
+   116→  origins?: string;
+   117→  characteristics?: string;
+   118→}
+   119→
+   120→// ═══════════════════════════════════════════
+   121→// STREAMING SERVICES
+   122→// ═══════════════════════════════════════════
+   123→
+   124→export interface StreamingService {
+   125→  id: string;
+   126→  name: string;
+   127→  logoUrl: string;
+   128→  maxQuality: string;
+   129→  maxSampleRate: number;
+   130→  maxBitDepth: number;
+   131→  supportsDSD: boolean;
+   132→  supportsMQA: boolean;
+   133→  catalogSize: string;
+   134→  oauthUrl: string;
+   135→  linked: boolean;
+   136→  linkedAccount?: string;
+   137→  linkedSince?: string;
+   138→  status: 'disconnected' | 'connecting' | 'connected' | 'error' | 'offline';
+   139→  features: string[];
+   140→  color: string;
+   141→}
+   142→
+   143→export interface StreamingTrack {
+   144→  id: string;
+   145→  serviceId: string;
+   146→  serviceName: string;
+   147→  title: string;
+   148→  albumName: string;
+   149→  artistName: string;
+   150→  albumArtistName: string;
+   151→  duration: number;
+   152→  format: string;
+   153→  sampleRate: number;
+   154→  bitDepth: number;
+   155→  isAvailable: boolean;
+   156→  isRegionRestricted: boolean;
+   157→  quality: string;
+   158→  artworkUrl: string;
+   159→  composerIds?: string[];
+   160→  genre: string;
+   161→  trackNumber: number;
+   162→  year: number;
+   163→  label: string;
+   164→}
+   165→
+   166→// ═══════════════════════════════════════════
+   167→// FANCY SEARCH
+   168→// ═══════════════════════════════════════════
+   169→
+   170→export interface FuzzySearchResult {
+   171→  artists: Array<{ id: string; name: string; type: string; score: number }>;
+   172→  albums: Array<{ id: string; title: string; artistName: string; score: number }>;
+   173→  tracks: Array<{ id: string; title: string; artistName: string; albumName: string; score: number }>;
+   174→  composers: Array<{ id: string; name: string; period: string; score: number }>;
+   175→  works: Array<{ id: string; title: string; composerName: string; score: number }>;
+   176→  credits: Array<{ name: string; role: string; trackId: string; trackTitle: string; score: number }>;
+   177→  radioStations: Array<{ id: string; name: string; genre: string; score: number }>;
+   178→  genres: Array<{ id: string; name: string; score: number }>;
+   179→}
+   180→
+   181→// ─── MOCK DATA: COMPOSERS ───
+   182→
+   183→export const composers: Composer[] = [
+   184→  {
+   185→    id: 'comp-1',
+   186→    name: 'Beethoven',
+   187→    nameFull: 'Ludwig van Beethoven',
+   188→    born: '1770, Bonn, Germany',
+   189→    died: '1827, Vienna, Austria',
+   190→    period: 'Classical / Romantic',
+   191→    nationality: 'German',
+   192→    imageUrl: `/api/cover/comp-1`,
+   193→    bio: 'Ludwig van Beethoven remains one of the most admired composers in the history of Western music. His works span the transition from the Classical to the Romantic period and form the cornerstone of the orchestral, chamber, and piano repertoire. Beethoven composed in all major genres of his time, including nine symphonies, five piano concertos, one violin concerto, thirty-two piano sonatas, and sixteen string quartets. His deafness, which began in his late twenties and progressed to near-total loss by 1814, profoundly shaped his later compositions, infusing them with a depth of emotion and structural innovation that continues to move audiences worldwide.',
+   194→    works: ['work-1', 'work-2', 'work-3'],
+   195→    similarComposers: ['comp-2', 'comp-3', 'comp-4'],
+   196→  },
+   197→  {
+   198→    id: 'comp-2',
+   199→    name: 'Mozart',
+   200→    nameFull: 'Wolfgang Amadeus Mozart',
+   201→    born: '1756, Salzburg, Austria',
+   202→    died: '1791, Vienna, Austria',
+   203→    period: 'Classical',
+   204→    nationality: 'Austrian',
+   205→    imageUrl: `/api/cover/comp-2`,
+   206→    bio: 'Wolfgang Amadeus Mozart was a prolific and influential composer of the Classical period. Despite his short life — he died at just 35 — Mozart composed over 600 works, including symphonies, concertos, operas, chamber music, and piano sonatas of extraordinary beauty and structural perfection. His music is celebrated for its melodic invention, formal elegance, and emotional range, from the exuberant joy of his operas to the profound depth of his Requiem.',
+   207→    works: ['work-4', 'work-5'],
+   208→    similarComposers: ['comp-1', 'comp-4', 'comp-5'],
+   209→  },
+   210→  {
+   211→    id: 'comp-3',
+   212→    name: 'Bach',
+   213→    nameFull: 'Johann Sebastian Bach',
+   214→    born: '1685, Eisenach, Germany',
+   215→    died: '1750, Leipzig, Germany',
+   216→    period: 'Baroque',
+   217→    nationality: 'German',
+   218→    imageUrl: `/api/cover/comp-3`,
+   219→    bio: 'Johann Sebastian Bach was a master of counterpoint, harmony, and fugal writing whose works are regarded as the pinnacle of the Baroque era. His compositions, ranging from the Brandenburg Concertos and Goldberg Variations to the Mass in B minor and The Well-Tempered Clavier, demonstrate unparalleled technical mastery and deep spiritual expression. Bach\'s influence on subsequent composers — from Mozart and Beethoven to Chopin and Shostakovich — cannot be overstated.',
+   220→    works: ['work-6', 'work-7'],
+   221→    similarComposers: ['comp-4', 'comp-5', 'comp-1'],
+   222→  },
+   223→  {
+   224→    id: 'comp-4',
+   225→    name: 'Chopin',
+   226→    nameFull: 'Frederic Chopin',
+   227→    born: '1810, Zelazowa Wola, Poland',
+   228→    died: '1849, Paris, France',
+   229→    period: 'Romantic',
+   230→    nationality: 'Polish-French',
+   231→    imageUrl: `/api/cover/comp-4`,
+   232→    bio: 'Frederic Chopin was a Polish-French composer and virtuoso pianist of the Romantic era who wrote primarily for solo piano. His works, which include mazurkas, waltzes, nocturnes, polonaises, etudes, impromptus, scherzos, preludes, sonatas, and two piano concertos, are renowned for their lyrical beauty, technical demands, and harmonic innovation. Chopin\'s music remains central to the piano repertoire and is performed more frequently than that of any other composer for the instrument.',
+   233→    works: ['work-8', 'work-9'],
+   234→    similarComposers: ['comp-1', 'comp-5', 'comp-2'],
+   235→  },
+   236→  {
+   237→    id: 'comp-5',
+   238→    name: 'Debussy',
+   239→    nameFull: 'Claude Debussy',
+   240→    born: '1862, Saint-Germain-en-Laye, France',
+   241→    died: '1918, Paris, France',
+   242→    period: 'Impressionist / Modern',
+   243→    nationality: 'French',
+   244→    imageUrl: `/api/cover/comp-5`,
+   245→    bio: 'Claude Debussy was a French composer whose innovative use of harmony, color, and form marked a turning point in the history of Western music. Often associated with Impressionism (though he rejected the term), Debussy\'s music is characterized by its evocative atmospheres, flowing modal melodies, and imaginative orchestration. Key works include Prélude à l\'après-midi d\'un faune, La Mer, and his piano collections such as Clair de lune and the two books of Préludes.',
+   246→    works: ['work-10'],
+   247→    similarComposers: ['comp-4', 'comp-2', 'comp-6'],
+   248→  },
+   249→  {
+   250→    id: 'comp-6',
+   251→    name: 'Mahler',
+   252→    nameFull: 'Gustav Mahler',
+   253→    born: '1860, Kalischt, Bohemia',
+   254→    died: '1911, Vienna, Austria',
+   255→    period: 'Late Romantic',
+   256→    nationality: 'Austro-Bohemian',
+   257→    imageUrl: `/api/cover/comp-6`,
+   258→    bio: 'Gustav Mahler was an Austro-Bohemian late-Romantic composer and one of the leading conductors of his generation. His symphonies — vast in scale, emotionally intense, and incorporating voices, folk melodies, and extra-musical narratives — are among the most ambitious and deeply personal works in the orchestral repertoire. Mahler\'s music, once considered excessive and difficult, is now celebrated for its raw emotional power and philosophical depth.',
+   259→    works: ['work-11'],
+   260→    similarComposers: ['comp-1', 'comp-2', 'comp-3'],
+   261→  },
+   262→];
+   263→
+   264→// ─── MOCK DATA: WORKS ───
+   265→
+   266→export const works: Work[] = [
+   267→  {
+   268→    id: 'work-1',
+   269→    title: 'Symphony No. 9',
+   270→    titleFull: 'Symphony No. 9 in D minor, Op. 125 "Choral"',
+   271→    composerId: 'comp-1',
+   272→    composerName: 'Ludwig van Beethoven',
+   273→    catalogNumber: 'Op. 125',
+   274→    genre: 'Symphony',
+   275→    key: 'D minor',
+   276→    yearComposed: 1824,
+   277→    yearFirstPerformed: 1824,
+   278→    duration: 3840,
+   279→    description: 'Beethoven\'s Ninth Symphony is one of the most celebrated works in all of classical music. Its final movement, setting Schiller\'s "Ode to Joy" for soloists and chorus, has become a universal symbol of human solidarity and has been performed at momentous occasions worldwide. The symphony represents the culmination of Beethoven\'s symphonic output and pushes the boundaries of form, duration, and emotional expression.',
+   280→    movements: [
+   281→      { number: 1, title: 'Allegro ma non troppo, un poco maestoso', tempoMarking: 'Allegro', key: 'D minor', duration: 920 },
+   282→      { number: 2, title: 'Scherzo: Molto vivace', tempoMarking: 'Molto vivace', key: 'D minor', duration: 720 },
+   283→      { number: 3, title: 'Adagio molto e cantabile', tempoMarking: 'Adagio', key: 'B-flat major', duration: 900 },
+   284→      { number: 4, title: 'Presto / "Ode to Joy"', tempoMarking: 'Presto', key: 'D major', duration: 1300 },
+   285→    ],
+   286→    recordings: [
+   287→      {
+   288→        id: 'wr-1a', workId: 'work-1',
+   289→        performers: ['artist-2'], performerNames: ['The Meridian Ensemble'],
+   290→        conductor: 'Elias Richter', orchestra: 'The Meridian Ensemble',
+   291→        albumId: 'album-2', albumName: 'Silent Architecture', year: 2022,
+   292→        format: 'FLAC', sampleRate: 192, bitDepth: 24,
+   293→        label: 'Deutsche Grammophon', rating: 9,
+   294→      },
+   295→      {
+   296→        id: 'wr-1b', workId: 'work-1',
+   297→        performers: [], performerNames: ['Berlin Philharmonic'],
+   298→        conductor: 'Herbert von Karajan', orchestra: 'Berlin Philharmonic',
+   299→        albumId: 'album-bee-9', albumName: 'Beethoven: The Nine Symphonies', year: 1963,
+   300→        format: 'FLAC', sampleRate: 96, bitDepth: 24,
+   301→        label: 'Deutsche Grammophon', rating: 10,
+   302→      },
+   303→    ],
+   304→  },
+   305→  {
+   306→    id: 'work-2',
+   307→    title: 'Moonlight Sonata',
+   308→    titleFull: 'Piano Sonata No. 14 in C-sharp minor, Op. 27 No. 2 "Moonlight"',
+   309→    composerId: 'comp-1',
+   310→    composerName: 'Ludwig van Beethoven',
+   311→    catalogNumber: 'Op. 27 No. 2',
+   312→    genre: 'Sonata',
+   313→    key: 'C-sharp minor',
+   314→    yearComposed: 1801,
+   315→    duration: 900,
+   316→    description: 'The Moonlight Sonata is among Beethoven\'s most beloved piano works. Its first movement, with its hypnotic triplet ostinato and haunting melody, is one of the most immediately recognizable pieces in all of classical music. The contrasting movements — a graceful Allegretto and a ferocious Presto agitato — demonstrate Beethoven\'s mastery of emotional contrast and formal innovation.',
+   317→    movements: [
+   318→      { number: 1, title: 'Adagio sostenuto', tempoMarking: 'Adagio sostenuto', key: 'C-sharp minor', duration: 360 },
+   319→      { number: 2, title: 'Allegretto', tempoMarking: 'Allegretto', key: 'D-flat major', duration: 120 },
+   320→      { number: 3, title: 'Presto agitato', tempoMarking: 'Presto agitato', key: 'C-sharp minor', duration: 420 },
+   321→    ],
+   322→    recordings: [
+   323→      {
+   324→        id: 'wr-2a', workId: 'work-2',
+   325→        performers: ['artist-6'], performerNames: ['Isabella Reyes'],
+   326→        albumId: 'album-6', albumName: 'Cartas al Silencio', year: 2021,
+   327→        format: 'FLAC', sampleRate: 192, bitDepth: 24,
+   328→        label: 'Harmonia Mundi', rating: 9,
+   329→      },
+   330→    ],
+   331→  },
+   332→  {
+   333→    id: 'work-3',
+   334→    title: 'Symphony No. 5',
+   335→    titleFull: 'Symphony No. 5 in C minor, Op. 67',
+   336→    composerId: 'comp-1',
+   337→    composerName: 'Ludwig van Beethoven',
+   338→    catalogNumber: 'Op. 67',
+   339→    genre: 'Symphony',
+   340→    key: 'C minor',
+   341→    yearComposed: 1808,
+   342→    duration: 2040,
+   343→    description: 'Perhaps the most famous symphony ever written, Beethoven\'s Fifth opens with the iconic four-note motif that has become synonymous with fate knocking at the door. The symphony\'s journey from C minor struggle to C major triumph established a narrative arc that would influence composers for generations.',
+   344→    movements: [
+   345→      { number: 1, title: 'Allegro con brio', tempoMarking: 'Allegro con brio', key: 'C minor', duration: 420 },
+   346→      { number: 2, title: 'Andante con moto', tempoMarking: 'Andante con moto', key: 'A-flat major', duration: 600 },
+   347→      { number: 3, title: 'Scherzo: Allegro', tempoMarking: 'Allegro', key: 'C minor', duration: 360 },
+   348→      { number: 4, title: 'Allegro', tempoMarking: 'Allegro', key: 'C major', duration: 660 },
+   349→    ],
+   350→    recordings: [
+   351→      {
+   352→        id: 'wr-3a', workId: 'work-3',
+   353→        performers: [], performerNames: ['Vienna Philharmonic'],
+   354→        conductor: 'Carlos Kleiber', orchestra: 'Vienna Philharmonic',
+   355→        albumId: 'album-bee-5', albumName: 'Beethoven: Symphonies 5 & 7', year: 1974,
+   356→        format: 'FLAC', sampleRate: 96, bitDepth: 24,
+   357→        label: 'Deutsche Grammophon', rating: 10,
+   358→      },
+   359→    ],
+   360→  },
+   361→  {
+   362→    id: 'work-4',
+   363→    title: 'Requiem in D minor',
+   364→    titleFull: 'Requiem in D minor, K. 626',
+   365→    composerId: 'comp-2',
+   366→    composerName: 'Wolfgang Amadeus Mozart',
+   367→    catalogNumber: 'K. 626',
+   368→    genre: 'Choral',
+   369→    key: 'D minor',
+   370→    yearComposed: 1791,
+   371→    duration: 3120,
+   372→    description: 'Mozart\'s Requiem is one of the most powerful and mysterious works in the choral repertoire. Left unfinished at the time of his death, the Requiem was completed by his student Franz Xaver Sussmayr. Its dramatic intensity, from the terrifying Dies Irae to the serene Lacrimosa, has made it one of the most performed and recorded choral works in existence.',
+   373→    movements: [
+   374→      { number: 1, title: 'Requiem aeternam', tempoMarking: 'Adagio', duration: 300 },
+   375→      { number: 2, title: 'Kyrie eleison', tempoMarking: 'Allegro', duration: 180 },
+   376→      { number: 3, title: 'Dies Irae', tempoMarking: 'Allegro', duration: 540 },
+   377→      { number: 4, title: 'Tuba mirum', tempoMarking: 'Andante', duration: 300 },
+   378→      { number: 5, title: 'Rex tremendae', tempoMarking: 'Andante', duration: 180 },
+   379→      { number: 6, title: 'Lacrimosa', tempoMarking: 'Adagio', duration: 240 },
+   380→      { number: 7, title: 'Domine Jesu', tempoMarking: 'Andante', duration: 300 },
+   381→      { number: 8, title: 'Hostias', tempoMarking: 'Andante', duration: 180 },
+   382→      { number: 9, title: 'Communio: Lux aeterna', tempoMarking: 'Andante', duration: 300 },
+   383→    ],
+   384→    recordings: [
+   385→      {
+   386→        id: 'wr-4a', workId: 'work-4',
+   387→        performers: [], performerNames: ['Academy of St Martin in the Fields'],
+   388→        conductor: 'Neville Marriner', orchestra: 'Academy of St Martin in the Fields',
+   389→        albumId: 'album-moz-requiem', albumName: 'Mozart: Requiem', year: 1986,
+   390→        format: 'FLAC', sampleRate: 96, bitDepth: 24,
+   391→        label: 'Decca', rating: 9,
+   392→      },
+   393→    ],
+   394→  },
+   395→  {
+   396→    id: 'work-5',
+   397→    title: 'Piano Concerto No. 21',
+   398→    titleFull: 'Piano Concerto No. 21 in C major, K. 467',
+   399→    composerId: 'comp-2',
+   400→    composerName: 'Wolfgang Amadeus Mozart',
+   401→    catalogNumber: 'K. 467',
+   402→    genre: 'Concerto',
+   403→    key: 'C major',
+   404→    yearComposed: 1785,
+   405→    duration: 1920,
+   406→    description: 'Mozart\'s Piano Concerto No. 21 is one of his most popular and frequently performed concertos. The famously lyrical second movement, known as the "Elvira Madigan" Andante, is one of the most beautiful melodies in all of Mozart\'s output.',
+   407→    movements: [
+   408→      { number: 1, title: 'Allegro maestoso', tempoMarking: 'Allegro maestoso', key: 'C major', duration: 720 },
+   409→      { number: 2, title: 'Andante', tempoMarking: 'Andante', key: 'F major', duration: 480 },
+   410→      { number: 3, title: 'Allegro vivace assai', tempoMarking: 'Allegro vivace', key: 'C major', duration: 720 },
+   411→    ],
+   412→    recordings: [
+   413→      {
+   414→        id: 'wr-5a', workId: 'work-5',
+   415→        performers: ['artist-6'], performerNames: ['Isabella Reyes'],
+   416→        conductor: 'Claudio Abbado', orchestra: 'Mahler Chamber Orchestra',
+   417→        albumId: 'album-moz-21', albumName: 'Mozart: Piano Concertos', year: 2018,
+   418→        format: 'FLAC', sampleRate: 192, bitDepth: 24,
+   419→        label: 'Deutsche Grammophon', rating: 9,
+   420→      },
+   421→    ],
+   422→  },
+   423→  {
+   424→    id: 'work-6',
+   425→    title: 'Goldberg Variations',
+   426→    titleFull: 'Goldberg Variations, BWV 988',
+   427→    composerId: 'comp-3',
+   428→    composerName: 'Johann Sebastian Bach',
+   429→    catalogNumber: 'BWV 988',
+   430→    genre: 'Variations',
+   431→    key: 'G major',
+   432→    yearComposed: 1741,
+   433→    duration: 2400,
+   434→    description: 'Bach\'s Goldberg Variations is an aria with thirty variations, widely regarded as one of the most important works in the keyboard repertoire. The piece demonstrates Bach\'s mastery of canonic writing, counterpoint, and emotional expression, ranging from intimate meditation to virtuosic display.',
+   435→    movements: [
+   436→      { number: 1, title: 'Aria', tempoMarking: 'Adagio', key: 'G major', duration: 120 },
+   437→      { number: 2, title: 'Variation 1', tempoMarking: 'Allegro', duration: 60 },
+   438→      { number: 3, title: 'Variation 2', tempoMarking: 'Andante', duration: 60 },
+   439→      { number: 4, title: 'Variation 3 (Canon at the unison)', tempoMarking: 'Andante', duration: 90 },
+   440→      { number: 5, title: 'Variation 4', tempoMarking: 'Allegro', duration: 60 },
+   441→      { number: 6, title: 'Variation 5 (a 1 ovvero 2 clav.)', tempoMarking: 'Allegro', duration: 120 },
+   442→      { number: 7, title: 'Variation 6 (Canon at the second)', tempoMarking: 'Andante', duration: 90 },
+   443→      { number: 8, title: 'Variation 7 (al tempo di giga)', tempoMarking: 'Allegro', duration: 60 },
+   444→      { number: 9, title: 'Variation 8', tempoMarking: 'Allegro', duration: 60 },
+   445→      { number: 10, title: 'Variation 9 (Canon at the third)', tempoMarking: 'Andante', duration: 90 },
+   446→      { number: 11, title: 'Variation 10 (Fughetta)', tempoMarking: 'Allegro', duration: 90 },
+   447→      { number: 12, title: 'Variation 11', tempoMarking: 'Andante', duration: 60 },
+   448→      { number: 13, title: 'Variation 12 (Canon at the fourth)', tempoMarking: 'Andante', duration: 90 },
+   449→      { number: 14, title: 'Variation 13', tempoMarking: 'Adagio', duration: 120 },
+   450→      { number: 15, title: 'Variation 14 (Canon at the fifth)', tempoMarking: 'Allegro', duration: 90 },
+   451→      { number: 16, title: 'Variation 15 (Andante)', tempoMarking: 'Andante', duration: 90 },
+   452→      { number: 17, title: 'Variation 16 (Ouverture)', tempoMarking: 'Allegro', duration: 180 },
+   453→      { number: 18, title: 'Variation 17', tempoMarking: 'Allegro', duration: 60 },
+   454→      { number: 19, title: 'Variation 18 (Canon at the sixth)', tempoMarking: 'Andante', duration: 90 },
+   455→      { number: 20, title: 'Variation 19', tempoMarking: 'Allegro', duration: 60 },
+   456→      { number: 21, title: 'Variation 20', tempoMarking: 'Allegro', duration: 90 },
+   457→      { number: 22, title: 'Variation 21 (Canon at the seventh)', tempoMarking: 'Andante', duration: 90 },
+   458→      { number: 23, title: 'Variation 22 (alla breve)', tempoMarking: 'Allegro', duration: 60 },
+   459→      { number: 24, title: 'Variation 23', tempoMarking: 'Allegro', duration: 60 },
+   460→      { number: 25, title: 'Variation 24 (Canon at the octave)', tempoMarking: 'Andante', duration: 90 },
+   461→      { number: 26, title: 'Variation 25', tempoMarking: 'Adagio', duration: 180 },
+   462→      { number: 27, title: 'Variation 26', tempoMarking: 'Allegro', duration: 60 },
+   463→      { number: 28, title: 'Variation 27 (Canon at the ninth)', tempoMarking: 'Andante', duration: 90 },
+   464→      { number: 29, title: 'Variation 28', tempoMarking: 'Allegro', duration: 60 },
+   465→      { number: 30, title: 'Variation 29', tempoMarking: 'Allegro', duration: 60 },
+   466→      { number: 31, title: 'Quodlibet', tempoMarking: 'Allegro', duration: 120 },
+   467→      { number: 32, title: 'Aria da capo', tempoMarking: 'Adagio', key: 'G major', duration: 120 },
+   468→    ],
+   469→    recordings: [
+   470→      {
+   471→        id: 'wr-6a', workId: 'work-6',
+   472→        performers: ['artist-6'], performerNames: ['Isabella Reyes'],
+   473→        albumId: 'album-bach-gold', albumName: 'Bach: Goldberg Variations', year: 2020,
+   474→        format: 'FLAC', sampleRate: 192, bitDepth: 24,
+   475→        label: 'Harmonia Mundi', rating: 10,
+   476→      },
+   477→    ],
+   478→  },
+   479→  {
+   480→    id: 'work-7',
+   481→    title: 'Brandenburg Concerto No. 3',
+   482→    titleFull: 'Brandenburg Concerto No. 3 in G major, BWV 1048',
+   483→    composerId: 'comp-3',
+   484→    composerName: 'Johann Sebastian Bach',
+   485→    catalogNumber: 'BWV 1048',
+   486→    genre: 'Concerto',
+   487→    key: 'G major',
+   488→    yearComposed: 1721,
+   489→    duration: 660,
+   490→    description: 'The third of Bach\'s six Brandenburg Concertos is notable for its absence of a slow middle movement and its brilliant use of string orchestra. The work showcases Bach\'s contrapuntal mastery within the concerto grosso format.',
+   491→    movements: [
+   492→      { number: 1, title: 'Allegro', tempoMarking: 'Allegro', key: 'G major', duration: 300 },
+   493→      { number: 2, title: 'Adagio', tempoMarking: 'Adagio', key: 'G major', duration: 60 },
+   494→      { number: 3, title: 'Allegro', tempoMarking: 'Allegro', key: 'G major', duration: 300 },
+   495→    ],
+   496→    recordings: [
+   497→      {
+   498→        id: 'wr-7a', workId: 'work-7',
+   499→        performers: [], performerNames: ['The English Concert'],
+   500→        conductor: 'Trevor Pinnock', orchestra: 'The English Concert',
+   501→        albumId: 'album-bach-brand', albumName: 'Bach: Brandenburg Concertos', year: 2008,
+   502→        format: 'FLAC', sampleRate: 96, bitDepth: 24,
+   503→        label: 'Archiv Produktion', rating: 9,
+   504→      },
+   505→    ],
+   506→  },
+   507→  {
+   508→    id: 'work-8',
+   509→    title: 'Nocturne Op. 9 No. 2',
+   510→    titleFull: 'Nocturne in E-flat major, Op. 9 No. 2',
+   511→    composerId: 'comp-4',
+   512→    composerName: 'Frederic Chopin',
+   513→    catalogNumber: 'Op. 9 No. 2',
+   514→    genre: 'Nocturne',
+   515→    key: 'E-flat major',
+   516→    yearComposed: 1832,
+   517→    duration: 270,
+   518→    description: 'Chopin\'s Nocturne Op. 9 No. 2 is perhaps his most universally recognized piece. Its elegant, singing melody over flowing arpeggiated accompaniment has made it a staple of piano repertoire and popular culture alike.',
+   519→    movements: [
+   520→      { number: 1, title: 'Nocturne', tempoMarking: 'Andante', key: 'E-flat major', duration: 270 },
+   521→    ],
+   522→    recordings: [
+   523→      {
+   524→        id: 'wr-8a', workId: 'work-8',
+   525→        performers: ['artist-6'], performerNames: ['Isabella Reyes'],
+   526→        albumId: 'album-chop-noct', albumName: 'Chopin: Nocturnes', year: 2019,
+   527→        format: 'FLAC', sampleRate: 192, bitDepth: 24,
+   528→        label: 'Harmonia Mundi', rating: 9,
+   529→      },
+   530→    ],
+   531→  },
+   532→  {
+   533→    id: 'work-9',
+   534→    title: 'Ballade No. 1',
+   535→    titleFull: 'Ballade No. 1 in G minor, Op. 23',
+   536→    composerId: 'comp-4',
+   537→    composerName: 'Frederic Chopin',
+   538→    catalogNumber: 'Op. 23',
+   539→    genre: 'Ballade',
+   540→    key: 'G minor',
+   541→    yearComposed: 1835,
+   542→    duration: 540,
+   543→    description: 'Chopin\'s first Ballade is a single-movement work of epic scope and emotional power. Its narrative character, combining lyrical themes with brilliant passagework, has made it one of his most admired large-scale piano compositions.',
+   544→    movements: [
+   545→      { number: 1, title: 'Ballade', tempoMarking: 'Largo / Allegro', key: 'G minor', duration: 540 },
+   546→    ],
+   547→    recordings: [
+   548→      {
+   549→        id: 'wr-9a', workId: 'work-9',
+   550→        performers: ['artist-6'], performerNames: ['Isabella Reyes'],
+   551→        albumId: 'album-chop-ballades', albumName: 'Chopin: The Four Ballades', year: 2022,
+   552→        format: 'FLAC', sampleRate: 192, bitDepth: 24,
+   553→        label: 'Harmonia Mundi', rating: 9,
+   554→      },
+   555→    ],
+   556→  },
+   557→  {
+   558→    id: 'work-10',
+   559→    title: 'Clair de Lune',
+   560→    titleFull: 'Clair de Lune (from Suite bergamasque, L. 75)',
+   561→    composerId: 'comp-5',
+   562→    composerName: 'Claude Debussy',
+   563→    catalogNumber: 'L. 75',
+   564→    genre: 'Piano Suite',
+   565→    key: 'D-flat major',
+   566→    yearComposed: 1890,
+   567→    duration: 300,
+   568→    description: 'Clair de Lune is the third movement of Debussy\'s Suite bergamasque and one of the most beloved piano pieces ever written. Its shimmering, impressionistic textures evoke moonlight with extraordinary sensitivity, capturing the essence of the Paul Verlaine poem that inspired it.',
+   569→    movements: [
+   570→      { number: 1, title: 'Clair de Lune', tempoMarking: 'Andante', key: 'D-flat major', duration: 300 },
+   571→    ],
+   572→    recordings: [
+   573→      {
+   574→        id: 'wr-10a', workId: 'work-10',
+   575→        performers: ['artist-6'], performerNames: ['Isabella Reyes'],
+   576→        albumId: 'album-deb-clair', albumName: 'Debussy: Piano Works', year: 2021,
+   577→        format: 'FLAC', sampleRate: 192, bitDepth: 24,
+   578→        label: 'Harmonia Mundi', rating: 9,
+   579→      },
+   580→    ],
+   581→  },
+   582→  {
+   583→    id: 'work-11',
+   584→    title: 'Symphony No. 5',
+   585→    titleFull: 'Symphony No. 5 in C-sharp minor',
+   586→    composerId: 'comp-6',
+   587→    composerName: 'Gustav Mahler',
+   588→    genre: 'Symphony',
+   589→    key: 'C-sharp minor',
+   590→    yearComposed: 1902,
+   591→    duration: 4200,
+   592→    description: 'Mahler\'s Fifth Symphony marks a turning point in his output, moving from the vocal symphonies of his earlier period to a purely instrumental idiom. The famous Adagietto, with its tender string writing, has become one of the most emotionally charged movements in the orchestral repertoire.',
+   593→    movements: [
+   594→      { number: 1, title: 'Trauermarsch', tempoMarking: 'Allegro', key: 'C-sharp minor', duration: 900 },
+   595→      { number: 2, title: 'Sturmisch bewegt', tempoMarking: 'Allegro', key: 'A minor', duration: 780 },
+   596→      { number: 3, title: 'Scherzo', tempoMarking: 'Allegro', key: 'D major', duration: 780 },
+   597→      { number: 4, title: 'Adagietto', tempoMarking: 'Adagietto', key: 'F major', duration: 540 },
+   598→      { number: 5, title: 'Rondo-Finale', tempoMarking: 'Allegro', key: 'D major', duration: 1200 },
+   599→    ],
+   600→    recordings: [
+   601→      {
+   602→        id: 'wr-11a', workId: 'work-11',
+   603→        performers: [], performerNames: ['Berlin Philharmonic'],
+   604→        conductor: 'Claudio Abbado', orchestra: 'Berlin Philharmonic',
+   605→        albumId: 'album-mah-5', albumName: 'Mahler: Symphony No. 5', year: 2004,
+   606→        format: 'FLAC', sampleRate: 192, bitDepth: 24,
+   607→        label: 'Deutsche Grammophon', rating: 10,
+   608→      },
+   609→    ],
+   610→  },
+   611→];
+   612→
+   613→// ─── MOCK DATA: RADIO STATIONS ───
+   614→
+   615→export const radioStations: RadioStation[] = [
+   616→  {
+   617→    id: 'radio-1', name: 'BBC Radio 3', description: 'Classical music and culture from the BBC', genre: 'Classical',
+   618→    country: 'United Kingdom', streamUrl: 'https://stream.live.vc.bbcmedia.co.uk/bbc_radio_three',
+   619→    codec: 'AAC', bitrate: 320, sampleRate: 44100, logoUrl: '/api/cover/radio-1',
+   620→    isFavorite: true, tags: ['classical', 'public-radio', 'live-concerts'], website: 'https://www.bbc.co.uk/radio3',
+   621→  },
+   622→  {
+   623→    id: 'radio-2', name: 'KCRW', description: 'Eclectic mix of independent music, NPR news, and cultural programming',
+   624→    genre: 'Eclectic', country: 'United States', streamUrl: 'https://kcrw.streamguys1.com/kcrw_192k_mp3_e24',
+   625→    codec: 'MP3', bitrate: 192, sampleRate: 44100, logoUrl: '/api/cover/radio-2',
+   626→    isFavorite: false, tags: ['indie', 'eclectic', 'npr'], website: 'https://www.kcrw.com',
+   627→  },
+   628→  {
+   629→    id: 'radio-3', name: 'FIP Radio', description: 'An eclectic and refined musical journey curated by French public radio',
+   630→    genre: 'Eclectic', country: 'France', streamUrl: 'https://icecast.radiofrance.fr/fip-midfi.mp3',
+   631→    codec: 'MP3', bitrate: 128, sampleRate: 44100, logoUrl: '/api/cover/radio-3',
+   632→    isFavorite: true, tags: ['eclectic', 'world', 'jazz', 'electronic'], website: 'https://www.radiofrance.fr/fip',
+   633→  },
+   634→  {
+   635→    id: 'radio-4', name: 'WKCR', description: 'Columbia University radio - jazz, classical, and hip-hop',
+   636→    genre: 'Jazz', country: 'United States', streamUrl: 'https://stream.zeno.fm/rqzf6y8tzzquv',
+   637→    codec: 'AAC', bitrate: 128, sampleRate: 44100, logoUrl: '/api/cover/radio-4',
+   638→    isFavorite: false, tags: ['jazz', 'classical', 'hip-hop', 'university'],
+   639→  },
+   640→  {
+   641→    id: 'radio-5', name: 'Radio Swiss Jazz', description: 'The best of jazz, 24 hours a day, from Switzerland',
+   642→    genre: 'Jazz', country: 'Switzerland', streamUrl: 'https://stream.srg-ssr.ch/m/rsj/mp3_128',
+   643→    codec: 'MP3', bitrate: 128, sampleRate: 44100, logoUrl: '/api/cover/radio-5',
+   644→    isFavorite: true, tags: ['jazz', 'smooth-jazz', '24-7'],
+   645→  },
+   646→  {
+   647→    id: 'radio-6', name: 'NTS Radio', description: 'London-based community radio with eclectic music programming',
+   648→    genre: 'Eclectic', country: 'United Kingdom', streamUrl: 'https://stream-sawa.edge-apps.net/extreme/nts_1',
+   649→    codec: 'AAC', bitrate: 192, sampleRate: 44100, logoUrl: '/api/cover/radio-6',
+   650→    isFavorite: false, tags: ['eclectic', 'underground', 'electronic', 'world', 'experimental'],
+   651→  },
+   652→  {
+   653→    id: 'radio-7', name: 'Classic FM', description: 'The UK\'s only national classical music station',
+   654→    genre: 'Classical', country: 'United Kingdom', streamUrl: 'https://media-ice.musicradio.com/ClassicFMMP3',
+   655→    codec: 'MP3', bitrate: 128, sampleRate: 44100, logoUrl: '/api/cover/radio-7',
+   656→    isFavorite: false, tags: ['classical', 'popular-classical', 'relaxing'],
+   657→  },
+   658→  {
+   659→    id: 'radio-8', name: 'SomaFM Groove Salad', description: 'A nicely chilled plate of ambient/downtempo beats and grooves',
+   660→    genre: 'Ambient', country: 'United States', streamUrl: 'https://ice2.somafm.com/groovesalad-128-mp3',
+   661→    codec: 'MP3', bitrate: 128, sampleRate: 44100, logoUrl: '/api/cover/radio-8',
+   662→    isFavorite: true, tags: ['ambient', 'downtempo', 'chill', 'electronic'],
+   663→  },
+   664→  {
+   665→    id: 'radio-9', name: 'Radio Paradise', description: 'Eclectic mix of rock, pop, electronic, and world music',
+   666→    genre: 'Eclectic', country: 'United States', streamUrl: 'https://stream.radioparadise.com/mp3-192',
+   667→    codec: 'MP3', bitrate: 192, sampleRate: 44100, logoUrl: '/api/cover/radio-9',
+   668→    isFavorite: false, tags: ['eclectic', 'rock', 'world', 'electronic'],
+   669→  },
+   670→  {
+   671→    id: 'radio-10', name: 'Concertzender', description: 'Dutch public radio for classical, contemporary, and world music',
+   672→    genre: 'Classical', country: 'Netherlands', streamUrl: 'https://streams.greenhost.nl:443/cz_live',
+   673→    codec: 'OGG', bitrate: 192, sampleRate: 48000, logoUrl: '/api/cover/radio-10',
+   674→    isFavorite: false, tags: ['classical', 'contemporary', 'world', 'experimental'],
+   675→  },
+   676→  {
+   677→    id: 'radio-11', name: 'KEXP', description: 'Seattle\'s premier independent radio station for alternative music',
+   678→    genre: 'Alternative', country: 'United States', streamUrl: 'https://kexp-mp3-128.streamguys1.com/kexp128.mp3',
+   679→    codec: 'MP3', bitrate: 128, sampleRate: 44100, logoUrl: '/api/cover/radio-11',
+   680→    isFavorite: true, tags: ['alternative', 'indie', 'rock', 'local'],
+   681→  },
+   682→  {
+   683→    id: 'radio-12', name: 'Deutschlandfunk Kultur', description: 'German public radio featuring culture, classical, and contemporary music',
+   684→    genre: 'Classical', country: 'Germany', streamUrl: 'https://st01.dlf.de/dlf/01/128/mp3/stream.mp3',
+   685→    codec: 'MP3', bitrate: 128, sampleRate: 44100, logoUrl: '/api/cover/radio-12',
+   686→    isFavorite: false, tags: ['classical', 'culture', 'public-radio', 'german'],
+   687→  },
+   688→];
+   689→
+   690→// ─── MOCK DATA: EDITORIAL COLLECTIONS ───
+   691→
+   692→export const editorialCollections: EditorialCollection[] = [
+   693→  {
+   694→    id: 'ed-1',
+   695→    title: 'New Releases This Week',
+   696→    subtitle: 'Fresh arrivals in your library',
+   697→    description: 'The latest albums and singles added to the DSP catalog this week, spanning jazz, electronic, classical, and world music. Each release has been carefully selected for its sonic quality and artistic merit.',
+   698→    type: 'new-releases',
+   699→    coverUrl: '/api/cover/ed-1',
+   700→    curator: 'DSP Editorial',
+   701→    trackIds: ['track-3-1', 'track-3-2', 'track-4-1', 'track-8-1', 'track-11-1'],
+   702→    albumIds: ['album-3', 'album-4', 'album-8', 'album-11'],
+   703→    tags: ['new', 'fresh', 'weekly'],
+   704→    publishedAt: '2026-08-11T10:00:00Z',
+   705→    featured: true,
+   706→  },
+   707→  {
+   708→    id: 'ed-2',
+   709→    title: 'A Jazz Primer',
+   710→    subtitle: 'Essential recordings for the jazz curious',
+   711→    description: 'From the smoky clubs of 1950s New York to the vibrant scenes of modern London and Stockholm, this collection traces the evolution of jazz through its most influential recordings. Whether you are a newcomer or a lifelong fan, these albums represent the art form at its finest.',
+   712→    type: 'genre-primer',
+   713→    coverUrl: '/api/cover/ed-2',
+   714→    curator: 'DSP Editorial',
+   715→    trackIds: ['track-1-1', 'track-1-4', 'track-8-2', 'track-8-5'],
+   716→    albumIds: ['album-1', 'album-8'],
+   717→    tags: ['jazz', 'primer', 'essential'],
+   718→    publishedAt: '2026-07-15T08:00:00Z',
+   719→    featured: true,
+   720→  },
+   721→  {
+   722→    id: 'ed-3',
+   723→    title: 'Best of 2026 (So Far)',
+   724→    subtitle: 'The standout recordings of the year',
+   725→    description: 'Halfway through 2026, these are the recordings that have defined the year in audio excellence. From breathtaking audiophile pressings to genre-defying masterworks, these albums represent the pinnacle of recorded music in the current era.',
+   726→    type: 'best-of',
+   727→    coverUrl: '/api/cover/ed-3',
+   728→    curator: 'DSP Editorial',
+   729→    trackIds: ['track-3-4', 'track-4-1', 'track-5-1', 'track-1-6'],
+   730→    albumIds: ['album-3', 'album-4', 'album-5', 'album-1'],
+   731→    tags: ['best-of', '2026', 'yearly'],
+   732→    publishedAt: '2026-07-01T09:00:00Z',
+   733→    featured: true,
+   734→  },
+   735→  {
+   736→    id: 'ed-4',
+   737→    title: 'Analog Warmth: The Best of Vinyl Rips',
+   738→    subtitle: 'Digitized from the finest pressings',
+   739→    description: 'These recordings have been carefully digitized from original vinyl pressings using the highest-quality ADC equipment. Each capture preserves the analog warmth and character that vinyl enthusiasts cherish, presented here in hi-res FLAC for the closest possible approximation of the original experience.',
+   740→    type: 'curated',
+   741→    coverUrl: '/api/cover/ed-4',
+   742→    curator: 'DSP Audiophile Team',
+   743→    trackIds: ['track-1-3', 'track-8-4', 'track-9-2'],
+   744→    albumIds: ['album-1', 'album-8', 'album-9'],
+   745→    tags: ['vinyl', 'analog', 'audiophile'],
+   746→    publishedAt: '2026-06-20T12:00:00Z',
+   747→    featured: false,
+   748→  },
+   749→  {
+   750→    id: 'ed-5',
+   751→    title: 'Electronic Soundscapes',
+   752→    subtitle: 'Ambient, IDM, and experimental electronic',
+   753→    description: 'Explore the outer reaches of electronic music with this curated journey through ambient textures, intricate IDM rhythms, and experimental sound design. These recordings showcase the genre at its most immersive and emotionally resonant, perfect for deep listening on a high-fidelity system.',
+   754→    type: 'curated',
+   755→    coverUrl: '/api/cover/ed-5',
+   756→    curator: 'DSP Editorial',
+   757→    trackIds: ['track-3-3', 'track-3-5', 'track-7-1', 'track-7-4', 'track-12-1'],
+   758→    albumIds: ['album-3', 'album-7', 'album-12'],
+   759→    tags: ['electronic', 'ambient', 'experimental'],
+   760→    publishedAt: '2026-08-01T14:00:00Z',
+   761→    featured: true,
+   762→  },
+   763→  {
+   764→    id: 'ed-6',
+   765→    title: 'Staff Picks: August 2026',
+   766→    subtitle: 'What the DSP team is listening to',
+   767→    description: 'Our team of music enthusiasts and audio engineers share their personal favorites this month. From rediscovered gems to brand-new releases, these are the recordings that have been soundtracking our lives this August.',
+   768→    type: 'staff-picks',
+   769→    coverUrl: '/api/cover/ed-6',
+   770→    curator: 'DSP Team',
+   771→    trackIds: ['track-2-1', 'track-6-2', 'track-10-3', 'track-11-4'],
+   772→    albumIds: ['album-2', 'album-6', 'album-10', 'album-11'],
+   773→    tags: ['staff-picks', 'monthly', 'personal'],
+   774→    publishedAt: '2026-08-05T10:00:00Z',
+   775→    featured: false,
+   776→  },
+   777→  {
+   778→    id: 'ed-7',
+   779→    title: 'On This Day: August 12',
+   780→    subtitle: 'Notable releases and historical moments',
+   781→    description: 'Today in music history: the day reminds us of landmark recordings, legendary performances, and pivotal moments in the evolution of recorded music. Revisit the albums that made history on this date.',
+   782→    type: 'on-this-day',
+   783→    coverUrl: '/api/cover/ed-7',
+   784→    curator: 'DSP Archive',
+   785→    trackIds: ['track-5-3', 'track-9-1'],
+   786→    albumIds: ['album-5', 'album-9'],
+   787→    tags: ['on-this-day', 'history', 'anniversary'],
+   788→    publishedAt: '2026-08-12T00:00:00Z',
+   789→    featured: false,
+   790→  },
+   791→  {
+   792→    id: 'ed-8',
+   793→    title: 'Classical Essentials',
+   794→    subtitle: 'A beginner\'s guide to the classical canon',
+   795→    description: 'An accessible entry point into the vast world of classical music. This collection features the most beloved and historically significant compositions, performed by legendary musicians and captured in the highest possible audio quality.',
+   796→    type: 'genre-primer',
+   797→    coverUrl: '/api/cover/ed-8',
+   798→    curator: 'DSP Classical Editor',
+   799→    trackIds: [],
+   800→    albumIds: ['album-2', 'album-6'],
+   801→    tags: ['classical', 'primer', 'essential', 'beginner'],
+   802→    publishedAt: '2026-05-01T08:00:00Z',
+   803→    featured: true,
+   804→  },
+   805→  {
+   806→    id: 'ed-9',
+   807→    title: 'Nordic Noir: Scandinavian Jazz & Beyond',
+   808→    subtitle: 'The sound of the North',
+   809→    description: 'From the fjords of Norway to the islands of Sweden, Scandinavian artists have created a distinctive sound world that blends jazz, folk, electronic, and ambient music into something entirely their own. This collection captures the essence of Nordic musical identity.',
+   810→    type: 'curated',
+   811→    coverUrl: '/api/cover/ed-9',
+   812→    curator: 'DSP Editorial',
+   813→    trackIds: ['track-1-1', 'track-1-5', 'track-12-2', 'track-9-3'],
+   814→    albumIds: ['album-1', 'album-12', 'album-9'],
+   815→    tags: ['nordic', 'scandinavian', 'jazz', 'folk'],
+   816→    publishedAt: '2026-07-10T11:00:00Z',
+   817→    featured: false,
+   818→  },
+   819→  {
+   820→    id: 'ed-10',
+   821→    title: 'World Music Crossroads',
+   822→    subtitle: 'Where traditions meet innovation',
+   823→    description: 'Music that transcends borders and blends traditions from across the globe. From West African rhythms fused with jazz harmony to Catalan art-pop and Afrobeat grooves, these recordings celebrate the creative power of cultural exchange.',
+   824→    type: 'curated',
+   825→    coverUrl: '/api/cover/ed-10',
+   826→    curator: 'DSP World Music Editor',
+   827→    trackIds: ['track-4-3', 'track-4-7', 'track-10-1', 'track-11-2'],
+   828→    albumIds: ['album-4', 'album-10', 'album-11'],
+   829→    tags: ['world', 'fusion', 'cross-cultural'],
+   830→    publishedAt: '2026-06-15T09:00:00Z',
+   831→    featured: false,
+   832→  },
+   833→];
+   834→
+   835→// ─── MOCK DATA: GENRE DETAILS ───
+   836→
+   837→export const genreDetails: GenreDetail[] = [
+   838→  {
+   839→    id: 'gd-1',
+   840→    name: 'Jazz',
+   841→    description: 'Jazz is a music genre that originated in the African-American communities of New Orleans in the late 19th and early 20th centuries. Rooted in blues and ragtime, jazz is characterized by swing and blue notes, complex chords, call and response vocals, polyrhythms, and improvisation. Over its century-long history, jazz has spawned dozens of subgenres, from bebop and cool jazz to fusion and nu-jazz, and continues to evolve as a living art form.',
+   842→    imageUrl: '/api/cover/gd-1',
+   843→    moods: ['relaxed', 'sophisticated', 'improvisational', 'soulful', 'energetic'],
+   844→    relatedGenres: ['Neo-Soul', 'Fusion', 'Contemporary Classical'],
+   845→    topArtists: ['artist-1', 'artist-8', 'artist-4'],
+   846→    essentialAlbums: ['album-1', 'album-8'],
+   847→    editorialCollections: ['ed-2', 'ed-9'],
+   848→    origins: 'New Orleans, United States, early 20th century',
+   849→    characteristics: 'Improvisation, swing rhythm, complex harmony, blue notes, call and response',
+   850→  },
+   851→  {
+   852→    id: 'gd-2',
+   853→    name: 'Electronic',
+   854→    description: 'Electronic music encompasses a vast range of styles produced primarily using electronic instruments and technology. From the pioneering tape experiments of the 1950s to the digital sound design of today, electronic music has become one of the most diverse and innovative genres in modern music. Subgenres range from ambient and IDM to techno, house, and experimental electroacoustic music.',
+   855→    imageUrl: '/api/cover/gd-2',
+   856→    moods: ['futuristic', 'atmospheric', 'hypnotic', 'energetic', 'introspective'],
+   857→    relatedGenres: ['Ambient', 'IDM', 'Experimental'],
+   858→    topArtists: ['artist-3', 'artist-7', 'artist-10'],
+   859→    essentialAlbums: ['album-3', 'album-7'],
+   860→    editorialCollections: ['ed-5'],
+   861→    origins: 'Multiple origins: Germany (Kraftwerk), Jamaica (dub), USA (Moog synthesizer)',
+   862→    characteristics: 'Synthesized sounds, repetitive patterns, sound design, rhythm-based, technology-driven',
+   863→  },
+   864→  {
+   865→    id: 'gd-3',
+   866→    name: 'Contemporary Classical',
+   867→    description: 'Contemporary classical music refers to art music composed in the present day, drawing on the Western classical tradition while incorporating modern techniques, technologies, and cultural influences. From minimalism and spectralism to post-minimalism and electroacoustic music, contemporary composers continue to push the boundaries of what orchestral and chamber music can be.',
+   868→    imageUrl: '/api/cover/gd-3',
+   869→    moods: ['contemplative', 'ethereal', 'dramatic', 'meditative', 'complex'],
+   870→    relatedGenres: ['Ambient', 'Experimental', 'Classical'],
+   871→    topArtists: ['artist-2', 'artist-6', 'artist-12'],
+   872→    essentialAlbums: ['album-2', 'album-6'],
+   873→    editorialCollections: ['ed-8'],
+   874→    origins: 'Western art music tradition, evolving continuously from the 20th century',
+   875→    characteristics: 'Extended techniques, spectral harmony, minimalism, mixed media, unconventional forms',
+   876→  },
+   877→  {
+   878→    id: 'gd-4',
+   879→    name: 'Ambient',
+   880→    description: 'Ambient music is a genre of music that emphasizes tone and atmosphere over traditional musical structure or rhythm. Pioneered by Brian Eno in the 1970s, ambient music creates immersive sonic environments that can be both actively listened to and passively enjoyed. Modern ambient encompasses everything from gentle drone and field recording-based works to dark ambient and space music.',
+   881→    imageUrl: '/api/cover/gd-4',
+   882→    moods: ['peaceful', 'floating', 'immersive', 'meditative', 'cinematic'],
+   883→    relatedGenres: ['Electronic', 'Experimental', 'Contemporary Classical'],
+   884→    topArtists: ['artist-7', 'artist-9', 'artist-3'],
+   885→    essentialAlbums: ['album-7'],
+   886→    editorialCollections: ['ed-5'],
+   887→    origins: 'England, 1970s, pioneered by Brian Eno',
+   888→    characteristics: 'Tone and texture over melody, slow evolution, atmospheric, non-beat-driven, immersive',
+   889→  },
+   890→  {
+   891→    id: 'gd-5',
+   892→    name: 'Progressive Metal',
+   893→    description: 'Progressive metal combines the heavy, guitar-driven sound of metal with the complex compositional structures, odd time signatures, and conceptual ambition of progressive rock. Bands in this genre often feature extended song lengths, concept albums, virtuosic musicianship, and a willingness to incorporate elements from classical, jazz, and electronic music.',
+   894→    imageUrl: '/api/cover/gd-5',
+   895→    moods: ['powerful', 'epic', 'complex', 'intense', 'atmospheric'],
+   896→    relatedGenres: ['Post-Rock', 'Experimental'],
+   897→    topArtists: ['artist-5'],
+   898→    essentialAlbums: ['album-5'],
+   899→    editorialCollections: [],
+   900→    origins: 'Late 1980s, evolved from progressive rock and heavy metal',
+   901→    characteristics: 'Odd time signatures, extended compositions, concept albums, virtuosic musicianship',
+   902→  },
+   903→  {
+   904→    id: 'gd-6',
+   905→    name: 'Neo-Soul',
+   906→    description: 'Neo-soul is a genre of popular music that emerged in the 1990s as a revival of soul and R&B music with influences from jazz, funk, hip-hop, and electronic music. Characterized by smooth vocals, organic instrumentation, and socially conscious lyrics, neo-soul artists have brought sophistication and artistry back to mainstream R&B.',
+   907→    imageUrl: '/api/cover/gd-6',
+   908→    moods: ['warm', 'soulful', 'groovy', 'intimate', 'uplifting'],
+   909→    relatedGenres: ['Jazz', 'World', 'Electronic'],
+   910→    topArtists: ['artist-4'],
+   911→    essentialAlbums: ['album-4'],
+   912→    editorialCollections: ['ed-10'],
+   913→    origins: 'United States and United Kingdom, 1990s',
+   914→    characteristics: 'Live instrumentation, smooth vocals, jazz harmony, hip-hop rhythms, socially conscious lyrics',
+   915→  },
+   916→];
+   917→
+   918→// ─── MOCK DATA: STREAMING SERVICES ───
+   919→
+   920→export const streamingServices: StreamingService[] = [
+   921→  {
+   922→    id: 'svc-1',
+   923→    name: 'Tidal',
+   924→    logoUrl: '/api/cover/svc-1',
+   925→    maxQuality: 'Master (up to 24-bit/192kHz)',
+   926→    maxSampleRate: 192,
+   927→    maxBitDepth: 24,
+   928→    supportsDSD: false,
+   929→    supportsMQA: true,
+   930→    catalogSize: '100M+ tracks',
+   931→    oauthUrl: '/api/streaming/tidal/auth',
+   932→    linked: true,
+   933→    linkedAccount: 'musiclover@email.com',
+   934→    linkedSince: '2026-01-15',
+   935→    status: 'connected',
+   936→    features: ['HiRes FLAC', 'MQA', 'Dolby Atmos', 'Music Videos', 'Offline', 'Master Quality'],
+   937→    color: '#00FFFF',
+   938→  },
+   939→  {
+   940→    id: 'svc-2',
+   941→    name: 'Qobuz',
+   942→    logoUrl: '/api/cover/svc-2',
+   943→    maxQuality: 'Hi-Res (up to 24-bit/192kHz)',
+   944→    maxSampleRate: 192,
+   945→    maxBitDepth: 24,
+   946→    supportsDSD: false,
+   947→    supportsMQA: false,
+   948→    catalogSize: '80M+ tracks',
+   949→    oauthUrl: '/api/streaming/qobuz/auth',
+   950→    linked: true,
+   951→    linkedAccount: 'musiclover@email.com',
+   952→    linkedSince: '2026-03-22',
+   953→    status: 'connected',
+   954→    features: ['HiRes FLAC', 'Booklets', 'Liner Notes', 'Offline', 'CD-Quality'],
+   955→    color: '#5C6BC0',
+   956→  },
+   957→  {
+   958→    id: 'svc-3',
+   959→    name: 'Apple Music',
+   960→    logoUrl: '/api/cover/svc-3',
+   961→    maxQuality: 'Hi-Res Lossless (up to 24-bit/192kHz)',
+   962→    maxSampleRate: 192,
+   963→    maxBitDepth: 24,
+   964→    supportsDSD: false,
+   965→    supportsMQA: false,
+   966→    catalogSize: '100M+ tracks',
+   967→    oauthUrl: '/api/streaming/apple/auth',
+   968→    linked: false,
+   969→    status: 'disconnected',
+   970→    features: ['HiRes Lossless', 'Spatial Audio', 'Dolby Atmos', 'Music Videos', 'Offline', 'Radio'],
+   971→    color: '#FA233B',
+   972→  },
+   973→  {
+   974→    id: 'svc-4',
+   975→    name: 'Amazon Music HD',
+   976→    logoUrl: '/api/cover/svc-4',
+   977→    maxQuality: 'Ultra HD (up to 24-bit/192kHz)',
+   978→    maxSampleRate: 192,
+   979→    maxBitDepth: 24,
+   980→    supportsDSD: false,
+   981→    supportsMQA: false,
+   982→    catalogSize: '80M+ tracks',
+   983→    oauthUrl: '/api/streaming/amazon/auth',
+   984→    linked: false,
+   985→    status: 'disconnected',
+   986→    features: ['Ultra HD', '3D Audio', 'Offline', 'Spatial Audio'],
+   987→    color: '#25D1DA',
+   988→  },
+   989→];
+   990→
+   991→// ─── MOCK DATA: STREAMING TRACKS (sample) ───
+   992→
+   993→export const streamingTracks: StreamingTrack[] = [
+   994→  {
+   995→    id: 'st-1', serviceId: 'svc-1', serviceName: 'Tidal',
+   996→    title: 'Gymnopedie No. 1', albumName: 'Satie: Piano Works',
+   997→    artistName: 'Alexandre Tharaud', albumArtistName: 'Alexandre Tharaud',
+   998→    duration: 195, format: 'FLAC', sampleRate: 192, bitDepth: 24,
+   999→    isAvailable: true, isRegionRestricted: false, quality: 'Master',
+  1000→    artworkUrl: '/api/cover/st-1', composerIds: ['comp-extra-1'], genre: 'Classical',
+  1001→    trackNumber: 1, year: 2019, label: 'Erato',
+  1002→  },
+  1003→  {
+  1004→    id: 'st-2', serviceId: 'svc-1', serviceName: 'Tidal',
+  1005→    title: 'Nuvole Bianche', albumName: 'Una Mattina',
+  1006→    artistName: 'Ludovico Einaudi', albumArtistName: 'Ludovico Einaudi',
+  1007→    duration: 330, format: 'FLAC', sampleRate: 96, bitDepth: 24,
+  1008→    isAvailable: true, isRegionRestricted: false, quality: 'HiFi',
+  1009→    artworkUrl: '/api/cover/st-2', genre: 'Contemporary Classical',
+  1010→    trackNumber: 5, year: 2004, label: 'Decca',
+  1011→  },
+  1012→  {
+  1013→    id: 'st-3', serviceId: 'svc-2', serviceName: 'Qobuz',
+  1014→    title: 'Rhapsody in Blue', albumName: 'Gershwin: Rhapsody in Blue, An American in Paris',
+  1015→    artistName: 'Leonard Bernstein', albumArtistName: 'Leonard Bernstein / New York Philharmonic',
+  1016→    duration: 1020, format: 'FLAC', sampleRate: 192, bitDepth: 24,
+  1017→    isAvailable: true, isRegionRestricted: false, quality: 'Hi-Res',
+  1018→    artworkUrl: '/api/cover/st-3', genre: 'Classical',
+  1019→    trackNumber: 1, year: 1959, label: 'Sony Classical',
+  1020→  },
+  1021→  {
+  1022→    id: 'st-4', serviceId: 'svc-1', serviceName: 'Tidal',
+  1023→    title: 'Blue in Green', albumName: 'Kind of Blue',
+  1024→    artistName: 'Miles Davis', albumArtistName: 'Miles Davis',
+  1025→    duration: 327, format: 'FLAC', sampleRate: 96, bitDepth: 24,
+  1026→    isAvailable: true, isRegionRestricted: false, quality: 'HiFi',
+  1027→    artworkUrl: '/api/cover/st-4', genre: 'Jazz',
+  1028→    trackNumber: 3, year: 1959, label: 'Columbia',
+  1029→  },
+  1030→  {
+  1031→    id: 'st-5', serviceId: 'svc-2', serviceName: 'Qobuz',
+  1032→    title: 'Weightless', albumName: 'Drone',
+  1033→    artistName: 'Marconi Union', albumArtistName: 'Marconi Union',
+  1034→    duration: 480, format: 'FLAC', sampleRate: 96, bitDepth: 24,
+  1035→    isAvailable: true, isRegionRestricted: true, quality: 'Hi-Res',
+  1036→    artworkUrl: '/api/cover/st-5', genre: 'Ambient',
+  1037→    trackNumber: 1, year: 2011, label: 'Just Music',
+  1038→  },
+  1039→];
+  1040→
+  1041→// ─── HELPER FUNCTIONS ───
+  1042→
+  1043→export function formatRadioDuration(seconds: number): string {
+  1044→  const h = Math.floor(seconds / 3600);
+  1045→  const m = Math.floor((seconds % 3600) / 60);
+  1046→  if (h > 0) return `${h}h ${m}m`;
+  1047→  return `${m}m`;
+  1048→}
+  1049→
+  1050→export function getComposerById(id: string): Composer | undefined {
+  1051→  return composers.find(c => c.id === id);
+  1052→}
+  1053→
+  1054→export function getWorkById(id: string): Work | undefined {
+  1055→  return works.find(w => w.id === id);
+  1056→}
+  1057→
+  1058→export function getWorksByComposer(composerId: string): Work[] {
+  1059→  return works.filter(w => w.composerId === composerId);
+  1060→}
+  1061→
+  1062→export function getRadioStationById(id: string): RadioStation | undefined {
+  1063→  return radioStations.find(r => r.id === id);
+  1064→}
+  1065→
+  1066→export function getGenreDetailByName(name: string): GenreDetail | undefined {
+  1067→  return genreDetails.find(g => g.name === name);
+  1068→}
+  1069→
+  1070→export function getStreamingServiceById(id: string): StreamingService | undefined {
+  1071→  return streamingServices.find(s => s.id === id);
+  1072→}
+  1073→
+  1074→export function getLinkedServices(): StreamingService[] {
+  1075→  return streamingServices.filter(s => s.linked);
+  1076→}
+  1077→
+  1078→export function getStreamingTracksByService(serviceId: string): StreamingTrack[] {
+  1079→  return streamingTracks.filter(t => t.serviceId === serviceId);
+  1080→}
+  1081→
+  1082→// ─── FUZZY SEARCH ───
+  1083→
+  1084→function levenshteinDistance(a: string, b: string): number {
+  1085→  const matrix: number[][] = [];
+  1086→  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  1087→  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+  1088→  for (let i = 1; i <= b.length; i++) {
+  1089→    for (let j = 1; j <= a.length; j++) {
+  1090→      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+  1091→        matrix[i][j] = matrix[i - 1][j - 1];
+  1092→      } else {
+  1093→        matrix[i][j] = Math.min(
+  1094→          matrix[i - 1][j - 1] + 1,
+  1095→          matrix[i][j - 1] + 1,
+  1096→          matrix[i - 1][j] + 1
+  1097→        );
+  1098→      }
+  1099→    }
+  1100→  }
+  1101→  return matrix[b.length][a.length];
+  1102→}
+  1103→
+  1104→function fuzzyMatch(query: string, target: string): number {
+  1105→  const q = query.toLowerCase();
+  1106→  const t = target.toLowerCase();
+  1107→  if (t.includes(q)) return 100;
+  1108→  if (q.includes(t)) return 80;
+  1109→  // Check for all characters appearing in order
+  1110→  let qi = 0;
+  1111→  for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+  1112→    if (t[ti] === q[qi]) qi++;
+  1113→  }
+  1114→  if (qi === q.length) return 60;
+  1115→  const dist = levenshteinDistance(q, t);
+  1116→  const maxLen = Math.max(q.length, t.length);
+  1117→  return Math.max(0, Math.round((1 - dist / maxLen) * 50));
+  1118→}
+  1119→
+  1120→import { artists, albums, tracks } from './data';
+  1121→
+  1122→export function fuzzySearch(query: string): FuzzySearchResult {
+  1123→  if (query.length < 2) return {
+  1124→    artists: [], albums: [], tracks: [], composers: [], works: [],
+  1125→    credits: [], radioStations: [], genres: [],
+  1126→  };
+  1127→
+  1128→  const results: FuzzySearchResult = {
+  1129→    artists: [],
+  1130→    albums: [],
+  1131→    tracks: [],
+  1132→    composers: [],
+  1133→    works: [],
+  1134→    credits: [],
+  1135→    radioStations: [],
+  1136→    genres: [],
+  1137→  };
+  1138→
+  1139→  // Search artists
+  1140→  for (const a of artists) {
+  1141→    const score = Math.max(
+  1142→      fuzzyMatch(query, a.name),
+  1143→      fuzzyMatch(query, a.bio.substring(0, 100))
+  1144→    );
+  1145→    if (score > 20) results.artists.push({ id: a.id, name: a.name, type: a.type, score });
+  1146→  }
+  1147→
+  1148→  // Search albums
+  1149→  for (const a of albums) {
+  1150→    const score = Math.max(
+  1151→      fuzzyMatch(query, a.title),
+  1152→      fuzzyMatch(query, a.artistName),
+  1153→      fuzzyMatch(query, a.label || '')
+  1154→    );
+  1155→    if (score > 20) results.albums.push({ id: a.id, title: a.title, artistName: a.artistName, score });
+  1156→  }
+  1157→
+  1158→  // Search tracks (including composers, performers, genres)
+  1159→  for (const t of tracks) {
+  1160→    const scores = [
+  1161→      fuzzyMatch(query, t.title),
+  1162→      fuzzyMatch(query, t.artistName),
+  1163→      fuzzyMatch(query, t.albumName),
+  1164→      fuzzyMatch(query, t.genre),
+  1165→      ...t.composers.map(c => fuzzyMatch(query, c)),
+  1166→      ...t.performers.map(p => fuzzyMatch(query, p.name)),
+  1167→    ];
+  1168→    const score = Math.max(...scores);
+  1169→    if (score > 20) results.tracks.push({ id: t.id, title: t.title, artistName: t.artistName, albumName: t.albumName, score });
+  1170→  }
+  1171→
+  1172→  // Search composers
+  1173→  for (const c of composers) {
+  1174→    const score = Math.max(
+  1175→      fuzzyMatch(query, c.name),
+  1176→      fuzzyMatch(query, c.nameFull),
+  1177→      fuzzyMatch(query, c.period)
+  1178→    );
+  1179→    if (score > 20) results.composers.push({ id: c.id, name: c.nameFull, period: c.period, score });
+  1180→  }
+  1181→
+  1182→  // Search works
+  1183→  for (const w of works) {
+  1184→    const score = Math.max(
+  1185→      fuzzyMatch(query, w.title),
+  1186→      fuzzyMatch(query, w.titleFull),
+  1187→      fuzzyMatch(query, w.composerName),
+  1188→      fuzzyMatch(query, w.genre),
+  1189→      fuzzyMatch(query, w.catalogNumber || '')
+  1190→    );
+  1191→    if (score > 20) results.works.push({ id: w.id, title: w.title, composerName: w.composerName, score });
+  1192→  }
+  1193→
+  1194→  // Search credits (performers)
+  1195→  for (const t of tracks) {
+  1196→    for (const p of t.performers) {
+  1197→      const score = Math.max(
+  1198→        fuzzyMatch(query, p.name),
+  1199→        fuzzyMatch(query, p.role),
+  1200→        fuzzyMatch(query, p.instrument || '')
+  1201→      );
+  1202→      if (score > 20) results.credits.push({ name: p.name, role: p.role, trackId: t.id, trackTitle: t.title, score });
+  1203→    }
+  1204→  }
+  1205→
+  1206→  // Search radio stations
+  1207→  for (const r of radioStations) {
+  1208→    const score = Math.max(
+  1209→      fuzzyMatch(query, r.name),
+  1210→      fuzzyMatch(query, r.genre),
+  1211→      fuzzyMatch(query, r.description),
+  1212→      ...r.tags.map(tag => fuzzyMatch(query, tag))
+  1213→    );
+  1214→    if (score > 20) results.radioStations.push({ id: r.id, name: r.name, genre: r.genre, score });
+  1215→  }
+  1216→
+  1217→  // Search genres
+  1218→  for (const g of genreDetails) {
+  1219→    const score = Math.max(
+  1220→      fuzzyMatch(query, g.name),
+  1221→      ...g.moods.map(m => fuzzyMatch(query, m))
+  1222→    );
+  1223→    if (score > 20) results.genres.push({ id: g.id, name: g.name, score });
+  1224→  }
+  1225→
+  1226→  // Sort all by score descending
+  1227→  results.artists.sort((a, b) => b.score - a.score);
+  1228→  results.albums.sort((a, b) => b.score - a.score);
+  1229→  results.tracks.sort((a, b) => b.score - a.score);
+  1230→  results.composers.sort((a, b) => b.score - a.score);
+  1231→  results.works.sort((a, b) => b.score - a.score);
+  1232→  results.credits.sort((a, b) => b.score - a.score);
+  1233→  results.radioStations.sort((a, b) => b.score - a.score);
+  1234→  results.genres.sort((a, b) => b.score - a.score);
+  1235→
+  1236→  return results;
+  1237→}
+  1238→
+  1239→// ─── AUTO-CONTINUATION / RADIO ALGORITHM ───
+  1240→
+  1241→export interface RadioSeed {
+  1242→  type: 'track' | 'artist' | 'genre' | 'playlist';
+  1243→  id: string;
+  1244→  name: string;
+  1245→}
+  1246→
+  1247→export interface RadioStationGenerated {
+  1248→  id: string;
+  1249→  name: string;
+  1250→  seed: RadioSeed;
+  1251→  trackIds: string[];
+  1252→  description: string;
+  1253→}
+  1254→
+  1255→export function generateRadio(seed: RadioSeed, count: number = 20): RadioStationGenerated {
+  1256→  const allTracks = [...tracks];
+  1257→  let pool: typeof tracks;
+  1258→
+  1259→  if (seed.type === 'track') {
+  1260→    const track = allTracks.find(t => t.id === seed.id);
+  1261→    if (track) {
+  1262→      pool = allTracks.filter(t =>
+  1263→        t.id !== track.id &&
+  1264→        (t.genre === track.genre || t.artistId === track.artistId || t.composers.some(c => track.composers.includes(c)))
+  1265→      );
+  1266→    } else {
+  1267→      pool = allTracks;
+  1268→    }
+  1269→  } else if (seed.type === 'artist') {
+  1270→    pool = allTracks.filter(t => t.artistId !== seed.id);
+  1271→    // Mix in similar artists
+  1272→    const artist = artists.find(a => a.id === seed.id);
+  1273→    if (artist) {
+  1274→      const similarTracks = allTracks.filter(t => artist.similarArtists.includes(t.artistId));
+  1275→      pool = [...pool, ...similarTracks];
+  1276→    }
+  1277→  } else if (seed.type === 'genre') {
+  1278→    pool = allTracks.filter(t => t.genre === seed.name);
+  1279→  } else {
+  1280→    pool = allTracks;
+  1281→  }
+  1282→
+  1283→  // Shuffle and take
+  1284→  const shuffled = pool.sort(() => Math.random() - 0.5).slice(0, count);
+  1285→  const trackIds = shuffled.map(t => t.id);
+  1286→
+  1287→  return {
+  1288→    id: `radio-gen-${Date.now()}`,
+  1289→    name: seed.type === 'genre' ? `${seed.name} Radio` :
+  1290→          seed.type === 'artist' ? `${seed.name} Radio` :
+  1291→          seed.type === 'playlist' ? `${seed.name} Mix` : `${seed.name} Mix`,
+  1292→    seed,
+  1293→    trackIds,
+  1294→    description: `Algorithmic radio seeded from ${seed.name}. Blending local library tracks based on genre, artist similarity, and listening patterns.`,
+  1295→  };
+  1296→}
+  1297→

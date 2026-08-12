@@ -37,6 +37,7 @@ import { SecurityView } from '@/components/dsp/SecurityView';
 import { PluginManagerView } from '@/components/dsp/PluginManagerView';
 import { LicensingView } from '@/components/dsp/LicensingView';
 import { ZonePicker } from '@/components/dsp/ZonePicker';
+import { AudioEngineProvider } from '@/components/dsp/AudioEngineProvider';
 import { useUIStore } from '@/store/ui';
 import type { ViewName } from '@/store/player';
 import { Button } from '@/components/ui/button';
@@ -84,6 +85,7 @@ export default function Page() {
   const { currentView, sidebarOpen, toggleSidebar } = useUIStore();
 
   return (
+    <AudioEngineProvider>
     <div className="h-screen flex flex-col bg-background text-foreground overflow-hidden">
       {/* Mobile Header */}
       <header className="lg:hidden flex items-center h-14 px-4 border-b border-border bg-card flex-shrink-0">
@@ -117,5 +119,6 @@ export default function Page() {
       {/* Zone Picker */}
       <ZonePicker />
     </div>
+    </AudioEngineProvider>
   );
 }
