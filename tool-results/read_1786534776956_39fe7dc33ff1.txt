@@ -1,0 +1,297 @@
+   601→
+   602→// ─── TRACKS ───
+   603→
+   604→export const tracks: Track[] = [
+   605→  // Album 1 - Northern Lights
+   606→  { id: 'track-1-1', title: 'Fjord Morning', albumId: 'album-1', albumName: 'Northern Lights', artistId: 'artist-1', artistName: 'Lena Viktoria', trackNumber: 1, discNumber: 1, duration: 312, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Lena Viktoria/Northern Lights/01 - Fjord Morning.flac', fileSize: 134217728, composers: ['Lena Viktoria', 'Erik Lindqvist'], performers: [{ name: 'Lena Viktoria', role: 'vocals' }, { name: 'Erik Lindqvist', role: 'piano' }, { name: 'Staffan Björk', role: 'double bass' }, { name: 'Åsa Karlsson', role: 'percussion' }], genre: 'Jazz', loved: true, playCount: 245, lastPlayed: '2026-08-12T00:30:00Z', source: 'local', isAvailable: true },
+   607→  { id: 'track-1-2', title: 'Ice Crystal', albumId: 'album-1', albumName: 'Northern Lights', artistId: 'artist-1', artistName: 'Lena Viktoria', trackNumber: 2, discNumber: 1, duration: 278, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Lena Viktoria/Northern Lights/02 - Ice Crystal.flac', fileSize: 120586240, composers: ['Lena Viktoria'], performers: [{ name: 'Lena Viktoria', role: 'vocals' }, { name: 'Erik Lindqvist', role: 'piano' }, { name: 'Staffan Björk', role: 'double bass' }, { name: 'Åsa Karlsson', role: 'percussion' }], genre: 'Jazz', loved: false, playCount: 198, lastPlayed: '2026-08-11T22:15:00Z', source: 'local', isAvailable: true },
+   608→  { id: 'track-1-3', title: 'Aurora', albumId: 'album-1', albumName: 'Northern Lights', artistId: 'artist-1', artistName: 'Lena Viktoria', trackNumber: 3, discNumber: 1, duration: 445, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Lena Viktoria/Northern Lights/03 - Aurora.flac', fileSize: 193273528, composers: ['Lena Viktoria', 'Erik Lindqvist'], performers: [{ name: 'Lena Viktoria', role: 'vocals' }, { name: 'Erik Lindqvist', role: 'piano' }, { name: 'Staffan Björk', role: 'double bass' }, { name: 'Åsa Karlsson', role: 'percussion' }], genre: 'Jazz', loved: true, playCount: 312, lastPlayed: '2026-08-12T01:00:00Z', source: 'local', isAvailable: true },
+   609→  { id: 'track-1-4', title: 'Timberline', albumId: 'album-1', albumName: 'Northern Lights', artistId: 'artist-1', artistName: 'Lena Viktoria', trackNumber: 4, discNumber: 1, duration: 324, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Lena Viktoria/Northern Lights/04 - Timberline.flac', fileSize: 140928614, composers: ['Lena Viktoria'], performers: [{ name: 'Lena Viktoria', role: 'vocals' }, { name: 'Erik Lindqvist', role: 'piano' }, { name: 'Staffan Björk', role: 'double bass' }, { name: 'Åsa Karlsson', role: 'percussion' }], genre: 'Jazz', loved: false, playCount: 156, lastPlayed: '2026-08-10T18:45:00Z', source: 'local', isAvailable: true },
+   610→  { id: 'track-1-5', title: 'Solstice Dance', albumId: 'album-1', albumName: 'Northern Lights', artistId: 'artist-1', artistName: 'Lena Viktoria', trackNumber: 5, discNumber: 1, duration: 356, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Lena Viktoria/Northern Lights/05 - Solstice Dance.flac', fileSize: 154350387, composers: ['Lena Viktoria', 'Erik Lindqvist'], performers: [{ name: 'Lena Viktoria', role: 'vocals' }, { name: 'Erik Lindqvist', role: 'piano' }, { name: 'Staffan Björk', role: 'double bass' }, { name: 'Åsa Karlsson', role: 'percussion' }], genre: 'Jazz', loved: false, playCount: 187, lastPlayed: '2026-08-09T20:30:00Z', source: 'local', isAvailable: true },
+   611→  { id: 'track-1-6', title: 'White Silence', albumId: 'album-1', albumName: 'Northern Lights', artistId: 'artist-1', artistName: 'Lena Viktoria', trackNumber: 6, discNumber: 1, duration: 401, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Lena Viktoria/Northern Lights/06 - White Silence.flac', fileSize: 173885030, composers: ['Lena Viktoria'], performers: [{ name: 'Lena Viktoria', role: 'vocals' }, { name: 'Erik Lindqvist', role: 'piano' }, { name: 'Staffan Björk', role: 'double bass' }, { name: 'Åsa Karlsson', role: 'percussion' }], genre: 'Jazz', loved: true, playCount: 267, lastPlayed: '2026-08-11T21:00:00Z', source: 'local', isAvailable: true },
+   612→  { id: 'track-1-7', title: 'Midnight Sun', albumId: 'album-1', albumName: 'Northern Lights', artistId: 'artist-1', artistName: 'Lena Viktoria', trackNumber: 7, discNumber: 1, duration: 389, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Lena Viktoria/Northern Lights/07 - Midnight Sun.flac', fileSize: 168694220, composers: ['Lena Viktoria', 'Erik Lindqvist'], performers: [{ name: 'Lena Viktoria', role: 'vocals' }, { name: 'Erik Lindqvist', role: 'piano' }, { name: 'Staffan Björk', role: 'double bass' }, { name: 'Åsa Karlsson', role: 'percussion' }], genre: 'Jazz', loved: false, playCount: 134, lastPlayed: '2026-08-08T19:00:00Z', source: 'local', isAvailable: true },
+   613→  { id: 'track-1-8', title: 'Horizon', albumId: 'album-1', albumName: 'Northern Lights', artistId: 'artist-1', artistName: 'Lena Viktoria', trackNumber: 8, discNumber: 1, duration: 335, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Lena Viktoria/Northern Lights/08 - Horizon.flac', fileSize: 145172992, composers: ['Lena Viktoria'], performers: [{ name: 'Lena Viktoria', role: 'vocals' }, { name: 'Erik Lindqvist', role: 'piano' }, { name: 'Staffan Björk', role: 'double bass' }, { name: 'Åsa Karlsson', role: 'percussion' }], genre: 'Jazz', loved: false, playCount: 178, lastPlayed: '2026-08-10T16:20:00Z', source: 'local', isAvailable: true },
+   614→
+   615→  // Album 2 - Silent Architecture
+   616→  { id: 'track-2-1', title: 'I. Foundation', albumId: 'album-2', albumName: 'Silent Architecture', artistId: 'artist-2', artistName: 'The Meridian Ensemble', trackNumber: 1, discNumber: 1, duration: 612, format: 'FLAC', bitDepth: 24, sampleRate: 192, channels: 2, bitrate: 6912, filePath: '/music/The Meridian Ensemble/Silent Architecture/01 - I. Foundation.flac', fileSize: 530579456, composers: ['Elias Richter'], performers: [{ name: 'Elias Richter', role: 'composer', instrument: 'conductor' }, { name: 'Maren Fischer', role: 'violin' }, { name: 'Jonas Berg', role: 'cello' }, { name: 'Yuki Tanaka', role: 'piano' }, { name: 'Sophie Müller', role: 'flute' }], genre: 'Contemporary Classical', loved: false, playCount: 156, lastPlayed: '2026-08-07T14:00:00Z', source: 'local', isAvailable: true },
+   617→  { id: 'track-2-2', title: 'II. Tension', albumId: 'album-2', albumName: 'Silent Architecture', artistId: 'artist-2', artistName: 'The Meridian Ensemble', trackNumber: 2, discNumber: 1, duration: 534, format: 'FLAC', bitDepth: 24, sampleRate: 192, channels: 2, bitrate: 6912, filePath: '/music/The Meridian Ensemble/Silent Architecture/02 - II. Tension.flac', fileSize: 463088128, composers: ['Elias Richter'], performers: [{ name: 'Elias Richter', role: 'composer', instrument: 'conductor' }, { name: 'Maren Fischer', role: 'violin' }, { name: 'Jonas Berg', role: 'cello' }, { name: 'Yuki Tanaka', role: 'piano' }, { name: 'Sophie Müller', role: 'flute' }], genre: 'Contemporary Classical', loved: true, playCount: 203, lastPlayed: '2026-08-10T11:30:00Z', source: 'local', isAvailable: true },
+   618→  { id: 'track-2-3', title: 'III. Release', albumId: 'album-2', albumName: 'Silent Architecture', artistId: 'artist-2', artistName: 'The Meridian Ensemble', trackNumber: 3, discNumber: 1, duration: 480, format: 'FLAC', bitDepth: 24, sampleRate: 192, channels: 2, bitrate: 6912, filePath: '/music/The Meridian Ensemble/Silent Architecture/03 - III. Release.flac', fileSize: 416074752, composers: ['Elias Richter'], performers: [{ name: 'Elias Richter', role: 'composer', instrument: 'conductor' }, { name: 'Maren Fischer', role: 'violin' }, { name: 'Jonas Berg', role: 'cello' }, { name: 'Yuki Tanaka', role: 'piano' }, { name: 'Sophie Müller', role: 'flute' }], genre: 'Contemporary Classical', loved: false, playCount: 145, lastPlayed: '2026-08-06T09:00:00Z', source: 'local', isAvailable: true },
+   619→  { id: 'track-2-4', title: 'IV. Stillness', albumId: 'album-2', albumName: 'Silent Architecture', artistId: 'artist-2', artistName: 'The Meridian Ensemble', trackNumber: 4, discNumber: 1, duration: 726, format: 'FLAC', bitDepth: 24, sampleRate: 192, channels: 2, bitrate: 6912, filePath: '/music/The Meridian Ensemble/Silent Architecture/04 - IV. Stillness.flac', fileSize: 629452800, composers: ['Elias Richter'], performers: [{ name: 'Elias Richter', role: 'composer', instrument: 'conductor' }, { name: 'Maren Fischer', role: 'violin' }, { name: 'Jonas Berg', role: 'cello' }, { name: 'Yuki Tanaka', role: 'piano' }, { name: 'Sophie Müller', role: 'flute' }], genre: 'Contemporary Classical', loved: false, playCount: 98, lastPlayed: '2026-08-05T16:00:00Z', source: 'local', isAvailable: true },
+   620→  { id: 'track-2-5', title: 'V. Emergence', albumId: 'album-2', albumName: 'Silent Architecture', artistId: 'artist-2', artistName: 'The Meridian Ensemble', trackNumber: 5, discNumber: 1, duration: 558, format: 'FLAC', bitDepth: 24, sampleRate: 192, channels: 2, bitrate: 6912, filePath: '/music/The Meridian Ensemble/Silent Architecture/05 - V. Emergence.flac', fileSize: 483183872, composers: ['Elias Richter'], performers: [{ name: 'Elias Richter', role: 'composer', instrument: 'conductor' }, { name: 'Maren Fischer', role: 'violin' }, { name: 'Jonas Berg', role: 'cello' }, { name: 'Yuki Tanaka', role: 'piano' }, { name: 'Sophie Müller', role: 'flute' }], genre: 'Contemporary Classical', loved: true, playCount: 178, lastPlayed: '2026-08-11T10:00:00Z', source: 'local', isAvailable: true },
+   621→  { id: 'track-2-6', title: 'VI. Threshold', albumId: 'album-2', albumName: 'Silent Architecture', artistId: 'artist-2', artistName: 'The Meridian Ensemble', trackNumber: 6, discNumber: 1, duration: 510, format: 'FLAC', bitDepth: 24, sampleRate: 192, channels: 2, bitrate: 6912, filePath: '/music/The Meridian Ensemble/Silent Architecture/06 - VI. Threshold.flac', fileSize: 442091520, composers: ['Elias Richter'], performers: [{ name: 'Elias Richter', role: 'composer', instrument: 'conductor' }, { name: 'Maren Fischer', role: 'violin' }, { name: 'Jonas Berg', role: 'cello' }, { name: 'Yuki Tanaka', role: 'piano' }, { name: 'Sophie Müller', role: 'flute' }], genre: 'Contemporary Classical', loved: false, playCount: 112, lastPlayed: '2026-08-04T20:00:00Z', source: 'local', isAvailable: true },
+   622→
+   623→  // Album 3 - Phantom Frequencies
+   624→  { id: 'track-3-1', title: 'Ghost in the Machine', albumId: 'album-3', albumName: 'Phantom Frequencies', artistId: 'artist-3', artistName: 'Kai Horizon', trackNumber: 1, discNumber: 1, duration: 402, format: 'FLAC', bitDepth: 32, sampleRate: 96, channels: 2, bitrate: 4608, filePath: '/music/Kai Horizon/Phantom Frequencies/01 - Ghost in the Machine.flac', fileSize: 231735296, composers: ['Kai Horizon'], performers: [{ name: 'Kai Horizon', role: 'production', instrument: 'synthesizers' }], genre: 'Electronic', loved: true, playCount: 356, lastPlayed: '2026-08-12T00:15:00Z', source: 'local', isAvailable: true },
+   625→  { id: 'track-3-2', title: 'Quantum Lattice', albumId: 'album-3', albumName: 'Phantom Frequencies', artistId: 'artist-3', artistName: 'Kai Horizon', trackNumber: 2, discNumber: 1, duration: 378, format: 'FLAC', bitDepth: 32, sampleRate: 96, channels: 2, bitrate: 4608, filePath: '/music/Kai Horizon/Phantom Frequencies/02 - Quantum Lattice.flac', fileSize: 218103808, composers: ['Kai Horizon'], performers: [{ name: 'Kai Horizon', role: 'production', instrument: 'synthesizers' }], genre: 'Electronic', loved: false, playCount: 289, lastPlayed: '2026-08-11T23:45:00Z', source: 'local', isAvailable: true },
+   626→  { id: 'track-3-3', title: 'Neon Dissolution', albumId: 'album-3', albumName: 'Phantom Frequencies', artistId: 'artist-3', artistName: 'Kai Horizon', trackNumber: 3, discNumber: 1, duration: 445, format: 'FLAC', bitDepth: 32, sampleRate: 96, channels: 2, bitrate: 4608, filePath: '/music/Kai Horizon/Phantom Frequencies/03 - Neon Dissolution.flac', fileSize: 256901120, composers: ['Kai Horizon'], performers: [{ name: 'Kai Horizon', role: 'production', instrument: 'synthesizers' }], genre: 'Electronic', loved: false, playCount: 234, lastPlayed: '2026-08-10T21:30:00Z', source: 'local', isAvailable: true },
+   627→  { id: 'track-3-4', title: 'Digital Rain', albumId: 'album-3', albumName: 'Phantom Frequencies', artistId: 'artist-3', artistName: 'Kai Horizon', trackNumber: 4, discNumber: 1, duration: 356, format: 'FLAC', bitDepth: 32, sampleRate: 96, channels: 2, bitrate: 4608, filePath: '/music/Kai Horizon/Phantom Frequencies/04 - Digital Rain.flac', fileSize: 205520896, composers: ['Kai Horizon'], performers: [{ name: 'Kai Horizon', role: 'production', instrument: 'synthesizers' }], genre: 'Electronic', loved: true, playCount: 412, lastPlayed: '2026-08-12T00:45:00Z', source: 'tidal', isAvailable: true },
+   628→  { id: 'track-3-5', title: 'Phase Shift', albumId: 'album-3', albumName: 'Phantom Frequencies', artistId: 'artist-3', artistName: 'Kai Horizon', trackNumber: 5, discNumber: 1, duration: 523, format: 'FLAC', bitDepth: 32, sampleRate: 96, channels: 2, bitrate: 4608, filePath: '/music/Kai Horizon/Phantom Frequencies/05 - Phase Shift.flac', fileSize: 301989888, composers: ['Kai Horizon'], performers: [{ name: 'Kai Horizon', role: 'production', instrument: 'synthesizers' }], genre: 'Electronic', loved: false, playCount: 198, lastPlayed: '2026-08-09T18:15:00Z', source: 'local', isAvailable: true },
+   629→  { id: 'track-3-6', title: 'Binary Sunset', albumId: 'album-3', albumName: 'Phantom Frequencies', artistId: 'artist-3', artistName: 'Kai Horizon', trackNumber: 6, discNumber: 1, duration: 290, format: 'FLAC', bitDepth: 32, sampleRate: 96, channels: 2, bitrate: 4608, filePath: '/music/Kai Horizon/Phantom Frequencies/06 - Binary Sunset.flac', fileSize: 167402496, composers: ['Kai Horizon'], performers: [{ name: 'Kai Horizon', role: 'production', instrument: 'synthesizers' }], genre: 'Electronic', loved: false, playCount: 167, lastPlayed: '2026-08-08T22:00:00Z', source: 'local', isAvailable: true },
+   630→  { id: 'track-3-7', title: 'Spectral Drift', albumId: 'album-3', albumName: 'Phantom Frequencies', artistId: 'artist-3', artistName: 'Kai Horizon', trackNumber: 7, discNumber: 1, duration: 467, format: 'FLAC', bitDepth: 32, sampleRate: 96, channels: 2, bitrate: 4608, filePath: '/music/Kai Horizon/Phantom Frequencies/07 - Spectral Drift.flac', fileSize: 269484032, composers: ['Kai Horizon'], performers: [{ name: 'Kai Horizon', role: 'production', instrument: 'synthesizers' }], genre: 'Electronic', loved: false, playCount: 145, lastPlayed: '2026-08-07T17:30:00Z', source: 'local', isAvailable: true },
+   631→  { id: 'track-3-8', title: 'Zero Point', albumId: 'album-3', albumName: 'Phantom Frequencies', artistId: 'artist-3', artistName: 'Kai Horizon', trackNumber: 8, discNumber: 1, duration: 512, format: 'FLAC', bitDepth: 32, sampleRate: 96, channels: 2, bitrate: 4608, filePath: '/music/Kai Horizon/Phantom Frequencies/08 - Zero Point.flac', fileSize: 295279001, composers: ['Kai Horizon'], performers: [{ name: 'Kai Horizon', role: 'production', instrument: 'synthesizers' }], genre: 'Electronic', loved: true, playCount: 278, lastPlayed: '2026-08-11T19:00:00Z', source: 'local', isAvailable: true },
+   632→  { id: 'track-3-9', title: 'Event Horizon', albumId: 'album-3', albumName: 'Phantom Frequencies', artistId: 'artist-3', artistName: 'Kai Horizon', trackNumber: 9, discNumber: 1, duration: 407, format: 'FLAC', bitDepth: 32, sampleRate: 96, channels: 2, bitrate: 4608, filePath: '/music/Kai Horizon/Phantom Frequencies/09 - Event Horizon.flac', fileSize: 234881024, composers: ['Kai Horizon'], performers: [{ name: 'Kai Horizon', role: 'production', instrument: 'synthesizers' }], genre: 'Electronic', loved: false, playCount: 189, lastPlayed: '2026-08-06T15:00:00Z', source: 'local', isAvailable: true },
+   633→
+   634→  // Album 4 - Golden Hour
+   635→  { id: 'track-4-1', title: 'Ankobra Sunrise', albumId: 'album-4', albumName: 'Golden Hour', artistId: 'artist-4', artistName: 'Amara Osei', trackNumber: 1, discNumber: 1, duration: 258, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Amara Osei/Golden Hour/01 - Ankobra Sunrise.flac', fileSize: 111669149, composers: ['Amara Osei', 'Kwame Asante'], performers: [{ name: 'Amara Osei', role: 'vocals' }, { name: 'Kwame Asante', role: 'guitar' }, { name: 'Elena Petrova', role: 'keys' }], genre: 'Neo-Soul', loved: true, playCount: 489, lastPlayed: '2026-08-12T00:00:00Z', source: 'local', isAvailable: true },
+   636→  { id: 'track-4-2', title: 'Riversong', albumId: 'album-4', albumName: 'Golden Hour', artistId: 'artist-4', artistName: 'Amara Osei', trackNumber: 2, discNumber: 1, duration: 312, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Amara Osei/Golden Hour/02 - Riversong.flac', fileSize: 135295946, composers: ['Amara Osei'], performers: [{ name: 'Amara Osei', role: 'vocals' }, { name: 'Kwame Asante', role: 'guitar' }, { name: 'Elena Petrova', role: 'keys' }], genre: 'Neo-Soul', loved: true, playCount: 567, lastPlayed: '2026-08-11T23:30:00Z', source: 'local', isAvailable: true },
+   637→  { id: 'track-4-3', title: 'London Skyline', albumId: 'album-4', albumName: 'Golden Hour', artistId: 'artist-4', artistName: 'Amara Osei', trackNumber: 3, discNumber: 1, duration: 289, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Amara Osei/Golden Hour/03 - London Skyline.flac', fileSize: 125402378, composers: ['Amara Osei', 'Elena Petrova'], performers: [{ name: 'Amara Osei', role: 'vocals' }, { name: 'Kwame Asante', role: 'guitar' }, { name: 'Elena Petrova', role: 'keys' }], genre: 'Neo-Soul', loved: false, playCount: 345, lastPlayed: '2026-08-10T22:00:00Z', source: 'local', isAvailable: true },
+   638→  { id: 'track-4-4', title: 'Golden Thread', albumId: 'album-4', albumName: 'Golden Hour', artistId: 'artist-4', artistName: 'Amara Osei', trackNumber: 4, discNumber: 1, duration: 267, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Amara Osei/Golden Hour/04 - Golden Thread.flac', fileSize: 115762790, composers: ['Amara Osei'], performers: [{ name: 'Amara Osei', role: 'vocals' }, { name: 'Kwame Asante', role: 'guitar' }, { name: 'Elena Petrova', role: 'keys' }], genre: 'Neo-Soul', loved: false, playCount: 298, lastPlayed: '2026-08-09T20:00:00Z', source: 'local', isAvailable: true },
+   639→  { id: 'track-4-5', title: 'Accra Nights', albumId: 'album-4', albumName: 'Golden Hour', artistId: 'artist-4', artistName: 'Amara Osei', trackNumber: 5, discNumber: 1, duration: 345, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Amara Osei/Golden Hour/05 - Accra Nights.flac', fileSize: 149660774, composers: ['Amara Osei', 'Kwame Asante'], performers: [{ name: 'Amara Osei', role: 'vocals' }, { name: 'Kwame Asante', role: 'guitar' }, { name: 'Elena Petrova', role: 'keys' }], genre: 'Neo-Soul', loved: true, playCount: 423, lastPlayed: '2026-08-12T01:15:00Z', source: 'local', isAvailable: true },
+   640→
+   641→  // Album 5 - Celestial Mechanics (partial)
+   642→  { id: 'track-5-1', title: 'Overture: Dark Matter', albumId: 'album-5', albumName: 'Celestial Mechanics', artistId: 'artist-5', artistName: 'Aethon', trackNumber: 1, discNumber: 1, duration: 723, format: 'FLAC', bitDepth: 32, sampleRate: 352, channels: 2, bitrate: 22528, filePath: '/music/Aethon/Celestial Mechanics/01 - Overture - Dark Matter.flac', fileSize: 203882956, composers: ['Magnus Helle'], performers: [{ name: 'Magnus Helle', role: 'guitar', instrument: 'vocals' }, { name: 'Ingrid Solberg', role: 'bass' }, { name: 'Torsten Dahl', role: 'drums' }, { name: 'Erik Voss', role: 'keyboards' }], genre: 'Progressive Metal', loved: true, playCount: 189, lastPlayed: '2026-08-11T18:00:00Z', source: 'local', isAvailable: true },
+   643→  { id: 'track-5-2', title: 'Gravitational Lensing', albumId: 'album-5', albumName: 'Celestial Mechanics', artistId: 'artist-5', artistName: 'Aethon', trackNumber: 2, discNumber: 1, duration: 856, format: 'FLAC', bitDepth: 32, sampleRate: 352, channels: 2, bitrate: 22528, filePath: '/music/Aethon/Celestial Mechanics/02 - Gravitational Lensing.flac', fileSize: 241591910, composers: ['Magnus Helle', 'Erik Voss'], performers: [{ name: 'Magnus Helle', role: 'guitar', instrument: 'vocals' }, { name: 'Ingrid Solberg', role: 'bass' }, { name: 'Torsten Dahl', role: 'drums' }, { name: 'Erik Voss', role: 'keyboards' }], genre: 'Progressive Metal', loved: false, playCount: 156, lastPlayed: '2026-08-10T15:00:00Z', source: 'local', isAvailable: true },
+   644→  { id: 'track-5-3', title: 'Orbital Decay', albumId: 'album-5', albumName: 'Celestial Mechanics', artistId: 'artist-5', artistName: 'Aethon', trackNumber: 3, discNumber: 1, duration: 634, format: 'FLAC', bitDepth: 32, sampleRate: 352, channels: 2, bitrate: 22528, filePath: '/music/Aethon/Celestial Mechanics/03 - Orbital Decay.flac', fileSize: 179047444, composers: ['Magnus Helle'], performers: [{ name: 'Magnus Helle', role: 'guitar', instrument: 'vocals' }, { name: 'Ingrid Solberg', role: 'bass' }, { name: 'Torsten Dahl', role: 'drums' }, { name: 'Erik Voss', role: 'keyboards' }], genre: 'Progressive Metal', loved: false, playCount: 134, lastPlayed: '2026-08-09T12:00:00Z', source: 'local', isAvailable: true },
+   645→  { id: 'track-5-4', title: 'Supernova (Part I)', albumId: 'album-5', albumName: 'Celestial Mechanics', artistId: 'artist-5', artistName: 'Aethon', trackNumber: 4, discNumber: 1, duration: 712, format: 'FLAC', bitDepth: 32, sampleRate: 352, channels: 2, bitrate: 22528, filePath: '/music/Aethon/Celestial Mechanics/04 - Supernova Part I.flac', fileSize: 201064345, composers: ['Magnus Helle', 'Ingrid Solberg'], performers: [{ name: 'Magnus Helle', role: 'guitar', instrument: 'vocals' }, { name: 'Ingrid Solberg', role: 'bass' }, { name: 'Torsten Dahl', role: 'drums' }, { name: 'Erik Voss', role: 'keyboards' }], genre: 'Progressive Metal', loved: true, playCount: 201, lastPlayed: '2026-08-11T20:30:00Z', source: 'local', isAvailable: true },
+   646→  { id: 'track-5-5', title: 'Supernova (Part II)', albumId: 'album-5', albumName: 'Celestial Mechanics', artistId: 'artist-5', artistName: 'Aethon', trackNumber: 5, discNumber: 1, duration: 589, format: 'FLAC', bitDepth: 32, sampleRate: 352, channels: 2, bitrate: 22528, filePath: '/music/Aethon/Celestial Mechanics/05 - Supernova Part II.flac', fileSize: 166429982, composers: ['Magnus Helle', 'Torsten Dahl'], performers: [{ name: 'Magnus Helle', role: 'guitar', instrument: 'vocals' }, { name: 'Ingrid Solberg', role: 'bass' }, { name: 'Torsten Dahl', role: 'drums' }, { name: 'Erik Voss', role: 'keyboards' }], genre: 'Progressive Metal', loved: false, playCount: 178, lastPlayed: '2026-08-10T18:45:00Z', source: 'local', isAvailable: true },
+   647→  { id: 'track-5-6', title: 'Eventual Entropy', albumId: 'album-5', albumName: 'Celestial Mechanics', artistId: 'artist-5', artistName: 'Aethon', trackNumber: 6, discNumber: 1, duration: 1286, format: 'FLAC', bitDepth: 32, sampleRate: 352, channels: 2, bitrate: 22528, filePath: '/music/Aethon/Celestial Mechanics/06 - Eventual Entropy.flac', fileSize: 363079832, composers: ['Magnus Helle', 'Erik Voss'], performers: [{ name: 'Magnus Helle', role: 'guitar', instrument: 'vocals' }, { name: 'Ingrid Solberg', role: 'bass' }, { name: 'Torsten Dahl', role: 'drums' }, { name: 'Erik Voss', role: 'keyboards' }], genre: 'Progressive Metal', loved: true, playCount: 245, lastPlayed: '2026-08-12T00:15:00Z', source: 'local', isAvailable: true },
+   648→];
+   649→
+   650→// ─── ZONES ───
+   651→
+   652→export const zones: Zone[] = [
+   653→  {
+   654→    id: 'zone-1',
+   655→    name: 'Living Room',
+   656→    endpoints: [{ id: 'ep-1', name: 'Living Room Bridge', type: 'bridge', status: 'online', dac: 'Chord Hugo 2', maxSampleRate: 768, maxBitDepth: 32, supportsDSD: true, supportsMQA: true }],
+   657→    isGroup: false,
+   658→    isPlaying: true,
+   659→    currentTrackId: 'track-3-4',
+   660→    volume: 72,
+   661→    isMuted: false,
+   662→    isOnline: true,
+   663→    outputFormat: 'PCM',
+   664→    sampleRate: 96,
+   665→    bitDepth: 32,
+   666→    dspEnabled: true,
+   667→    dspChain: ['Loudness', 'EQ (Flat)'],
+   668→  },
+   669→  {
+   670→    id: 'zone-2',
+   671→    name: 'Study',
+   672→    endpoints: [{ id: 'ep-2', name: 'Study DAC', type: 'raspberry-pi', status: 'online', dac: 'iFi Zen DAC V2', maxSampleRate: 384, maxBitDepth: 32, supportsDSD: true, supportsMQA: false }],
+   673→    isGroup: false,
+   674→    isPlaying: true,
+   675→    currentTrackId: 'track-5-6',
+   676→    volume: 55,
+   677→    isMuted: false,
+   678→    isOnline: true,
+   679→    outputFormat: 'PCM',
+   680→    sampleRate: 352,
+   681→    bitDepth: 32,
+   682→    dspEnabled: true,
+   683→    dspChain: ['Headphone Correction (HD800S)', 'Crossfeed'],
+   684→  },
+   685→  {
+   686→    id: 'zone-3',
+   687→    name: 'Kitchen + Dining',
+   688→    endpoints: [
+   689→      { id: 'ep-3', name: 'Kitchen Speaker', type: 'bridge', status: 'online', dac: 'Built-in DAC', maxSampleRate: 96, maxBitDepth: 24, supportsDSD: false, supportsMQA: false },
+   690→      { id: 'ep-4', name: 'Dining Room Speaker', type: 'bridge', status: 'online', dac: 'Built-in DAC', maxSampleRate: 96, maxBitDepth: 24, supportsDSD: false, supportsMQA: false },
+   691→    ],
+   692→    isGroup: true,
+   693→    isPlaying: true,
+   694→    currentTrackId: 'track-4-2',
+   695→    volume: 45,
+   696→    isMuted: false,
+   697→    isOnline: true,
+   698→    outputFormat: 'PCM',
+   699→    sampleRate: 96,
+   700→    bitDepth: 24,
+   701→    dspEnabled: false,
+   702→    dspChain: [],
+   703→  },
+   704→  {
+   705→    id: 'zone-4',
+   706→    name: 'Bedroom',
+   707→    endpoints: [{ id: 'ep-5', name: 'Bedroom Bridge', type: 'bridge', status: 'standby', dac: 'Cambridge Audio DacMagic', maxSampleRate: 192, maxBitDepth: 24, supportsDSD: false, supportsMQA: false }],
+   708→    isGroup: false,
+   709→    isPlaying: false,
+   710→    volume: 30,
+   711→    isMuted: false,
+   712→    isOnline: true,
+   713→    outputFormat: 'PCM',
+   714→    sampleRate: 44,
+   715→    bitDepth: 16,
+   716→    dspEnabled: false,
+   717→    dspChain: [],
+   718→  },
+   719→];
+   720→
+   721→// ─── GENRES ───
+   722→
+   723→export const genres: Genre[] = [
+   724→  { id: 'genre-1', name: 'Jazz', trackCount: 38, albumCount: 3, artistCount: 3, imageUrl: albumArtUrl('genre-1') },
+   725→  { id: 'genre-2', name: 'Electronic', trackCount: 64, albumCount: 5, artistCount: 3, imageUrl: albumArtUrl('genre-2') },
+   726→  { id: 'genre-3', name: 'Classical', trackCount: 36, albumCount: 3, artistCount: 2, imageUrl: albumArtUrl('genre-3') },
+   727→  { id: 'genre-4', name: 'Ambient', trackCount: 44, albumCount: 6, artistCount: 2, imageUrl: albumArtUrl('genre-4') },
+   728→  { id: 'genre-5', name: 'Post-Rock', trackCount: 28, albumCount: 3, artistCount: 1, imageUrl: albumArtUrl('genre-5') },
+   729→  { id: 'genre-6', name: 'Neo-Soul', trackCount: 42, albumCount: 3, artistCount: 1, imageUrl: albumArtUrl('genre-6') },
+   730→  { id: 'genre-7', name: 'Progressive Metal', trackCount: 52, albumCount: 5, artistCount: 1, imageUrl: albumArtUrl('genre-7') },
+   731→  { id: 'genre-8', name: 'Indie Pop', trackCount: 40, albumCount: 4, artistCount: 1, imageUrl: albumArtUrl('genre-8') },
+   732→  { id: 'genre-9', name: 'Afrobeat', trackCount: 34, albumCount: 2, artistCount: 1, imageUrl: albumArtUrl('genre-9') },
+   733→  { id: 'genre-10', name: 'Experimental', trackCount: 22, albumCount: 2, artistCount: 1, imageUrl: albumArtUrl('genre-10') },
+   734→  { id: 'genre-11', name: 'World', trackCount: 18, albumCount: 2, artistCount: 2, imageUrl: albumArtUrl('genre-11') },
+   735→  { id: 'genre-12', name: 'Fusion', trackCount: 30, albumCount: 2, artistCount: 2, imageUrl: albumArtUrl('genre-12') },
+   736→];
+   737→
+   738→// ─── PLAYLISTS ───
+   739→
+   740→export const playlists: Playlist[] = [
+   741→  {
+   742→    id: 'playlist-1',
+   743→    name: 'Late Night Focus',
+   744→    description: 'Ambient and electronic for deep work sessions',
+   745→    trackIds: ['track-3-1', 'track-3-4', 'track-3-8', 'track-7-1', 'track-7-3', 'track-2-4', 'track-7-5'],
+   746→    createdAt: '2026-06-15T10:00:00Z',
+   747→    updatedAt: '2026-08-10T22:00:00Z',
+   748→    coverUrl: albumArtUrl('playlist-1'),
+   749→    trackCount: 7,
+   750→    duration: 2864,
+   751→  },
+   752→  {
+   753→    id: 'playlist-2',
+   754→    name: 'Morning Coffee',
+   755→    description: 'Warm jazz and neo-soul to start the day',
+   756→    trackIds: ['track-1-1', 'track-1-3', 'track-4-1', 'track-4-2', 'track-8-1', 'track-8-3'],
+   757→    createdAt: '2026-05-20T08:00:00Z',
+   758→    updatedAt: '2026-08-08T07:30:00Z',
+   759→    coverUrl: albumArtUrl('playlist-2'),
+   760→    trackCount: 6,
+   761→    duration: 1789,
+   762→  },
+   763→  {
+   764→    id: 'playlist-3',
+   765→    name: 'Audiophile Test',
+   766→    description: 'Reference recordings for system evaluation',
+   767→    trackIds: ['track-2-1', 'track-5-1', 'track-7-2', 'track-1-6', 'track-6-3'],
+   768→    createdAt: '2026-07-01T14:00:00Z',
+   769→    updatedAt: '2026-08-05T16:00:00Z',
+   770→    coverUrl: albumArtUrl('playlist-3'),
+   771→    trackCount: 5,
+   772→    duration: 2171,
+   773→  },
+   774→  {
+   775→    id: 'playlist-4',
+   776→    name: 'Energy Boost',
+   777→    description: 'High-energy tracks for workouts and drives',
+   778→    trackIds: ['track-5-4', 'track-5-5', 'track-3-2', 'track-11-1', 'track-11-3', 'track-8-2'],
+   779→    createdAt: '2026-04-10T12:00:00Z',
+   780→    updatedAt: '2026-08-11T06:00:00Z',
+   781→    coverUrl: albumArtUrl('playlist-4'),
+   782→    trackCount: 6,
+   783→    duration: 2817,
+   784→  },
+   785→];
+   786→
+   787→// ─── HELPER FUNCTIONS ───
+   788→
+   789→export function formatDuration(seconds: number): string {
+   790→  const h = Math.floor(seconds / 3600);
+   791→  const m = Math.floor((seconds % 3600) / 60);
+   792→  const s = seconds % 60;
+   793→  if (h > 0) {
+   794→    return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+   795→  }
+   796→  return `${m}:${s.toString().padStart(2, '0')}`;
+   797→}
+   798→
+   799→export function formatFileSize(bytes: number): string {
+   800→  if (bytes >= 1073741824) return `${(bytes / 1073741824).toFixed(1)} GB`;
+   801→  if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
+   802→  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+   803→  return `${bytes} B`;
+   804→}
+   805→
+   806→export function formatSampleRate(rate: number): string {
+   807→  if (rate >= 1000) return `${(rate / 1000).toFixed(1)} kHz`;
+   808→  return `${rate} Hz`;
+   809→}
+   810→
+   811→export function getCoverGradient(id: string): string {
+   812→  const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+   813→  return coverGradient(hash);
+   814→}
+   815→
+   816→export function getArtistById(id: string): Artist | undefined {
+   817→  return artists.find(a => a.id === id);
+   818→}
+   819→
+   820→export function getAlbumById(id: string): Album | undefined {
+   821→  return albums.find(a => a.id === id);
+   822→}
+   823→
+   824→export function getTrackById(id: string): Track | undefined {
+   825→  return tracks.find(t => t.id === id);
+   826→}
+   827→
+   828→export function getTracksByAlbum(albumId: string): Track[] {
+   829→  return tracks.filter(t => t.albumId === albumId).sort((a, b) => a.trackNumber - b.trackNumber);
+   830→}
+   831→
+   832→export function getAlbumsByArtist(artistId: string): Album[] {
+   833→  return albums.filter(a => a.artistId === artistId);
+   834→}
+   835→
+   836→export function searchLibrary(query: string): { artists: Artist[]; albums: Album[]; tracks: Track[] } {
+   837→  const q = query.toLowerCase();
+   838→  return {
+   839→    artists: artists.filter(a => a.name.toLowerCase().includes(q)),
+   840→    albums: albums.filter(a => a.title.toLowerCase().includes(q) || a.artistName.toLowerCase().includes(q)),
+   841→    tracks: tracks.filter(t => t.title.toLowerCase().includes(q) || t.artistName.toLowerCase().includes(q) || t.albumName.toLowerCase().includes(q)),
+   842→  };
+   843→}
+   844→
+   845→// Note: Podcast search is in podcast-data.ts via searchPodcasts()
+   846→
+   847→export function getSignalPath(trackId: string, zoneId: string): SignalPathStep[] {
+   848→  const track = getTrackById(trackId);
+   849→  const zone = zones.find(z => z.id === zoneId);
+   850→  if (!track || !zone) return [];
+   851→
+   852→  const steps: SignalPathStep[] = [];
+   853→
+   854→  // Source step
+   855→  steps.push({
+   856→    label: 'Source',
+   857→    format: track.format,
+   858→    sampleRate: track.sampleRate,
+   859→    bitDepth: track.bitDepth,
+   860→    isBitPerfect: true,
+   861→  });
+   862→
+   863→  // DSP steps
+   864→  if (zone.dspEnabled && zone.dspChain && zone.dspChain.length > 0) {
+   865→    for (const dsp of zone.dspChain) {
+   866→      steps.push({
+   867→        label: dsp,
+   868→        format: 'PCM',
+   869→        sampleRate: track.sampleRate,
+   870→        bitDepth: track.bitDepth,
+   871→        isBitPerfect: false,
+   872→      });
+   873→    }
+   874→  }
+   875→
+   876→  // Volume control
+   877→  steps.push({
+   878→    label: 'Volume Control',
+   879→    format: 'PCM',
+   880→    sampleRate: track.sampleRate,
+   881→    bitDepth: track.bitDepth,
+   882→    isBitPerfect: zone.volume === 100,
+   883→  });
+   884→
+   885→  // Output step
+   886→  const endpointNeedsDownsample = track.sampleRate > zone.sampleRate;
+   887→  steps.push({
+   888→    label: `Output (${zone.endpoints[0]?.name || 'Unknown'})`,
+   889→    format: zone.outputFormat,
+   890→    sampleRate: endpointNeedsDownsample ? zone.sampleRate : track.sampleRate,
+   891→    bitDepth: endpointNeedsDownsample ? zone.bitDepth : track.bitDepth,
+   892→    isBitPerfect: !endpointNeedsDownsample && zone.volume === 100 && (!zone.dspEnabled || !zone.dspChain?.length),
+   893→  });
+   894→
+   895→  return steps;
+   896→}
+   897→

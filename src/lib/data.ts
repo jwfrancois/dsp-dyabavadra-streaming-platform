@@ -99,18 +99,37 @@ export interface Zone {
   bitDepth: number;
   dspEnabled: boolean;
   dspChain?: string[];
+  volumeMode: 'hardware' | 'dsp' | 'fixed';
+  maxVolume?: number;
+  startupVolume?: number;
+  groupZones?: string[];
+  syncOffsetMs?: number;
+  clockMode?: 'auto' | 'master' | 'slave' | 'passthrough';
+  dspConfig?: DSPConfig;
 }
 
 export interface Endpoint {
   id: string;
   name: string;
-  type: 'bridge' | 'raspberry-pi' | 'mac' | 'pc' | 'mobile';
-  status: 'online' | 'standby' | 'offline';
+  type: 'bridge' | 'raspberry-pi' | 'mac' | 'pc' | 'mobile' | 'embedded-soc' | 'dedicated-hardware';
+  status: 'online' | 'standby' | 'offline' | 'error';
   dac?: string;
   maxSampleRate: number;
   maxBitDepth: number;
   supportsDSD: boolean;
   supportsMQA: boolean;
+  supportsDSD256: boolean;
+  supportsDoP: boolean;
+  firmware?: string;
+  ipAddress?: string;
+  macAddress?: string;
+  latencyMs?: number;
+  clockSource?: 'internal' | 'usb' | 'spdif' | 'wordclock' | 'network';
+  hasMasterClock?: boolean;
+  protocol?: 'dsp-native' | 'raat' | 'airplay' | 'chromecast';
+  lastSeen?: string;
+  cpuUsage?: number;
+  bufferDepth?: number;
 }
 
 export interface SignalPathStep {
@@ -119,6 +138,12 @@ export interface SignalPathStep {
   sampleRate: number;
   bitDepth: number;
   isBitPerfect: boolean;
+  isDSD?: boolean;
+  dsdMode?: 'native' | 'DoP' | 'PCM';
+  ditherType?: 'none' | 'tpdf' | 'triangular' | 'noise-shaped';
+  filterType?: 'minimum-phase' | 'linear-phase' | 'apodizing' | 'brick-wall';
+  processingDetail?: string;
+  latencyMs?: number;
 }
 
 export interface Playlist {
@@ -140,6 +165,199 @@ export interface Genre {
   albumCount: number;
   artistCount: number;
   imageUrl?: string;
+}
+
+// ─── DSP Configuration Types ───
+
+export interface DSPConfig {
+  eq?: EQBand[];
+  roomCorrection?: RoomCorrection;
+  upsampling?: UpsamplingConfig;
+  headphoneCorrection?: HeadphoneCorrection;
+  crossfeed?: CrossfeedConfig;
+  loudness?: LoudnessConfig;
+  dither?: DitherConfig;
+  volumeLimit?: VolumeLimitConfig;
+}
+
+export interface EQBand {
+  id: string;
+  enabled: boolean;
+  type: 'parametric' | 'low-shelf' | 'high-shelf' | 'low-pass' | 'high-pass' | 'band-pass' | 'notch';
+  frequency: number; // Hz
+  gain: number; // dB, -24 to +24
+  q: number; // 0.1 to 20
+  label?: string;
+}
+
+export interface RoomCorrection {
+  enabled: boolean;
+  filterName: string;
+  filterFilePath?: string;
+  samplerate: number;
+  channels: number;
+  delayMs?: number;
+  description?: string;
+}
+
+export interface UpsamplingConfig {
+  enabled: boolean;
+  targetRate: number; // e.g., 176400 for 4x 44.1k
+  targetBitDepth: number;
+  filterType: 'minimum-phase' | 'linear-phase' | 'apodizing' | 'brick-wall' | 'short-kernel' | 'long-kernel';
+  maxSrcRate: number; // don't upsample sources above this rate
+}
+
+export interface HeadphoneCorrection {
+  enabled: boolean;
+  profileName: string;
+  manufacturer: string;
+  model: string;
+  description?: string;
+}
+
+export interface CrossfeedConfig {
+  enabled: boolean;
+  preset: 'none' | 'subtle' | 'moderate' | 'strong' | 'custom';
+  customCutoff?: number;
+  customFeed?: number;
+}
+
+export interface LoudnessConfig {
+  enabled: boolean;
+  targetLUFS: number;
+  method: 'replaygain' | 'ebu-r128' | 'volume-match';
+  fallbackGain: number;
+}
+
+export interface DitherConfig {
+  enabled: boolean;
+  type: 'tpdf' | 'triangular' | 'noise-shaped' | 'none';
+  noiseShape?: 'flat' | 'f-weighted' | 'shibata';
+}
+
+export interface VolumeLimitConfig {
+  maxDb?: number;
+  maxPercent?: number;
+  startupMax?: number;
+  rampTimeMs?: number;
+}
+
+// ─── Core / Server Status Types ───
+
+export interface CoreStatus {
+  id: string;
+  name: string;
+  version: string;
+  status: 'running' | 'starting' | 'stopping' | 'error';
+  uptime: number; // seconds
+  machineInfo: MachineInfo;
+  audioEngine: AudioEngineInfo;
+  storageLocations: StorageLocationInfo[];
+  networkInfo: NetworkInfo;
+  apiInfo: APIInfo;
+  streamingServices: StreamingServiceInfo[];
+  libraryStats: LibraryStats;
+  discoveryMode: 'lan' | 'lan+remote' | 'vpn';
+  autoDiscovery: boolean;
+  lastScanAt?: string;
+}
+
+export interface MachineInfo {
+  hostname: string;
+  os: string;
+  cpuModel: string;
+  cpuUsage: number;
+  memoryTotal: number;
+  memoryUsed: number;
+  cores: number;
+  architecture: string;
+}
+
+export interface AudioEngineInfo {
+  status: 'idle' | 'active' | 'overloaded';
+  activeZones: number;
+  totalZones: number;
+  decodingLoad: number; // percent
+  dspLoad: number; // percent
+  outputLoad: number; // percent
+  currentSampleRate: number;
+  supportedFormats: string[];
+  maxChannels: number;
+  bitPerfectCapable: boolean;
+  dsdNativeCapable: boolean;
+  mqaPassthrough: boolean;
+}
+
+export interface StorageLocationInfo {
+  id: string;
+  name: string;
+  path: string;
+  type: 'local' | 'nas' | 'usb' | 'network-share';
+  enabled: boolean;
+  totalSpace: number;
+  usedSpace: number;
+  trackCount: number;
+  albumCount: number;
+  isWatching: boolean;
+  lastScan?: string;
+  scanIntervalMin: number;
+}
+
+export interface NetworkInfo {
+  hostname: string;
+  ipAddress: string;
+  macAddress: string;
+  protocol: 'dsp-native' | 'raat';
+  port: number;
+  discoveryPort: number;
+  encryption: boolean;
+  remoteAccess: boolean;
+  vpnActive: boolean;
+  connectedEndpoints: number;
+}
+
+export interface APIInfo {
+  version: string;
+  protocol: 'websocket' | 'http-long-poll' | 'grpc';
+  port: number;
+  wsPort: number;
+  authenticated: boolean;
+  remoteApps: RemoteAppInfo[];
+}
+
+export interface RemoteAppInfo {
+  id: string;
+  name: string;
+  type: 'ios' | 'android' | 'desktop' | 'web';
+  connected: boolean;
+  lastSeen?: string;
+  ipAddress?: string;
+}
+
+export interface StreamingServiceInfo {
+  id: string;
+  name: string;
+  type: 'tidal' | 'qobuz' | 'deezer' | 'spotify' | 'apple-music';
+  status: 'connected' | 'disconnected' | 'error' | 'syncing';
+  linked: boolean;
+  username?: string;
+  qualityTier: string;
+  maxQuality?: string;
+  lastSync?: string;
+  librarySize?: number;
+}
+
+export interface LibraryStats {
+  totalTracks: number;
+  totalAlbums: number;
+  totalArtists: number;
+  totalDuration: number;
+  totalSize: number;
+  localTracks: number;
+  streamingTracks: number;
+  formatBreakdown: Record<string, number>;
+  sampleRateBreakdown: Record<string, number>;
 }
 
 // ─── Cover Art URLs (using gradients as placeholders) ───
@@ -653,7 +871,13 @@ export const zones: Zone[] = [
   {
     id: 'zone-1',
     name: 'Living Room',
-    endpoints: [{ id: 'ep-1', name: 'Living Room Bridge', type: 'bridge', status: 'online', dac: 'Chord Hugo 2', maxSampleRate: 768, maxBitDepth: 32, supportsDSD: true, supportsMQA: true }],
+    endpoints: [{
+      id: 'ep-1', name: 'Living Room Bridge', type: 'dedicated-hardware', status: 'online',
+      dac: 'Chord Hugo 2', maxSampleRate: 768, maxBitDepth: 32, supportsDSD: true, supportsMQA: true,
+      supportsDSD256: true, supportsDoP: true, firmware: 'v3.42', ipAddress: '192.168.1.101',
+      macAddress: 'AA:BB:CC:DD:EE:01', latencyMs: 2.1, clockSource: 'usb', hasMasterClock: true,
+      protocol: 'dsp-native', lastSeen: '2026-08-12T14:30:00Z', cpuUsage: 12, bufferDepth: 4096,
+    }],
     isGroup: false,
     isPlaying: true,
     currentTrackId: 'track-3-4',
@@ -665,11 +889,30 @@ export const zones: Zone[] = [
     bitDepth: 32,
     dspEnabled: true,
     dspChain: ['Loudness', 'EQ (Flat)'],
+    volumeMode: 'dsp',
+    maxVolume: 85,
+    startupVolume: 40,
+    clockMode: 'passthrough',
+    dspConfig: {
+      eq: [
+        { id: 'eq-1', enabled: true, type: 'parametric', frequency: 80, gain: 2.5, q: 1.2, label: 'Bass Boost' },
+        { id: 'eq-2', enabled: true, type: 'parametric', frequency: 2500, gain: -1.0, q: 2.0, label: 'Presence Cut' },
+        { id: 'eq-3', enabled: false, type: 'high-shelf', frequency: 12000, gain: -2.0, q: 0.7, label: 'Air' },
+      ],
+      loudness: { enabled: true, targetLUFS: -16, method: 'ebu-r128', fallbackGain: 0 },
+      dither: { enabled: true, type: 'tpdf' },
+    },
   },
   {
     id: 'zone-2',
     name: 'Study',
-    endpoints: [{ id: 'ep-2', name: 'Study DAC', type: 'raspberry-pi', status: 'online', dac: 'iFi Zen DAC V2', maxSampleRate: 384, maxBitDepth: 32, supportsDSD: true, supportsMQA: false }],
+    endpoints: [{
+      id: 'ep-2', name: 'Study DAC', type: 'raspberry-pi', status: 'online',
+      dac: 'iFi Zen DAC V2', maxSampleRate: 384, maxBitDepth: 32, supportsDSD: true, supportsMQA: false,
+      supportsDSD256: true, supportsDoP: true, firmware: 'v2.1.3', ipAddress: '192.168.1.102',
+      macAddress: 'AA:BB:CC:DD:EE:02', latencyMs: 4.8, clockSource: 'usb', hasMasterClock: false,
+      protocol: 'dsp-native', lastSeen: '2026-08-12T14:29:45Z', cpuUsage: 28, bufferDepth: 2048,
+    }],
     isGroup: false,
     isPlaying: true,
     currentTrackId: 'track-5-6',
@@ -681,13 +924,29 @@ export const zones: Zone[] = [
     bitDepth: 32,
     dspEnabled: true,
     dspChain: ['Headphone Correction (HD800S)', 'Crossfeed'],
+    volumeMode: 'dsp',
+    maxVolume: 75,
+    startupVolume: 35,
+    clockMode: 'auto',
+    syncOffsetMs: 0,
+    dspConfig: {
+      headphoneCorrection: {
+        enabled: true, profileName: 'HD800S AutoEQ', manufacturer: 'Sennheiser',
+        model: 'HD 800S', description: 'AutoEQ-derived correction profile',
+      },
+      crossfeed: { enabled: true, preset: 'subtle' },
+      upsampling: {
+        enabled: true, targetRate: 352800, targetBitDepth: 32,
+        filterType: 'minimum-phase', maxSrcRate: 96000,
+      },
+    },
   },
   {
     id: 'zone-3',
     name: 'Kitchen + Dining',
     endpoints: [
-      { id: 'ep-3', name: 'Kitchen Speaker', type: 'bridge', status: 'online', dac: 'Built-in DAC', maxSampleRate: 96, maxBitDepth: 24, supportsDSD: false, supportsMQA: false },
-      { id: 'ep-4', name: 'Dining Room Speaker', type: 'bridge', status: 'online', dac: 'Built-in DAC', maxSampleRate: 96, maxBitDepth: 24, supportsDSD: false, supportsMQA: false },
+      { id: 'ep-3', name: 'Kitchen Speaker', type: 'bridge', status: 'online', dac: 'Built-in DAC', maxSampleRate: 96, maxBitDepth: 24, supportsDSD: false, supportsMQA: false, supportsDSD256: false, supportsDoP: false, firmware: 'v1.8', ipAddress: '192.168.1.103', latencyMs: 6.2, clockSource: 'internal', protocol: 'dsp-native', lastSeen: '2026-08-12T14:30:10Z', cpuUsage: 8, bufferDepth: 1024 },
+      { id: 'ep-4', name: 'Dining Room Speaker', type: 'bridge', status: 'online', dac: 'Built-in DAC', maxSampleRate: 96, maxBitDepth: 24, supportsDSD: false, supportsMQA: false, supportsDSD256: false, supportsDoP: false, firmware: 'v1.8', ipAddress: '192.168.1.104', latencyMs: 6.5, clockSource: 'internal', protocol: 'dsp-native', lastSeen: '2026-08-12T14:30:08Z', cpuUsage: 7, bufferDepth: 1024 },
     ],
     isGroup: true,
     isPlaying: true,
@@ -700,11 +959,22 @@ export const zones: Zone[] = [
     bitDepth: 24,
     dspEnabled: false,
     dspChain: [],
+    volumeMode: 'hardware',
+    maxVolume: 60,
+    startupVolume: 25,
+    clockMode: 'slave',
+    syncOffsetMs: 3.2,
+    groupZones: [],
   },
   {
     id: 'zone-4',
     name: 'Bedroom',
-    endpoints: [{ id: 'ep-5', name: 'Bedroom Bridge', type: 'bridge', status: 'standby', dac: 'Cambridge Audio DacMagic', maxSampleRate: 192, maxBitDepth: 24, supportsDSD: false, supportsMQA: false }],
+    endpoints: [{
+      id: 'ep-5', name: 'Bedroom Bridge', type: 'bridge', status: 'standby',
+      dac: 'Cambridge Audio DacMagic', maxSampleRate: 192, maxBitDepth: 24, supportsDSD: false, supportsMQA: false,
+      supportsDSD256: false, supportsDoP: false, firmware: 'v4.0', ipAddress: '192.168.1.105',
+      latencyMs: 3.5, clockSource: 'internal', protocol: 'dsp-native', lastSeen: '2026-08-12T12:15:00Z', cpuUsage: 0, bufferDepth: 2048,
+    }],
     isGroup: false,
     isPlaying: false,
     volume: 30,
@@ -715,6 +985,10 @@ export const zones: Zone[] = [
     bitDepth: 16,
     dspEnabled: false,
     dspChain: [],
+    volumeMode: 'hardware',
+    maxVolume: 50,
+    startupVolume: 20,
+    clockMode: 'auto',
   },
 ];
 
