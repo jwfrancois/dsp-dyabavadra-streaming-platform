@@ -1454,3 +1454,259 @@ export function getDetailedSignalPath(trackId: string, zoneId: string): {
     trackInfo: track,
   };
 }
+
+// ─── USER PROFILE TYPES & DATA ───
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  avatar: string;
+  color: string;
+  lovedTrackIds: string[];
+  recentlyPlayedIds: string[];
+  totalPlayTime: number; // seconds
+  totalPlays: number;
+  joinDate: string;
+  isDefault: boolean;
+}
+
+export const userProfiles: UserProfile[] = [
+  {
+    id: 'profile-1', name: 'Alex', avatar: 'A', color: 'bg-primary',
+    lovedTrackIds: ['track-3-4', 'track-1-1', 'track-5-1', 'track-2-3'],
+    recentlyPlayedIds: ['track-3-4', 'track-3-2', 'track-5-6', 'track-1-1', 'track-7-2'],
+    totalPlayTime: 342000, totalPlays: 4820, joinDate: '2024-01-15', isDefault: true,
+  },
+  {
+    id: 'profile-2', name: 'Jordan', avatar: 'J', color: 'bg-blue-600',
+    lovedTrackIds: ['track-4-2', 'track-8-1', 'track-11-3'],
+    recentlyPlayedIds: ['track-4-2', 'track-4-1', 'track-8-3'],
+    totalPlayTime: 186000, totalPlays: 2400, joinDate: '2024-06-20', isDefault: false,
+  },
+  {
+    id: 'profile-3', name: 'Sam', avatar: 'S', color: 'bg-purple-600',
+    lovedTrackIds: ['track-7-1', 'track-7-5', 'track-3-8', 'track-2-4'],
+    recentlyPlayedIds: ['track-7-1', 'track-7-5', 'track-3-8'],
+    totalPlayTime: 95000, totalPlays: 1280, joinDate: '2025-03-10', isDefault: false,
+  },
+];
+
+// ─── PLAY HISTORY TYPES & DATA ───
+
+export interface PlayHistoryEntry {
+  id: string;
+  trackId: string;
+  profileId: string;
+  playedAt: string;
+  completed: boolean;
+  source: 'local' | 'tidal' | 'qobuz' | 'radio';
+  zoneId: string;
+}
+
+export const playHistory: PlayHistoryEntry[] = [
+  { id: 'ph-1', trackId: 'track-3-4', profileId: 'profile-1', playedAt: '2026-08-12T14:20:00Z', completed: false, source: 'local', zoneId: 'zone-1' },
+  { id: 'ph-2', trackId: 'track-3-2', profileId: 'profile-1', playedAt: '2026-08-12T13:55:00Z', completed: true, source: 'local', zoneId: 'zone-1' },
+  { id: 'ph-3', trackId: 'track-5-6', profileId: 'profile-1', playedAt: '2026-08-12T13:40:00Z', completed: true, source: 'local', zoneId: 'zone-2' },
+  { id: 'ph-4', trackId: 'track-1-1', profileId: 'profile-1', playedAt: '2026-08-12T12:10:00Z', completed: true, source: 'tidal', zoneId: 'zone-1' },
+  { id: 'ph-5', trackId: 'track-7-2', profileId: 'profile-1', playedAt: '2026-08-12T11:30:00Z', completed: true, source: 'local', zoneId: 'zone-1' },
+  { id: 'ph-6', trackId: 'track-4-2', profileId: 'profile-2', playedAt: '2026-08-12T14:15:00Z', completed: false, source: 'local', zoneId: 'zone-3' },
+  { id: 'ph-7', trackId: 'track-4-1', profileId: 'profile-2', playedAt: '2026-08-12T13:00:00Z', completed: true, source: 'qobuz', zoneId: 'zone-3' },
+  { id: 'ph-8', trackId: 'track-8-3', profileId: 'profile-2', playedAt: '2026-08-11T22:00:00Z', completed: true, source: 'local', zoneId: 'zone-3' },
+  { id: 'ph-9', trackId: 'track-7-1', profileId: 'profile-3', playedAt: '2026-08-12T10:00:00Z', completed: true, source: 'local', zoneId: 'zone-2' },
+  { id: 'ph-10', trackId: 'track-2-1', profileId: 'profile-1', playedAt: '2026-08-11T20:00:00Z', completed: true, source: 'local', zoneId: 'zone-1' },
+  { id: 'ph-11', trackId: 'track-5-4', profileId: 'profile-1', playedAt: '2026-08-11T19:30:00Z', completed: true, source: 'tidal', zoneId: 'zone-1' },
+  { id: 'ph-12', trackId: 'track-11-2', profileId: 'profile-3', playedAt: '2026-08-11T18:00:00Z', completed: true, source: 'radio', zoneId: 'zone-2' },
+];
+
+// ─── PLUGIN / EXTENSION TYPES & DATA ───
+
+export interface DSPPlugin {
+  id: string;
+  name: string;
+  version: string;
+  type: 'dsp-module' | 'streaming-service' | 'output-protocol' | 'metadata-provider' | 'codec';
+  author: string;
+  description: string;
+  installed: boolean;
+  enabled: boolean;
+  status: 'active' | 'error' | 'needs-update' | 'needs-license';
+  licenseType: 'open-source' | 'commercial' | 'proprietary' | 'needs-agreement';
+  licenseDetail?: string;
+  configUrl?: string;
+  lastUpdated?: string;
+}
+
+export const plugins: DSPPlugin[] = [
+  {
+    id: 'plugin-1', name: 'Parametric EQ', version: '1.3.0', type: 'dsp-module',
+    author: 'DSP Team', description: '10-band parametric equalizer with custom filter types',
+    installed: true, enabled: true, status: 'active', licenseType: 'open-source',
+    configUrl: '/dsp-config', lastUpdated: '2026-07-15',
+  },
+  {
+    id: 'plugin-2', name: 'Room Correction (REW)', version: '2.1.0', type: 'dsp-module',
+    author: 'DSP Team', description: 'Convolution-based room correction using REW measurement files',
+    installed: true, enabled: true, status: 'active', licenseType: 'open-source',
+    configUrl: '/dsp-config', lastUpdated: '2026-06-20',
+  },
+  {
+    id: 'plugin-3', name: 'Headphone AutoEQ', version: '1.5.2', type: 'dsp-module',
+    author: 'Community', description: 'AutoEQ-derived headphone correction profiles for 200+ models',
+    installed: true, enabled: true, status: 'active', licenseType: 'open-source',
+    lastUpdated: '2026-08-01',
+  },
+  {
+    id: 'plugin-4', name: 'TIDAL Integration', version: '3.0.0', type: 'streaming-service',
+    author: 'DSP Team', description: 'TIDAL streaming service with HiRes FLAC and MQA support',
+    installed: true, enabled: true, status: 'active', licenseType: 'needs-agreement',
+    licenseDetail: 'Requires TIDAL developer agreement for commercial distribution',
+    configUrl: '/streaming', lastUpdated: '2026-07-28',
+  },
+  {
+    id: 'plugin-5', name: 'Qobuz Integration', version: '2.4.1', type: 'streaming-service',
+    author: 'DSP Team', description: 'Qobuz streaming with up to 24-bit/192kHz HiRes',
+    installed: true, enabled: false, status: 'needs-license',
+    licenseDetail: 'Qobuz API access requires approved partnership',
+    configUrl: '/streaming', lastUpdated: '2026-07-10',
+  },
+  {
+    id: 'plugin-6', name: 'DSD Native Decoder', version: '1.2.0', type: 'codec',
+    author: 'DSP Team', description: 'Native DSD decoding for DSF/DFF files up to DSD512',
+    installed: true, enabled: true, status: 'active', licenseType: 'open-source',
+    lastUpdated: '2026-05-15',
+  },
+  {
+    id: 'plugin-7', name: 'MQA Renderer', version: '1.0.0-beta', type: 'codec',
+    author: 'Third Party', description: 'MQA first unfold rendering (licensing required for full decode)',
+    installed: true, enabled: false, status: 'needs-license',
+    licenseDetail: 'MQA decoder requires commercial license from MQA Ltd (now Lenbrook Industries)',
+    lastUpdated: '2026-03-01',
+  },
+  {
+    id: 'plugin-8', name: 'MusicBrainz Metadata', version: '2.0.3', type: 'metadata-provider',
+    author: 'Community', description: 'Enrich local library metadata from MusicBrainz / AcoustID',
+    installed: true, enabled: true, status: 'active', licenseType: 'open-source',
+    licenseDetail: 'MusicBrainz data is CC BY-SA 4.0. Attribution required.',
+    lastUpdated: '2026-08-05',
+  },
+  {
+    id: 'plugin-9', name: 'AirPlay 2 Output', version: '1.1.0', type: 'output-protocol',
+    author: 'DSP Team', description: 'AirPlay 2 output protocol for Apple devices and speakers',
+    installed: false, enabled: false, status: 'needs-license',
+    licenseDetail: 'AirPlay requires Apple MFi certification for hardware distribution',
+  },
+  {
+    id: 'plugin-10', name: 'ROON Bridge Compatibility', version: '0.9.0-beta', type: 'output-protocol',
+    author: 'Third Party', description: 'Experimental RAAT-compatible output for legacy Roon endpoints',
+    installed: false, enabled: false, status: 'needs-agreement',
+    licenseDetail: 'RAAT protocol is proprietary. Reverse-engineered. Legal review required.',
+  },
+];
+
+// ─── LICENSING / THIRD-PARTY TRACKER ───
+
+export interface LicensingItem {
+  id: string;
+  name: string;
+  type: 'codec' | 'protocol' | 'metadata' | 'streaming-api' | 'brand';
+  provider: string;
+  status: 'clear' | 'needs-agreement' | 'needs-license' | 'proprietary' | 'attribution-required';
+  details: string;
+  urgency: 'low' | 'medium' | 'high' | 'critical';
+  contact?: string;
+  resolved?: boolean;
+}
+
+export const licensingItems: LicensingItem[] = [
+  {
+    id: 'lic-1', name: 'FLAC Codec', type: 'codec', provider: 'Xiph.Org Foundation',
+    status: 'clear', details: 'FLAC is fully open-source (BSD license). No commercial restrictions.',
+    urgency: 'low', resolved: true,
+  },
+  {
+    id: 'lic-2', name: 'MP3 Decoding', type: 'codec', provider: 'Fraunhofer / Thomson',
+    status: 'needs-license', details: 'MP3 patents may still apply in some jurisdictions. Use LAME or alternatives where possible.',
+    urgency: 'medium', resolved: false, contact: 'fraunhofer.de',
+  },
+  {
+    id: 'lic-3', name: 'AAC / ALAC Codec', type: 'codec', provider: 'Apple / Dolby',
+    status: 'needs-license', details: 'AAC decoder requires licensing from Dolby/Via Licensing. ALAC is now Apache 2.0 licensed by Apple.',
+    urgency: 'medium', resolved: false, contact: 'vialicensing.com',
+  },
+  {
+    id: 'lic-4', name: 'MQA Decoding', type: 'codec', provider: 'MQA Ltd / Lenbrook',
+    status: 'needs-agreement', details: 'Full MQA decode (beyond first unfold) requires a commercial license. First unfold may be treated as passthrough.',
+    urgency: 'high', resolved: false, contact: 'lenbrook.com',
+  },
+  {
+    id: 'lic-5', name: 'DSD (DSF/DFF)', type: 'codec', provider: 'Sony',
+    status: 'clear', details: 'DSD is an open format. DSF/DFF containers have no known licensing restrictions.',
+    urgency: 'low', resolved: true,
+  },
+  {
+    id: 'lic-6', name: 'TIDAL API', type: 'streaming-api', provider: 'TIDAL / Block',
+    status: 'needs-agreement', details: 'TIDAL developer API requires an approved partnership agreement for commercial use.',
+    urgency: 'high', resolved: false, contact: 'developer.tidal.com',
+  },
+  {
+    id: 'lic-7', name: 'Qobuz API', type: 'streaming-api', provider: 'Qobuz',
+    status: 'needs-agreement', details: 'Qobuz API access is restricted to approved partners. Commercial agreement required.',
+    urgency: 'high', resolved: false, contact: 'partners.qobuz.com',
+  },
+  {
+    id: 'lic-8', name: 'MusicBrainz Data', type: 'metadata', provider: 'MetaBrainz Foundation',
+    status: 'attribution-required', details: 'MusicBrainz data is CC BY-SA 4.0. Must provide attribution. Rate limits apply (1 req/sec). Server donations encouraged.',
+    urgency: 'low', resolved: true,
+  },
+  {
+    id: 'lic-9', name: 'AcoustID / Chromaprint', type: 'metadata', provider: 'AcoustID Project',
+    status: 'clear', details: 'AcoustID fingerprinting is LGPL licensed. Chromaprint is also LGPL. No commercial restrictions.',
+    urgency: 'low', resolved: true,
+  },
+  {
+    id: 'lic-10', name: 'AirPlay Protocol', type: 'protocol', provider: 'Apple',
+    status: 'needs-agreement', details: 'AirPlay requires MFi (Made for iPhone/iPad/iPod) certification for any hardware distribution.',
+    urgency: 'critical', resolved: false, contact: 'developer.apple.com/mfi',
+  },
+  {
+    id: 'lic-11', name: 'RAAT Protocol', type: 'protocol', provider: 'ROON Labs',
+    status: 'proprietary', details: 'RAAT is a proprietary protocol owned by ROON Labs. Reverse-engineering may violate DMCA/EU law.',
+    urgency: 'critical', resolved: false, contact: 'roonlabs.com',
+  },
+  {
+    id: 'lic-12', name: 'DSP Brand Name', type: 'brand', provider: 'Internal',
+    status: 'clear', details: 'Dyabavadra Streaming Platform (DSP) branding is original. No conflicts with ROON or other audio platforms.',
+    urgency: 'low', resolved: true,
+  },
+];
+
+// ─── TAG DATA ───
+
+export interface Tag {
+  id: string;
+  name: string;
+  type: 'genre' | 'mood' | 'era' | 'format' | 'custom';
+  trackCount: number;
+  color?: string;
+}
+
+export const tags: Tag[] = [
+  { id: 'tag-1', name: 'Chill', type: 'mood', trackCount: 45, color: 'bg-blue-600' },
+  { id: 'tag-2', name: 'Energy', type: 'mood', trackCount: 38, color: 'bg-red-600' },
+  { id: 'tag-3', name: 'Focus', type: 'mood', trackCount: 62, color: 'bg-green-600' },
+  { id: 'tag-4', name: 'Romantic', type: 'mood', trackCount: 28, color: 'bg-pink-600' },
+  { id: 'tag-5', name: 'Melancholy', type: 'mood', trackCount: 35, color: 'bg-indigo-600' },
+  { id: 'tag-6', name: '1960s', type: 'era', trackCount: 120 },
+  { id: 'tag-7', name: '1970s', type: 'era', trackCount: 180 },
+  { id: 'tag-8', name: '1980s', type: 'era', trackCount: 95 },
+  { id: 'tag-9', name: '1990s', type: 'era', trackCount: 140 },
+  { id: 'tag-10', name: '2000s', type: 'era', trackCount: 210 },
+  { id: 'tag-11', name: '2010s', type: 'era', trackCount: 320 },
+  { id: 'tag-12', name: '2020s', type: 'era', trackCount: 180 },
+  { id: 'tag-13', name: 'HiRes', type: 'format', trackCount: 420 },
+  { id: 'tag-14', name: 'DSD', type: 'format', trackCount: 85 },
+  { id: 'tag-15', name: 'Vinyl Rip', type: 'format', trackCount: 140 },
+  { id: 'tag-16', name: 'Audiophile Grade', type: 'custom', trackCount: 200, color: 'bg-gold' },
+  { id: 'tag-17', name: 'Party', type: 'mood', trackCount: 55, color: 'bg-purple-600' },
+  { id: 'tag-18', name: 'Acoustic', type: 'mood', trackCount: 72, color: 'bg-amber-600' },
+];

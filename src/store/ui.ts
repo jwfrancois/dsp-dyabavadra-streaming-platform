@@ -6,6 +6,7 @@ interface UIState {
   viewParams: Record<string, string>;
   sidebarOpen: boolean;
   queueDrawerOpen: boolean;
+  zonePickerOpen: boolean;
   searchQuery: string;
 
   navigate: (view: ViewName, params?: Record<string, string>) => void;
@@ -13,6 +14,7 @@ interface UIState {
   toggleSidebar: () => void;
   setQueueDrawerOpen: (open: boolean) => void;
   toggleQueueDrawer: () => void;
+  setZonePickerOpen: (open: boolean) => void;
   setSearchQuery: (query: string) => void;
 }
 
@@ -21,6 +23,7 @@ export const useUIStore = create<UIState>((set) => ({
   viewParams: {},
   sidebarOpen: true,
   queueDrawerOpen: false,
+  zonePickerOpen: false,
   searchQuery: '',
 
   navigate: (view, params = {}) => set({ currentView: view, viewParams: params }),
@@ -29,5 +32,6 @@ export const useUIStore = create<UIState>((set) => ({
   toggleSidebar: () => set(s => ({ sidebarOpen: !s.sidebarOpen })),
   setQueueDrawerOpen: (open) => set({ queueDrawerOpen: open }),
   toggleQueueDrawer: () => set(s => ({ queueDrawerOpen: !s.queueDrawerOpen })),
+  setZonePickerOpen: (open) => set({ zonePickerOpen: open }),
   setSearchQuery: (query) => set({ searchQuery: query }),
 }));

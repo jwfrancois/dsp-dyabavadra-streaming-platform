@@ -16,7 +16,7 @@ import {
   ChevronRight, Music, Mic2, Radio, ListMusic, Settings, Disc3,
   Headphones, LayoutGrid, Grip, X, Heart, Podcast, FolderOpen,
   Newspaper, Globe, Clapperboard, Workflow, Server, MonitorSpeaker,
-  Gauge, Sliders,
+  Gauge, Sliders, Clock, User, Shield, Activity, Puzzle, Scale,
 } from 'lucide-react';
 import { formatDuration, getCoverGradient } from '@/lib/data';
 import { usePodcastStore } from '@/store/podcast';
@@ -42,11 +42,17 @@ const systemItems = [
   { icon: MonitorSpeaker, label: 'Endpoints', view: 'endpoints' as const },
   { icon: Gauge, label: 'Signal Path', view: 'signal-path' as const },
   { icon: Sliders, label: 'DSP Engine', view: 'dsp-config' as const },
+  { icon: Activity, label: 'Health / NFR', view: 'system-health' as const },
+  { icon: Shield, label: 'Security', view: 'security' as const },
+  { icon: Puzzle, label: 'Plugins', view: 'plugins' as const },
+  { icon: Scale, label: 'Licensing', view: 'licensing' as const },
 ];
 
 const libraryItems = [
   { icon: FolderOpen, label: 'Library', view: 'library' as const },
   { icon: Play, label: 'Now Playing', view: 'now-playing' as const },
+  { icon: Clock, label: 'History', view: 'play-history' as const },
+  { icon: User, label: 'Profiles', view: 'profiles' as const },
   { icon: Speaker, label: 'Zones', view: 'zones' as const },
   { icon: Globe, label: 'Streaming', view: 'streaming' as const },
   { icon: Search, label: 'Search', view: 'search' as const },

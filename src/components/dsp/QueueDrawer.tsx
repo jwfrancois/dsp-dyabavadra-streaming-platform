@@ -1,14 +1,17 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { usePlayerStore } from '@/store/player';
-import { formatDuration, getCoverGradient } from '@/lib/data';
+import { formatDuration, getCoverGradient, getTrackById, zones } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { X, Play, Grip, Heart, Trash2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useUIStore } from '@/store/ui';
+import { useHistoryStore } from '@/store/history';
+
+type Tab = 'queue' | 'history';
 
 export function QueueDrawer() {
   const {
@@ -16,8 +19,37 @@ export function QueueDrawer() {
     play, removeFromQueue,
   } = usePlayerStore();
   const { queueDrawerOpen, setQueueDrawerOpen } = useUIStore();
+  const { entries } = useHistoryStore();
+  const [activeTab, setActiveTab] = useState<Tab>('queue');
 
   if (!queueDrawerOpen) return null;
+
+  const getZoneName = (zoneId: string) => {
+    const z = zones.find(zn => zn.id === zoneId);
+    return z?.name ?? zoneId;
+  };
+
+  const formatTimeAgo = (isoString: string) => {
+    const now = new Date();
+    const then = new Date(isoString);
+    const diffMs = now.getTime() - then.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return 'Just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    const diffDay = Math.floor(diffHr / 24);
+    return `${diffDay}d ago`;
+  };
+
+  const sourceColor = (source: string) => {
+    switch (source) {
+      case 'tidal': return 'bg-blue-600';
+      case 'qobuz': return 'bg-orange-500';
+      case 'radio': return 'bg-purple-600';
+      default: return 'bg-muted';
+    }
+  };
 
   return (
     <>
@@ -40,66 +72,151 @@ export function QueueDrawer() {
           </Button>
         </div>
 
+        {/* Tab Bar */}
+        <div className="flex border-b border-border">
+          <button
+            className={`flex-1 py-2.5 text-xs font-medium transition-colors relative ${
+              activeTab === 'queue'
+                ? 'text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            onClick={() => setActiveTab('queue')}
+          >
+            Queue
+            {activeTab === 'queue' && (
+              <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary rounded-full" />
+            )}
+          </button>
+          <button
+            className={`flex-1 py-2.5 text-xs font-medium transition-colors relative ${
+              activeTab === 'history'
+                ? 'text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            onClick={() => setActiveTab('history')}
+          >
+            History
+            {activeTab === 'history' && (
+              <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary rounded-full" />
+            )}
+          </button>
+        </div>
+
         <ScrollArea className="flex-1">
-          {/* Now Playing */}
-          {currentTrack && (
+          {activeTab === 'queue' ? (
             <>
-              <div className="p-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 mb-1">Now Playing</p>
-                <div className="flex items-center gap-3 p-2 rounded-lg bg-primary/10 border border-primary/20">
-                  <div className={`w-10 h-10 rounded bg-gradient-to-br ${getCoverGradient(currentTrack.id)}`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate text-primary">{currentTrack.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">{currentTrack.artistName}</p>
+              {/* Now Playing */}
+              {currentTrack && (
+                <>
+                  <div className="p-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 mb-1">Now Playing</p>
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-primary/10 border border-primary/20">
+                      <div className={`w-10 h-10 rounded bg-gradient-to-br ${getCoverGradient(currentTrack.id)}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate text-primary">{currentTrack.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{currentTrack.artistName}</p>
+                      </div>
+                      <Badge className="text-[10px] bg-primary text-primary-foreground">Playing</Badge>
+                    </div>
                   </div>
-                  <Badge className="text-[10px] bg-primary text-primary-foreground">Playing</Badge>
+                  <Separator className="mx-4" />
+                </>
+              )}
+
+              {/* Up Next */}
+              <div className="p-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 mb-1">
+                  Up Next ({queue.length - queueIndex - 1})
+                </p>
+                <div className="space-y-0.5">
+                  {queue.map((track, index) => {
+                    if (index === queueIndex) return null;
+                    const isPast = index < queueIndex;
+                    return (
+                      <div
+                        key={`${track.id}-${index}`}
+                        className={`flex items-center gap-2.5 p-2 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors group ${
+                          isPast ? 'opacity-40' : ''
+                        }`}
+                        onClick={() => play(track)}
+                      >
+                        <Grip className="w-3 h-3 text-muted-foreground/50 flex-shrink-0 opacity-0 group-hover:opacity-100" />
+                        <div className={`w-9 h-9 rounded bg-gradient-to-br ${getCoverGradient(track.id)} flex-shrink-0`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{track.title}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">{track.artistName}</p>
+                        </div>
+                        <span className="text-[11px] text-muted-foreground flex-shrink-0">{formatDuration(track.duration)}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 flex-shrink-0"
+                          onClick={(e) => { e.stopPropagation(); removeFromQueue(index); }}
+                        >
+                          <Trash2 className="w-3 h-3 text-muted-foreground" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-              <Separator className="mx-4" />
             </>
-          )}
-
-          {/* Up Next */}
-          <div className="p-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 mb-1">
-              Up Next ({queue.length - queueIndex - 1})
-            </p>
-            <div className="space-y-0.5">
-              {queue.map((track, index) => {
-                if (index === queueIndex) return null;
-                const isPast = index < queueIndex;
-                return (
-                  <div
-                    key={`${track.id}-${index}`}
-                    className={`flex items-center gap-2.5 p-2 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors group ${
-                      isPast ? 'opacity-40' : ''
-                    }`}
-                    onClick={() => play(track)}
-                  >
-                    <Grip className="w-3 h-3 text-muted-foreground/50 flex-shrink-0 opacity-0 group-hover:opacity-100" />
-                    <div className={`w-9 h-9 rounded bg-gradient-to-br ${getCoverGradient(track.id)} flex-shrink-0`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{track.title}</p>
-                      <p className="text-[11px] text-muted-foreground truncate">{track.artistName}</p>
-                    </div>
-                    <span className="text-[11px] text-muted-foreground flex-shrink-0">{formatDuration(track.duration)}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 opacity-0 group-hover:opacity-100 flex-shrink-0"
-                      onClick={(e) => { e.stopPropagation(); removeFromQueue(index); }}
+          ) : (
+            /* History Tab */
+            <div className="p-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 mb-1">
+                Play History ({entries.length})
+              </p>
+              <div className="space-y-0.5">
+                {entries.map((entry) => {
+                  const track = getTrackById(entry.trackId);
+                  if (!track) return null;
+                  return (
+                    <div
+                      key={entry.id}
+                      className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors group"
+                      onClick={() => play(track)}
                     >
-                      <Trash2 className="w-3 h-3 text-muted-foreground" />
-                    </Button>
-                  </div>
-                );
-              })}
+                      <div
+                        className={`w-9 h-9 rounded bg-gradient-to-br ${getCoverGradient(track.id)} flex-shrink-0`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-medium truncate">{track.title}</p>
+                          {!entry.completed && (
+                            <span className="text-[9px] text-muted-foreground flex-shrink-0">(partial)</span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground truncate">{track.artistName}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="text-[10px] text-muted-foreground">{formatTimeAgo(entry.playedAt)}</span>
+                        <Badge
+                          variant="secondary"
+                          className={`text-[9px] h-4 px-1.5 ${sourceColor(entry.source)} text-white border-0`}
+                        >
+                          {entry.source}
+                        </Badge>
+                        <Badge variant="outline" className="text-[9px] h-4 px-1.5">
+                          {getZoneName(entry.zoneId)}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 flex-shrink-0"
+                          onClick={(e) => { e.stopPropagation(); play(track); }}
+                        >
+                          <Play className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </ScrollArea>
       </div>
     </>
   );
 }
-
-

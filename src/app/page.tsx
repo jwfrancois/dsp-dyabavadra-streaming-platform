@@ -30,6 +30,13 @@ import { SystemArchitectureView } from '@/components/dsp/SystemArchitectureView'
 import { DSPConfigView } from '@/components/dsp/DSPConfigView';
 import { SignalPathView } from '@/components/dsp/SignalPathView';
 import { OutputEndpointsView } from '@/components/dsp/OutputEndpointsView';
+import { PlayHistoryView } from '@/components/dsp/PlayHistoryView';
+import { UserProfilesView } from '@/components/dsp/UserProfilesView';
+import { SystemHealthView } from '@/components/dsp/SystemHealthView';
+import { SecurityView } from '@/components/dsp/SecurityView';
+import { PluginManagerView } from '@/components/dsp/PluginManagerView';
+import { LicensingView } from '@/components/dsp/LicensingView';
+import { ZonePicker } from '@/components/dsp/ZonePicker';
 import { useUIStore } from '@/store/ui';
 import type { ViewName } from '@/store/player';
 import { Button } from '@/components/ui/button';
@@ -63,6 +70,12 @@ function ViewRouter({ view }: { view: ViewName }) {
     case 'dsp-config': return <DSPConfigView />;
     case 'signal-path': return <SignalPathView />;
     case 'endpoints': return <OutputEndpointsView />;
+    case 'play-history': return <PlayHistoryView />;
+    case 'profiles': return <UserProfilesView />;
+    case 'system-health': return <SystemHealthView />;
+    case 'security': return <SecurityView />;
+    case 'plugins': return <PluginManagerView />;
+    case 'licensing': return <LicensingView />;
     default: return <HomeView />;
   }
 }
@@ -100,6 +113,9 @@ export default function Page() {
 
       {/* Queue Drawer */}
       <QueueDrawer />
+
+      {/* Zone Picker */}
+      <ZonePicker />
     </div>
   );
 }

@@ -1,0 +1,651 @@
+  1063→export function formatDuration(seconds: number): string {
+  1064→  const h = Math.floor(seconds / 3600);
+  1065→  const m = Math.floor((seconds % 3600) / 60);
+  1066→  const s = seconds % 60;
+  1067→  if (h > 0) {
+  1068→    return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  1069→  }
+  1070→  return `${m}:${s.toString().padStart(2, '0')}`;
+  1071→}
+  1072→
+  1073→export function formatFileSize(bytes: number): string {
+  1074→  if (bytes >= 1073741824) return `${(bytes / 1073741824).toFixed(1)} GB`;
+  1075→  if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
+  1076→  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  1077→  return `${bytes} B`;
+  1078→}
+  1079→
+  1080→export function formatSampleRate(rate: number): string {
+  1081→  if (rate >= 1000) return `${(rate / 1000).toFixed(1)} kHz`;
+  1082→  return `${rate} Hz`;
+  1083→}
+  1084→
+  1085→export function getCoverGradient(id: string): string {
+  1086→  const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  1087→  return coverGradient(hash);
+  1088→}
+  1089→
+  1090→export function getArtistById(id: string): Artist | undefined {
+  1091→  return artists.find(a => a.id === id);
+  1092→}
+  1093→
+  1094→export function getAlbumById(id: string): Album | undefined {
+  1095→  return albums.find(a => a.id === id);
+  1096→}
+  1097→
+  1098→export function getTrackById(id: string): Track | undefined {
+  1099→  return tracks.find(t => t.id === id);
+  1100→}
+  1101→
+  1102→export function getTracksByAlbum(albumId: string): Track[] {
+  1103→  return tracks.filter(t => t.albumId === albumId).sort((a, b) => a.trackNumber - b.trackNumber);
+  1104→}
+  1105→
+  1106→export function getAlbumsByArtist(artistId: string): Album[] {
+  1107→  return albums.filter(a => a.artistId === artistId);
+  1108→}
+  1109→
+  1110→export function searchLibrary(query: string): { artists: Artist[]; albums: Album[]; tracks: Track[] } {
+  1111→  const q = query.toLowerCase();
+  1112→  return {
+  1113→    artists: artists.filter(a => a.name.toLowerCase().includes(q)),
+  1114→    albums: albums.filter(a => a.title.toLowerCase().includes(q) || a.artistName.toLowerCase().includes(q)),
+  1115→    tracks: tracks.filter(t => t.title.toLowerCase().includes(q) || t.artistName.toLowerCase().includes(q) || t.albumName.toLowerCase().includes(q)),
+  1116→  };
+  1117→}
+  1118→
+  1119→// Note: Podcast search is in podcast-data.ts via searchPodcasts()
+  1120→
+  1121→// ─── CORE STATUS (Mock Data) ───
+  1122→
+  1123→export const coreStatus: CoreStatus = {
+  1124→  id: 'core-1',
+  1125→  name: 'DSP Core — NAS Server',
+  1126→  version: '2.4.0-beta.7',
+  1127→  status: 'running',
+  1128→  uptime: 14 * 86400 + 7 * 3600 + 32 * 60,
+  1129→  machineInfo: {
+  1130→    hostname: 'nas-dsp-core',
+  1131→    os: 'Debian 12 (Bookworm)',
+  1132→    cpuModel: 'Intel Core i5-12400T',
+  1133→    cpuUsage: 18,
+  1134→    memoryTotal: 8589934592,
+  1135→    memoryUsed: 1288490189,
+  1136→    cores: 6,
+  1137→    architecture: 'x86_64',
+  1138→  },
+  1139→  audioEngine: {
+  1140→    status: 'active',
+  1141→    activeZones: 3,
+  1142→    totalZones: 4,
+  1143→    decodingLoad: 12,
+  1144→    dspLoad: 28,
+  1145→    outputLoad: 8,
+  1146→    currentSampleRate: 192000,
+  1147→    supportedFormats: ['FLAC', 'ALAC', 'WAV', 'AIFF', 'DSF', 'DFF', 'MP3', 'AAC', 'OGG Vorbis', 'WavPack'],
+  1148→    maxChannels: 8,
+  1149→    bitPerfectCapable: true,
+  1150→    dsdNativeCapable: true,
+  1151→    mqaPassthrough: true,
+  1152→  },
+  1153→  storageLocations: [
+  1154→    {
+  1155→      id: 'storage-1',
+  1156→      name: 'Music Library (NAS)',
+  1157→      path: '/nas/music',
+  1158→      type: 'nas',
+  1159→      enabled: true,
+  1160→      totalSpace: 4398046511104,
+  1161→      usedSpace: 2576980377344,
+  1162→      trackCount: 12450,
+  1163→      albumCount: 1580,
+  1164→      isWatching: true,
+  1165→      lastScan: '2026-08-12T06:00:00Z',
+  1166→      scanIntervalMin: 30,
+  1167→    },
+  1168→    {
+  1169→      id: 'storage-2',
+  1170→      name: 'Local SSD Cache',
+  1171→      path: '/local/music',
+  1172→      type: 'local',
+  1173→      enabled: true,
+  1174→      totalSpace: 274877906944,
+  1175→      usedSpace: 85899345920,
+  1176→      trackCount: 3200,
+  1177→      albumCount: 420,
+  1178→      isWatching: true,
+  1179→      lastScan: '2026-08-12T06:00:00Z',
+  1180→      scanIntervalMin: 15,
+  1181→    },
+  1182→    {
+  1183→      id: 'storage-3',
+  1184→      name: 'External USB Drive',
+  1185→      path: '/Volumes/External',
+  1186→      type: 'usb',
+  1187→      enabled: true,
+  1188→      totalSpace: 2199023255552,
+  1189→      usedSpace: 966367641600,
+  1190→      trackCount: 8900,
+  1191→      albumCount: 1120,
+  1192→      isWatching: false,
+  1193→      lastScan: '2026-08-11T18:00:00Z',
+  1194→      scanIntervalMin: 60,
+  1195→    },
+  1196→  ],
+  1197→  networkInfo: {
+  1198→    hostname: 'nas-dsp-core',
+  1199→    ipAddress: '192.168.1.100',
+  1200→    macAddress: 'AA:BB:CC:DD:EE:FF',
+  1201→    protocol: 'dsp-native',
+  1202→    port: 9500,
+  1203→    discoveryPort: 9501,
+  1204→    encryption: true,
+  1205→    remoteAccess: true,
+  1206→    vpnActive: false,
+  1207→    connectedEndpoints: 6,
+  1208→  },
+  1209→  apiInfo: {
+  1210→    version: 'v2',
+  1211→    protocol: 'websocket',
+  1212→    port: 9600,
+  1213→    wsPort: 9601,
+  1214→    authenticated: true,
+  1215→    remoteApps: [
+  1216→      { id: 'app-1', name: 'DSP Remote (iPhone)', type: 'ios', connected: true, lastSeen: '2026-08-12T14:30:00Z', ipAddress: '192.168.1.50' },
+  1217→      { id: 'app-2', name: 'DSP Remote (iPad)', type: 'ios', connected: true, lastSeen: '2026-08-12T14:29:55Z', ipAddress: '192.168.1.51' },
+  1218→      { id: 'app-3', name: 'DSP Desktop', type: 'desktop', connected: false, lastSeen: '2026-08-12T08:00:00Z', ipAddress: '192.168.1.200' },
+  1219→      { id: 'app-4', name: 'Web Controller', type: 'web', connected: true, lastSeen: '2026-08-12T14:30:10Z', ipAddress: '192.168.1.201' },
+  1220→    ],
+  1221→  },
+  1222→  streamingServices: [
+  1223→    { id: 'svc-1', name: 'TIDAL', type: 'tidal', status: 'connected', linked: true, username: 'user@example.com', qualityTier: 'HiRes', maxQuality: '24-bit/96kHz FLAC', lastSync: '2026-08-12T12:00:00Z', librarySize: 2840 },
+  1224→    { id: 'svc-2', name: 'Qobuz', type: 'qobuz', status: 'disconnected', linked: false, qualityTier: '—' },
+  1225→    { id: 'svc-3', name: 'Deezer', type: 'deezer', status: 'disconnected', linked: false, qualityTier: '—' },
+  1226→  ],
+  1227→  libraryStats: {
+  1228→    totalTracks: 24550,
+  1229→    totalAlbums: 3120,
+  1230→    totalArtists: 890,
+  1231→    totalDuration: 9424800,
+  1232→    totalSize: 3500000000000,
+  1233→    localTracks: 24550,
+  1234→    streamingTracks: 0,
+  1235→    formatBreakdown: { FLAC: 14200, ALAC: 3200, WAV: 1800, DSD: 1200, MP3: 2800, AAC: 1350 },
+  1236→    sampleRateBreakdown: { '44.1kHz': 8200, '48kHz': 1800, '88.2kHz': 2400, '96kHz': 5100, '176.4kHz': 3200, '192kHz': 2500, '352.8kHz': 800, '384kHz': 550 },
+  1237→  },
+  1238→  discoveryMode: 'lan',
+  1239→  autoDiscovery: true,
+  1240→  lastScanAt: '2026-08-12T06:00:00Z',
+  1241→};
+  1242→
+  1243→// ─── ENHANCED SIGNAL PATH ───
+  1244→
+  1245→export function getSignalPath(trackId: string, zoneId: string): SignalPathStep[] {
+  1246→  const track = getTrackById(trackId);
+  1247→  const zone = zones.find(z => z.id === zoneId);
+  1248→  if (!track || !zone) return [];
+  1249→
+  1250→  const steps: SignalPathStep[] = [];
+  1251→  let currentFormat = track.format;
+  1252→  let currentSR = track.sampleRate;
+  1253→  let currentBD = track.bitDepth;
+  1254→  let isDSD = track.format === 'DSF' || track.format === 'DFF';
+  1255→
+  1256→  // Source step
+  1257→  steps.push({
+  1258→    label: 'Source',
+  1259→    format: currentFormat,
+  1260→    sampleRate: currentSR,
+  1261→    bitDepth: currentBD,
+  1262→    isBitPerfect: true,
+  1263→    isDSD,
+  1264→    dsdMode: isDSD ? 'native' : undefined,
+  1265→    processingDetail: `Local: ${track.filePath}`,
+  1266→    latencyMs: 0,
+  1267→  });
+  1268→
+  1269→  if (zone.dspConfig) {
+  1270→    // Room Correction (convolution)
+  1271→    if (zone.dspConfig.roomCorrection?.enabled) {
+  1272→      steps.push({
+  1273→        label: 'Room Correction',
+  1274→        format: 'PCM',
+  1275→        sampleRate: currentSR,
+  1276→        bitDepth: currentBD,
+  1277→        isBitPerfect: false,
+  1278→        filterType: 'linear-phase',
+  1279→        processingDetail: `Filter: ${zone.dspConfig.roomCorrection.filterName}`,
+  1280→        latencyMs: 5.2,
+  1281→      });
+  1282→    }
+  1283→
+  1284→    // Parametric EQ
+  1285→    const activeBands = zone.dspConfig.eq?.filter(b => b.enabled) || [];
+  1286→    if (activeBands.length > 0) {
+  1287→      steps.push({
+  1288→        label: 'Parametric EQ',
+  1289→        format: 'PCM',
+  1290→        sampleRate: currentSR,
+  1291→        bitDepth: currentBD,
+  1292→        isBitPerfect: false,
+  1293→        processingDetail: `${activeBands.length} active band${activeBands.length > 1 ? 's' : ''}`,
+  1294→        latencyMs: 0.1,
+  1295→      });
+  1296→    }
+  1297→
+  1298→    // Headphone Correction
+  1299→    if (zone.dspConfig.headphoneCorrection?.enabled) {
+  1300→      steps.push({
+  1301→        label: `Headphone: ${zone.dspConfig.headphoneCorrection.profileName}`,
+  1302→        format: 'PCM',
+  1303→        sampleRate: currentSR,
+  1304→        bitDepth: currentBD,
+  1305→        isBitPerfect: false,
+  1306→        processingDetail: `${zone.dspConfig.headphoneCorrection.manufacturer} ${zone.dspConfig.headphoneCorrection.model}`,
+  1307→        latencyMs: 0.3,
+  1308→      });
+  1309→    }
+  1310→
+  1311→    // Crossfeed
+  1312→    if (zone.dspConfig.crossfeed?.enabled && zone.dspConfig.crossfeed.preset !== 'none') {
+  1313→      steps.push({
+  1314→        label: `Crossfeed (${zone.dspConfig.crossfeed.preset})`,
+  1315→        format: 'PCM',
+  1316→        sampleRate: currentSR,
+  1317→        bitDepth: currentBD,
+  1318→        isBitPerfect: false,
+  1319→        processingDetail: `Preset: ${zone.dspConfig.crossfeed.preset}`,
+  1320→        latencyMs: 0.1,
+  1321→      });
+  1322→    }
+  1323→
+  1324→    // Loudness / ReplayGain
+  1325→    if (zone.dspConfig.loudness?.enabled) {
+  1326→      steps.push({
+  1327→        label: `Loudness (${zone.dspConfig.loudness.method})`,
+  1328→        format: 'PCM',
+  1329→        sampleRate: currentSR,
+  1330→        bitDepth: currentBD,
+  1331→        isBitPerfect: false,
+  1332→        processingDetail: `Target: ${zone.dspConfig.loudness.targetLUFS} LUFS`,
+  1333→        latencyMs: 0,
+  1334→      });
+  1335→    }
+  1336→
+  1337→    // Upsampling
+  1338→    if (zone.dspConfig.upsampling?.enabled && currentSR <= zone.dspConfig.upsampling.maxSrcRate) {
+  1339→      const wasBitPerfect = steps.every(s => s.isBitPerfect);
+  1340→      currentSR = zone.dspConfig.upsampling.targetRate / 1000;
+  1341→      currentBD = zone.dspConfig.upsampling.targetBitDepth;
+  1342→      isDSD = false;
+  1343→      currentFormat = 'PCM';
+  1344→      steps.push({
+  1345→        label: 'Upsampling',
+  1346→        format: 'PCM',
+  1347→        sampleRate: currentSR,
+  1348→        bitDepth: currentBD,
+  1349→        isBitPerfect: false,
+  1350→        filterType: zone.dspConfig.upsampling.filterType,
+  1351→        processingDetail: `${formatSampleRate(zone.dspConfig.upsampling.targetRate / 1000)} / ${currentBD}-bit`,
+  1352→        latencyMs: 2.8,
+  1353→      });
+  1354→    }
+  1355→  }
+  1356→
+  1357→  // Volume Control
+  1358→  const isVolBitPerfect = zone.volumeMode !== 'dsp';
+  1359→  steps.push({
+  1360→    label: 'Volume Control',
+  1361→    format: isDSD ? (track.format) : 'PCM',
+  1362→    sampleRate: currentSR,
+  1363→    bitDepth: currentBD,
+  1364→    isBitPerfect: isVolBitPerfect,
+  1365→    processingDetail: zone.volumeMode === 'hardware' ? 'Hardware (DAC)' : zone.volumeMode === 'dsp' ? 'DSP attenuator + TPDF dither' : 'Fixed output',
+  1366→    ditherType: zone.volumeMode === 'dsp' ? 'tpdf' : 'none',
+  1367→    latencyMs: 0,
+  1368→  });
+  1369→
+  1370→  // Format conversion if needed for output
+  1371→  const endpoint = zone.endpoints[0];
+  1372→  const needsDownsample = currentSR > (endpoint?.maxSampleRate || zone.sampleRate);
+  1373→  const needsBDReduce = currentBD > (endpoint?.maxBitDepth || zone.bitDepth);
+  1374→  const needsDoP = isDSD && endpoint?.supportsDoP && !endpoint?.supportsDSD;
+  1375→
+  1376→  if (needsDoP) {
+  1377→    steps.push({
+  1378→      label: 'DSD → DoP Conversion',
+  1379→      format: 'PCM (DoP)',
+  1380→      sampleRate: currentSR,
+  1381→      bitDepth: currentBD,
+  1382→      isBitPerfect: false,
+  1383→      isDSD: true,
+  1384→      dsdMode: 'DoP',
+  1385→      processingDetail: `DSD over PCM for ${endpoint?.name}`,
+  1386→      latencyMs: 0.1,
+  1387→    });
+  1388→    isDSD = false;
+  1389→    currentFormat = 'PCM';
+  1390→  }
+  1391→
+  1392→  if (needsDownsample || needsBDReduce) {
+  1393→    steps.push({
+  1394→      label: 'Format Conversion',
+  1395→      format: currentFormat,
+  1396→      sampleRate: needsDownsample ? (endpoint?.maxSampleRate || zone.sampleRate) : currentSR,
+  1397→      bitDepth: needsBDReduce ? (endpoint?.maxBitDepth || zone.bitDepth) : currentBD,
+  1398→      isBitPerfect: false,
+  1399→      filterType: 'linear-phase',
+  1400→      processingDetail: `Target: ${formatSampleRate(needsDownsample ? (endpoint?.maxSampleRate || zone.sampleRate) : currentSR)}`,
+  1401→      latencyMs: 1.5,
+  1402→    });
+  1403→  }
+  1404→
+  1405→  // Network transport
+  1406→  steps.push({
+  1407→    label: 'Network Transport',
+  1408→    format: currentFormat,
+  1409→    sampleRate: needsDownsample ? (endpoint?.maxSampleRate || zone.sampleRate) : currentSR,
+  1410→    bitDepth: needsBDReduce ? (endpoint?.maxBitDepth || zone.bitDepth) : currentBD,
+  1411→    isBitPerfect: true,
+  1412→    processingDetail: `DSP Audio Protocol · ${(endpoint?.latencyMs || 5).toFixed(1)}ms latency`,
+  1413→    latencyMs: endpoint?.latencyMs || 5,
+  1414→  });
+  1415→
+  1416→  // Output endpoint / DAC
+  1417→  steps.push({
+  1418→    label: `DAC: ${endpoint?.dac || 'Unknown'}`,
+  1419→    format: needsDoP ? 'DoP' : currentFormat,
+  1420→    sampleRate: needsDownsample ? (endpoint?.maxSampleRate || zone.sampleRate) : currentSR,
+  1421→    bitDepth: needsBDReduce ? (endpoint?.maxBitDepth || zone.bitDepth) : currentBD,
+  1422→    isBitPerfect: !needsDownsample && !needsBDReduce && isVolBitPerfect,
+  1423→    processingDetail: endpoint?.clockSource ? `Clock: ${endpoint.clockSource}` : undefined,
+  1424→    latencyMs: 0.01,
+  1425→  });
+  1426→
+  1427→  return steps;
+  1428→}
+  1429→
+  1430→export function getDetailedSignalPath(trackId: string, zoneId: string): {
+  1431→  steps: SignalPathStep[];
+  1432→  overallBitPerfect: boolean;
+  1433→  sourceFormat: string;
+  1434→  outputFormat: string;
+  1435→  totalLatencyMs: number;
+  1436→  dspChainCount: number;
+  1437→  zoneInfo: Zone | undefined;
+  1438→  trackInfo: Track | undefined;
+  1439→} {
+  1440→  const steps = getSignalPath(trackId, zoneId);
+  1441→  const track = getTrackById(trackId);
+  1442→  const zone = zones.find(z => z.id === zoneId);
+  1443→  const dspSteps = steps.filter(s => !s.isBitPerfect);
+  1444→  const totalLatency = steps.reduce((sum, s) => sum + (s.latencyMs || 0), 0);
+  1445→
+  1446→  return {
+  1447→    steps,
+  1448→    overallBitPerfect: steps.every(s => s.isBitPerfect),
+  1449→    sourceFormat: track ? `${track.format} ${formatSampleRate(track.sampleRate)} ${track.bitDepth}-bit` : '—',
+  1450→    outputFormat: steps.length > 0 ? `${steps[steps.length - 1].format} ${formatSampleRate(steps[steps.length - 1].sampleRate)} ${steps[steps.length - 1].bitDepth}-bit` : '—',
+  1451→    totalLatencyMs: totalLatency,
+  1452→    dspChainCount: dspSteps.length,
+  1453→    zoneInfo: zone,
+  1454→    trackInfo: track,
+  1455→  };
+  1456→}
+  1457→
+  1458→// ─── USER PROFILE TYPES & DATA ───
+  1459→
+  1460→export interface UserProfile {
+  1461→  id: string;
+  1462→  name: string;
+  1463→  avatar: string;
+  1464→  color: string;
+  1465→  lovedTrackIds: string[];
+  1466→  recentlyPlayedIds: string[];
+  1467→  totalPlayTime: number; // seconds
+  1468→  totalPlays: number;
+  1469→  joinDate: string;
+  1470→  isDefault: boolean;
+  1471→}
+  1472→
+  1473→export const userProfiles: UserProfile[] = [
+  1474→  {
+  1475→    id: 'profile-1', name: 'Alex', avatar: 'A', color: 'bg-primary',
+  1476→    lovedTrackIds: ['track-3-4', 'track-1-1', 'track-5-1', 'track-2-3'],
+  1477→    recentlyPlayedIds: ['track-3-4', 'track-3-2', 'track-5-6', 'track-1-1', 'track-7-2'],
+  1478→    totalPlayTime: 342000, totalPlays: 4820, joinDate: '2024-01-15', isDefault: true,
+  1479→  },
+  1480→  {
+  1481→    id: 'profile-2', name: 'Jordan', avatar: 'J', color: 'bg-blue-600',
+  1482→    lovedTrackIds: ['track-4-2', 'track-8-1', 'track-11-3'],
+  1483→    recentlyPlayedIds: ['track-4-2', 'track-4-1', 'track-8-3'],
+  1484→    totalPlayTime: 186000, totalPlays: 2400, joinDate: '2024-06-20', isDefault: false,
+  1485→  },
+  1486→  {
+  1487→    id: 'profile-3', name: 'Sam', avatar: 'S', color: 'bg-purple-600',
+  1488→    lovedTrackIds: ['track-7-1', 'track-7-5', 'track-3-8', 'track-2-4'],
+  1489→    recentlyPlayedIds: ['track-7-1', 'track-7-5', 'track-3-8'],
+  1490→    totalPlayTime: 95000, totalPlays: 1280, joinDate: '2025-03-10', isDefault: false,
+  1491→  },
+  1492→];
+  1493→
+  1494→// ─── PLAY HISTORY TYPES & DATA ───
+  1495→
+  1496→export interface PlayHistoryEntry {
+  1497→  id: string;
+  1498→  trackId: string;
+  1499→  profileId: string;
+  1500→  playedAt: string;
+  1501→  completed: boolean;
+  1502→  source: 'local' | 'tidal' | 'qobuz' | 'radio';
+  1503→  zoneId: string;
+  1504→}
+  1505→
+  1506→export const playHistory: PlayHistoryEntry[] = [
+  1507→  { id: 'ph-1', trackId: 'track-3-4', profileId: 'profile-1', playedAt: '2026-08-12T14:20:00Z', completed: false, source: 'local', zoneId: 'zone-1' },
+  1508→  { id: 'ph-2', trackId: 'track-3-2', profileId: 'profile-1', playedAt: '2026-08-12T13:55:00Z', completed: true, source: 'local', zoneId: 'zone-1' },
+  1509→  { id: 'ph-3', trackId: 'track-5-6', profileId: 'profile-1', playedAt: '2026-08-12T13:40:00Z', completed: true, source: 'local', zoneId: 'zone-2' },
+  1510→  { id: 'ph-4', trackId: 'track-1-1', profileId: 'profile-1', playedAt: '2026-08-12T12:10:00Z', completed: true, source: 'tidal', zoneId: 'zone-1' },
+  1511→  { id: 'ph-5', trackId: 'track-7-2', profileId: 'profile-1', playedAt: '2026-08-12T11:30:00Z', completed: true, source: 'local', zoneId: 'zone-1' },
+  1512→  { id: 'ph-6', trackId: 'track-4-2', profileId: 'profile-2', playedAt: '2026-08-12T14:15:00Z', completed: false, source: 'local', zoneId: 'zone-3' },
+  1513→  { id: 'ph-7', trackId: 'track-4-1', profileId: 'profile-2', playedAt: '2026-08-12T13:00:00Z', completed: true, source: 'qobuz', zoneId: 'zone-3' },
+  1514→  { id: 'ph-8', trackId: 'track-8-3', profileId: 'profile-2', playedAt: '2026-08-11T22:00:00Z', completed: true, source: 'local', zoneId: 'zone-3' },
+  1515→  { id: 'ph-9', trackId: 'track-7-1', profileId: 'profile-3', playedAt: '2026-08-12T10:00:00Z', completed: true, source: 'local', zoneId: 'zone-2' },
+  1516→  { id: 'ph-10', trackId: 'track-2-1', profileId: 'profile-1', playedAt: '2026-08-11T20:00:00Z', completed: true, source: 'local', zoneId: 'zone-1' },
+  1517→  { id: 'ph-11', trackId: 'track-5-4', profileId: 'profile-1', playedAt: '2026-08-11T19:30:00Z', completed: true, source: 'tidal', zoneId: 'zone-1' },
+  1518→  { id: 'ph-12', trackId: 'track-11-2', profileId: 'profile-3', playedAt: '2026-08-11T18:00:00Z', completed: true, source: 'radio', zoneId: 'zone-2' },
+  1519→];
+  1520→
+  1521→// ─── PLUGIN / EXTENSION TYPES & DATA ───
+  1522→
+  1523→export interface DSPPlugin {
+  1524→  id: string;
+  1525→  name: string;
+  1526→  version: string;
+  1527→  type: 'dsp-module' | 'streaming-service' | 'output-protocol' | 'metadata-provider' | 'codec';
+  1528→  author: string;
+  1529→  description: string;
+  1530→  installed: boolean;
+  1531→  enabled: boolean;
+  1532→  status: 'active' | 'error' | 'needs-update' | 'needs-license';
+  1533→  licenseType: 'open-source' | 'commercial' | 'proprietary' | 'needs-agreement';
+  1534→  licenseDetail?: string;
+  1535→  configUrl?: string;
+  1536→  lastUpdated?: string;
+  1537→}
+  1538→
+  1539→export const plugins: DSPPlugin[] = [
+  1540→  {
+  1541→    id: 'plugin-1', name: 'Parametric EQ', version: '1.3.0', type: 'dsp-module',
+  1542→    author: 'DSP Team', description: '10-band parametric equalizer with custom filter types',
+  1543→    installed: true, enabled: true, status: 'active', licenseType: 'open-source',
+  1544→    configUrl: '/dsp-config', lastUpdated: '2026-07-15',
+  1545→  },
+  1546→  {
+  1547→    id: 'plugin-2', name: 'Room Correction (REW)', version: '2.1.0', type: 'dsp-module',
+  1548→    author: 'DSP Team', description: 'Convolution-based room correction using REW measurement files',
+  1549→    installed: true, enabled: true, status: 'active', licenseType: 'open-source',
+  1550→    configUrl: '/dsp-config', lastUpdated: '2026-06-20',
+  1551→  },
+  1552→  {
+  1553→    id: 'plugin-3', name: 'Headphone AutoEQ', version: '1.5.2', type: 'dsp-module',
+  1554→    author: 'Community', description: 'AutoEQ-derived headphone correction profiles for 200+ models',
+  1555→    installed: true, enabled: true, status: 'active', licenseType: 'open-source',
+  1556→    lastUpdated: '2026-08-01',
+  1557→  },
+  1558→  {
+  1559→    id: 'plugin-4', name: 'TIDAL Integration', version: '3.0.0', type: 'streaming-service',
+  1560→    author: 'DSP Team', description: 'TIDAL streaming service with HiRes FLAC and MQA support',
+  1561→    installed: true, enabled: true, status: 'active', licenseType: 'needs-agreement',
+  1562→    licenseDetail: 'Requires TIDAL developer agreement for commercial distribution',
+  1563→    configUrl: '/streaming', lastUpdated: '2026-07-28',
+  1564→  },
+  1565→  {
+  1566→    id: 'plugin-5', name: 'Qobuz Integration', version: '2.4.1', type: 'streaming-service',
+  1567→    author: 'DSP Team', description: 'Qobuz streaming with up to 24-bit/192kHz HiRes',
+  1568→    installed: true, enabled: false, status: 'needs-license',
+  1569→    licenseDetail: 'Qobuz API access requires approved partnership',
+  1570→    configUrl: '/streaming', lastUpdated: '2026-07-10',
+  1571→  },
+  1572→  {
+  1573→    id: 'plugin-6', name: 'DSD Native Decoder', version: '1.2.0', type: 'codec',
+  1574→    author: 'DSP Team', description: 'Native DSD decoding for DSF/DFF files up to DSD512',
+  1575→    installed: true, enabled: true, status: 'active', licenseType: 'open-source',
+  1576→    lastUpdated: '2026-05-15',
+  1577→  },
+  1578→  {
+  1579→    id: 'plugin-7', name: 'MQA Renderer', version: '1.0.0-beta', type: 'codec',
+  1580→    author: 'Third Party', description: 'MQA first unfold rendering (licensing required for full decode)',
+  1581→    installed: true, enabled: false, status: 'needs-license',
+  1582→    licenseDetail: 'MQA decoder requires commercial license from MQA Ltd (now Lenbrook Industries)',
+  1583→    lastUpdated: '2026-03-01',
+  1584→  },
+  1585→  {
+  1586→    id: 'plugin-8', name: 'MusicBrainz Metadata', version: '2.0.3', type: 'metadata-provider',
+  1587→    author: 'Community', description: 'Enrich local library metadata from MusicBrainz / AcoustID',
+  1588→    installed: true, enabled: true, status: 'active', licenseType: 'open-source',
+  1589→    licenseDetail: 'MusicBrainz data is CC BY-SA 4.0. Attribution required.',
+  1590→    lastUpdated: '2026-08-05',
+  1591→  },
+  1592→  {
+  1593→    id: 'plugin-9', name: 'AirPlay 2 Output', version: '1.1.0', type: 'output-protocol',
+  1594→    author: 'DSP Team', description: 'AirPlay 2 output protocol for Apple devices and speakers',
+  1595→    installed: false, enabled: false, status: 'needs-license',
+  1596→    licenseDetail: 'AirPlay requires Apple MFi certification for hardware distribution',
+  1597→  },
+  1598→  {
+  1599→    id: 'plugin-10', name: 'ROON Bridge Compatibility', version: '0.9.0-beta', type: 'output-protocol',
+  1600→    author: 'Third Party', description: 'Experimental RAAT-compatible output for legacy Roon endpoints',
+  1601→    installed: false, enabled: false, status: 'needs-agreement',
+  1602→    licenseDetail: 'RAAT protocol is proprietary. Reverse-engineered. Legal review required.',
+  1603→  },
+  1604→];
+  1605→
+  1606→// ─── LICENSING / THIRD-PARTY TRACKER ───
+  1607→
+  1608→export interface LicensingItem {
+  1609→  id: string;
+  1610→  name: string;
+  1611→  type: 'codec' | 'protocol' | 'metadata' | 'streaming-api' | 'brand';
+  1612→  provider: string;
+  1613→  status: 'clear' | 'needs-agreement' | 'needs-license' | 'proprietary' | 'attribution-required';
+  1614→  details: string;
+  1615→  urgency: 'low' | 'medium' | 'high' | 'critical';
+  1616→  contact?: string;
+  1617→  resolved?: boolean;
+  1618→}
+  1619→
+  1620→export const licensingItems: LicensingItem[] = [
+  1621→  {
+  1622→    id: 'lic-1', name: 'FLAC Codec', type: 'codec', provider: 'Xiph.Org Foundation',
+  1623→    status: 'clear', details: 'FLAC is fully open-source (BSD license). No commercial restrictions.',
+  1624→    urgency: 'low', resolved: true,
+  1625→  },
+  1626→  {
+  1627→    id: 'lic-2', name: 'MP3 Decoding', type: 'codec', provider: 'Fraunhofer / Thomson',
+  1628→    status: 'needs-license', details: 'MP3 patents may still apply in some jurisdictions. Use LAME or alternatives where possible.',
+  1629→    urgency: 'medium', resolved: false, contact: 'fraunhofer.de',
+  1630→  },
+  1631→  {
+  1632→    id: 'lic-3', name: 'AAC / ALAC Codec', type: 'codec', provider: 'Apple / Dolby',
+  1633→    status: 'needs-license', details: 'AAC decoder requires licensing from Dolby/Via Licensing. ALAC is now Apache 2.0 licensed by Apple.',
+  1634→    urgency: 'medium', resolved: false, contact: 'vialicensing.com',
+  1635→  },
+  1636→  {
+  1637→    id: 'lic-4', name: 'MQA Decoding', type: 'codec', provider: 'MQA Ltd / Lenbrook',
+  1638→    status: 'needs-agreement', details: 'Full MQA decode (beyond first unfold) requires a commercial license. First unfold may be treated as passthrough.',
+  1639→    urgency: 'high', resolved: false, contact: 'lenbrook.com',
+  1640→  },
+  1641→  {
+  1642→    id: 'lic-5', name: 'DSD (DSF/DFF)', type: 'codec', provider: 'Sony',
+  1643→    status: 'clear', details: 'DSD is an open format. DSF/DFF containers have no known licensing restrictions.',
+  1644→    urgency: 'low', resolved: true,
+  1645→  },
+  1646→  {
+  1647→    id: 'lic-6', name: 'TIDAL API', type: 'streaming-api', provider: 'TIDAL / Block',
+  1648→    status: 'needs-agreement', details: 'TIDAL developer API requires an approved partnership agreement for commercial use.',
+  1649→    urgency: 'high', resolved: false, contact: 'developer.tidal.com',
+  1650→  },
+  1651→  {
+  1652→    id: 'lic-7', name: 'Qobuz API', type: 'streaming-api', provider: 'Qobuz',
+  1653→    status: 'needs-agreement', details: 'Qobuz API access is restricted to approved partners. Commercial agreement required.',
+  1654→    urgency: 'high', resolved: false, contact: 'partners.qobuz.com',
+  1655→  },
+  1656→  {
+  1657→    id: 'lic-8', name: 'MusicBrainz Data', type: 'metadata', provider: 'MetaBrainz Foundation',
+  1658→    status: 'attribution-required', details: 'MusicBrainz data is CC BY-SA 4.0. Must provide attribution. Rate limits apply (1 req/sec). Server donations encouraged.',
+  1659→    urgency: 'low', resolved: true,
+  1660→  },
+  1661→  {
+  1662→    id: 'lic-9', name: 'AcoustID / Chromaprint', type: 'metadata', provider: 'AcoustID Project',
+  1663→    status: 'clear', details: 'AcoustID fingerprinting is LGPL licensed. Chromaprint is also LGPL. No commercial restrictions.',
+  1664→    urgency: 'low', resolved: true,
+  1665→  },
+  1666→  {
+  1667→    id: 'lic-10', name: 'AirPlay Protocol', type: 'protocol', provider: 'Apple',
+  1668→    status: 'needs-agreement', details: 'AirPlay requires MFi (Made for iPhone/iPad/iPod) certification for any hardware distribution.',
+  1669→    urgency: 'critical', resolved: false, contact: 'developer.apple.com/mfi',
+  1670→  },
+  1671→  {
+  1672→    id: 'lic-11', name: 'RAAT Protocol', type: 'protocol', provider: 'ROON Labs',
+  1673→    status: 'proprietary', details: 'RAAT is a proprietary protocol owned by ROON Labs. Reverse-engineering may violate DMCA/EU law.',
+  1674→    urgency: 'critical', resolved: false, contact: 'roonlabs.com',
+  1675→  },
+  1676→  {
+  1677→    id: 'lic-12', name: 'DSP Brand Name', type: 'brand', provider: 'Internal',
+  1678→    status: 'clear', details: 'Dyabavadra Streaming Platform (DSP) branding is original. No conflicts with ROON or other audio platforms.',
+  1679→    urgency: 'low', resolved: true,
+  1680→  },
+  1681→];
+  1682→
+  1683→// ─── TAG DATA ───
+  1684→
+  1685→export interface Tag {
+  1686→  id: string;
+  1687→  name: string;
+  1688→  type: 'genre' | 'mood' | 'era' | 'format' | 'custom';
+  1689→  trackCount: number;
+  1690→  color?: string;
+  1691→}
+  1692→
+  1693→export const tags: Tag[] = [
+  1694→  { id: 'tag-1', name: 'Chill', type: 'mood', trackCount: 45, color: 'bg-blue-600' },
+  1695→  { id: 'tag-2', name: 'Energy', type: 'mood', trackCount: 38, color: 'bg-red-600' },
+  1696→  { id: 'tag-3', name: 'Focus', type: 'mood', trackCount: 62, color: 'bg-green-600' },
+  1697→  { id: 'tag-4', name: 'Romantic', type: 'mood', trackCount: 28, color: 'bg-pink-600' },
+  1698→  { id: 'tag-5', name: 'Melancholy', type: 'mood', trackCount: 35, color: 'bg-indigo-600' },
+  1699→  { id: 'tag-6', name: '1960s', type: 'era', trackCount: 120 },
+  1700→  { id: 'tag-7', name: '1970s', type: 'era', trackCount: 180 },
+  1701→  { id: 'tag-8', name: '1980s', type: 'era', trackCount: 95 },
+  1702→  { id: 'tag-9', name: '1990s', type: 'era', trackCount: 140 },
+  1703→  { id: 'tag-10', name: '2000s', type: 'era', trackCount: 210 },
+  1704→  { id: 'tag-11', name: '2010s', type: 'era', trackCount: 320 },
+  1705→  { id: 'tag-12', name: '2020s', type: 'era', trackCount: 180 },
+  1706→  { id: 'tag-13', name: 'HiRes', type: 'format', trackCount: 420 },
+  1707→  { id: 'tag-14', name: 'DSD', type: 'format', trackCount: 85 },
+  1708→  { id: 'tag-15', name: 'Vinyl Rip', type: 'format', trackCount: 140 },
+  1709→  { id: 'tag-16', name: 'Audiophile Grade', type: 'custom', trackCount: 200, color: 'bg-gold' },
+  1710→  { id: 'tag-17', name: 'Party', type: 'mood', trackCount: 55, color: 'bg-purple-600' },
+  1711→  { id: 'tag-18', name: 'Acoustic', type: 'mood', trackCount: 72, color: 'bg-amber-600' },
+  1712→];
+  1713→
