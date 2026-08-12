@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePodcastStore } from '@/store/podcast';
 import { usePlayerStore } from '@/store/player';
@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Podcast, Play, Pause, Search, Plus, Check, Download,
   Clock, Radio, Rss, Heart, Trash2, TrendingUp, Star,
-  Circle, Moon, Scissors, X,
+  Circle, Moon, Scissors, X, Loader2, ExternalLink,
 } from 'lucide-react';
 
 function handlePlayEpisode(episode: PodcastEpisode) {
@@ -117,24 +117,80 @@ export function PodcastsView() {
   } = usePodcastStore();
   const { isPlaying, playbackMode } = usePlayerStore();
 
-  const [activeTab, setActiveTab] = React.useState('subscriptions');
-  const [discoverSearch, setDiscoverSearch] = React.useState('');
-  const [discoverGenre, setDiscoverGenre] = React.useState('all');
-  const [allEpisodesFilter, setAllEpisodesFilter] = React.useState('all');
-  const [showSleepTimer, setShowSleepTimer] = React.useState(false);
-  const [unsubscribeTarget, setUnsubscribeTarget] = React.useState<PodcastShow | null>(null);
-  const [expandedShowId, setExpandedShowId] = React.useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('subscriptions');
+  const [discoverSearch, setDiscoverSearch] = useState('');
+  const [discoverGenre, setDiscoverGenre] = useState('all');
+  const [allEpisodesFilter, setAllEpisodesFilter] = useState('all');
+  const [showSleepTimer, setShowSleepTimer] = useState(false);
+  const [unsubscribeTarget, setUnsubscribeTarget] = useState<PodcastShow | null>(null);
+  const [expandedShowId, setExpandedShowId] = useState<string | null>(null);
+
+  // iTunes search state
+  const [iTunesResults, setITunesResults] = useState<Array<{
+    id: string; itunesId: number; title: string; author: string;
+    artworkUrl: string; genre: string; feedUrl: string;
+    episodeCount: number; description: string;
+  }>>([]);
+  const [iTunesLoading, setITunesLoading] = useState(false);
+  const [iTunesError, setITunesError] = useState<string | null>(null);
+  const [iTunesSearched, setITunesSearched] = useState(false);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // iTunes search with debounce
+  const doITunesSearch = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setITunesResults([]);
+      setITunesSearched(false);
+      setITunesError(null);
+      return;
+    }
+    setITunesLoading(true);
+    setITunesError(null);
+    setITunesSearched(true);
+    try {
+      const res = await fetch(`/api/podcasts/search?q=${encodeURIComponent(query.trim())}&limit=25`);
+      if (!res.ok) throw new Error(`Search failed (${res.status})`);
+      const data = await res.json();
+      setITunesResults((data.results || []).map((r: Record<string, unknown>) => ({
+        id: String(r.collectionId || r.trackId || ''),
+        itunesId: Number(r.collectionId || r.trackId || 0),
+        title: String(r.collectionName || r.trackName || 'Unknown'),
+        author: String(r.artistName || 'Unknown Author'),
+        artworkUrl: String(r.artworkUrl100 || r.artworkUrl600 || ''),
+        genre: String(r.primaryGenreName || 'Podcast'),
+        feedUrl: String(r.feedUrl || ''),
+        episodeCount: Number(r.trackCount || r.collectionSize || 0),
+        description: String(r.description || ''),
+      })));
+    } catch (err) {
+      setITunesError(err instanceof Error ? err.message : 'Search failed');
+      setITunesResults([]);
+    } finally {
+      setITunesLoading(false);
+    }
+  }, []);
+
+  // Debounced search on input change
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      doITunesSearch(discoverSearch);
+    }, 400);
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, [discoverSearch, doITunesSearch]);
 
   const subscribedShows = podcastShows.filter(s => subscribedShowIds.includes(s.id));
   const newEpisodes = getAllNewEpisodes();
 
-  const allSubscribedEpisodes = React.useMemo(() => {
+  const allSubscribedEpisodes = useMemo(() => {
     return podcastEpisodes
       .filter(ep => subscribedShowIds.includes(ep.showId))
       .sort((a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime());
   }, [subscribedShowIds]);
 
-  const filteredAllEpisodes = React.useMemo(() => {
+  const filteredAllEpisodes = useMemo(() => {
     return allSubscribedEpisodes.filter(ep => {
       const st = episodeStates[ep.id];
       if (!st) return allEpisodesFilter === 'all';
@@ -148,16 +204,16 @@ export function PodcastsView() {
     });
   }, [allSubscribedEpisodes, episodeStates, allEpisodesFilter]);
 
-  const downloadedEpisodes = React.useMemo(() => {
+  const downloadedEpisodes = useMemo(() => {
     return podcastEpisodes.filter(ep => episodeStates[ep.id]?.isDownloaded);
   }, [episodeStates]);
 
-  const allGenres = React.useMemo(() => {
+  const allGenres = useMemo(() => {
     const genres = new Set(podcastShows.map(s => s.genre));
     return ['all', ...Array.from(genres)];
   }, []);
 
-  const discoverShows = React.useMemo(() => {
+  const discoverShows = useMemo(() => {
     return podcastShows.filter(s => {
       const matchesSearch = discoverSearch.length === 0 ||
         s.title.toLowerCase().includes(discoverSearch.toLowerCase()) ||
@@ -167,11 +223,11 @@ export function PodcastsView() {
     });
   }, [discoverSearch, discoverGenre]);
 
-  const newAndNoteworthy = React.useMemo(() => {
+  const newAndNoteworthy = useMemo(() => {
     return podcastShows.filter(s => getEpisodesByShow(s.id).length > 0).slice(0, 3);
   }, []);
 
-  const trending = React.useMemo(() => {
+  const trending = useMemo(() => {
     return [...podcastShows].sort((a, b) => b.episodeCount - a.episodeCount).slice(0, 4);
   }, []);
 
@@ -549,7 +605,7 @@ export function PodcastsView() {
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
-                  placeholder="Search podcasts by title or author..."
+                  placeholder="Search iTunes podcast directory..."
                   value={discoverSearch}
                   onChange={(e) => setDiscoverSearch(e.target.value)}
                   className="pl-12 h-11 text-sm bg-card border-border rounded-xl"
@@ -562,99 +618,197 @@ export function PodcastsView() {
                     <X className="w-4 h-4" />
                   </button>
                 )}
+                {iTunesLoading && (
+                  <Loader2 className="absolute right-12 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+                )}
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                {allGenres.map(genre => (
-                  <Button
-                    key={genre}
-                    variant={discoverGenre === genre ? 'default' : 'outline'}
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => setDiscoverGenre(genre)}
-                  >
-                    {genre === 'all' ? 'All Genres' : genre}
-                  </Button>
-                ))}
-              </div>
-
-              {discoverSearch.length === 0 && discoverGenre === 'all' && (
+              {/* iTunes Search Results */}
+              {iTunesSearched && (
                 <div>
                   <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-                    <Star className="w-4 h-4" /> New {'&'} Noteworthy
+                    <ExternalLink className="w-4 h-4" /> iTunes Results
+                    {iTunesResults.length > 0 && (
+                      <Badge variant="outline" className="text-[10px]">{iTunesResults.length} found</Badge>
+                    )}
                   </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {newAndNoteworthy.map(show => {
-                      const isSub = subscribedShowIds.includes(show.id);
-                      const episodes = getEpisodesByShow(show.id);
-                      const unplayed = episodes.filter(ep => {
-                        const st = episodeStates[ep.id];
-                        return st && !st.isPlayed && !st.completed;
-                      });
-                      return (
+
+                  {iTunesError && (
+                    <div className="text-center py-6">
+                      <p className="text-sm text-destructive">{iTunesError}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Try a different search term</p>
+                    </div>
+                  )}
+
+                  {!iTunesLoading && !iTunesError && iTunesResults.length === 0 && (
+                    <div className="text-center py-6">
+                      <Search className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
+                      <p className="text-sm text-muted-foreground">No podcasts found for "{discoverSearch}"</p>
+                    </div>
+                  )}
+
+                  {iTunesResults.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {iTunesResults.map((result) => (
                         <Card
-                          key={show.id}
-                          className="bg-card border-border hover:border-muted-foreground/20 cursor-pointer transition-all"
-                          onClick={() => navigate('podcast-detail', { showId: show.id })}
+                          key={result.id}
+                          className="bg-card border-border hover:border-muted-foreground/20 transition-all"
                         >
                           <CardContent className="p-3">
-                            <div className={"w-full aspect-square rounded-lg bg-gradient-to-br " + getCoverGradient(show.id) + " mb-3 relative"}>
-                              {unplayed.length > 0 && (
-                                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-signal-red text-[10px] font-bold text-white flex items-center justify-center">
-                                  {unplayed.length}
-                                </span>
+                            <div className="flex gap-3">
+                              {result.artworkUrl ? (
+                                <img
+                                  src={result.artworkUrl}
+                                  alt={result.title}
+                                  className="w-16 h-16 rounded-lg flex-shrink-0 object-cover"
+                                />
+                              ) : (
+                                <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-purple-600 to-pink-500 flex-shrink-0 flex items-center justify-center">
+                                  <Podcast className="w-6 h-6 text-white" />
+                                </div>
                               )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{result.title}</p>
+                                <p className="text-xs text-muted-foreground truncate">{result.author}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge variant="outline" className="text-[10px]">{result.genre}</Badge>
+                                  <span className="text-[10px] text-muted-foreground">{result.episodeCount} eps</span>
+                                </div>
+                              </div>
                             </div>
-                            <p className="text-sm font-medium truncate">{show.title}</p>
-                            <p className="text-xs text-muted-foreground truncate">{show.author}</p>
-                            <div className="flex items-center justify-between mt-2">
-                              <Badge variant="outline" className="text-[10px]">{show.genre}</Badge>
-                              <Button
-                                variant={isSub ? 'secondary' : 'default'}
-                                size="sm"
-                                className="h-7 gap-1 text-xs"
-                                onClick={(e) => { e.stopPropagation(); toggleSubscribe(show.id); }}
-                              >
-                                {isSub ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                              </Button>
+                            {result.description && (
+                              <p className="text-[11px] text-muted-foreground mt-2 line-clamp-2">{result.description}</p>
+                            )}
+                            <div className="flex items-center gap-2 mt-2">
+                              {result.feedUrl && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="h-7 gap-1 text-xs flex-1"
+                                  onClick={() => {
+                                    toggleSubscribe(`itunes-${result.itunesId}`);
+                                  }}
+                                >
+                                  <Plus className="w-3 h-3" /> Subscribe
+                                </Button>
+                              )}
+                              {result.feedUrl && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 gap-1 text-xs"
+                                  onClick={() => {
+                                    navigate('podcast-detail', { showId: `itunes-${result.itunesId}` });
+                                  }}
+                                >
+                                  <Play className="w-3 h-3" /> Episodes
+                                </Button>
+                              )}
                             </div>
                           </CardContent>
                         </Card>
-                      );
-                    })}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
-              {discoverSearch.length === 0 && discoverGenre === 'all' && (
-                <div>
-                  <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4" /> Trending
-                  </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {trending.map(show => renderDiscoverShowCard(show))}
+              {/* Browse local catalog when not searching */}
+              {!iTunesSearched && (
+                <>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {allGenres.map(genre => (
+                      <Button
+                        key={genre}
+                        variant={discoverGenre === genre ? 'default' : 'outline'}
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => setDiscoverGenre(genre)}
+                      >
+                        {genre === 'all' ? 'All Genres' : genre}
+                      </Button>
+                    ))}
                   </div>
-                </div>
+
+                  {discoverGenre === 'all' && (
+                    <div>
+                      <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                        <Star className="w-4 h-4" /> New &amp; Noteworthy
+                      </h2>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {newAndNoteworthy.map(show => {
+                          const isSub = subscribedShowIds.includes(show.id);
+                          const episodes = getEpisodesByShow(show.id);
+                          const unplayed = episodes.filter(ep => {
+                            const st = episodeStates[ep.id];
+                            return st && !st.isPlayed && !st.completed;
+                          });
+                          return (
+                            <Card
+                              key={show.id}
+                              className="bg-card border-border hover:border-muted-foreground/20 cursor-pointer transition-all"
+                              onClick={() => navigate('podcast-detail', { showId: show.id })}
+                            >
+                              <CardContent className="p-3">
+                                <div className={"w-full aspect-square rounded-lg bg-gradient-to-br " + getCoverGradient(show.id) + " mb-3 relative"}>
+                                  {unplayed.length > 0 && (
+                                    <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-signal-red text-[10px] font-bold text-white flex items-center justify-center">
+                                      {unplayed.length}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-sm font-medium truncate">{show.title}</p>
+                                <p className="text-xs text-muted-foreground truncate">{show.author}</p>
+                                <div className="flex items-center justify-between mt-2">
+                                  <Badge variant="outline" className="text-[10px]">{show.genre}</Badge>
+                                  <Button
+                                    variant={isSub ? 'secondary' : 'default'}
+                                    size="sm"
+                                    className="h-7 gap-1 text-xs"
+                                    onClick={(e) => { e.stopPropagation(); toggleSubscribe(show.id); }}
+                                  >
+                                    {isSub ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {discoverGenre === 'all' && (
+                    <div>
+                      <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4" /> Trending
+                      </h2>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {trending.map(show => renderDiscoverShowCard(show))}
+                      </div>
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  <div>
+                    <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                      <Rss className="w-4 h-4" /> All Podcasts
+                      <Badge variant="outline" className="text-[10px]">{discoverShows.length}</Badge>
+                    </h2>
+                    {discoverShows.length === 0 ? (
+                      <div className="text-center py-8">
+                        <Search className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
+                        <p className="text-sm text-muted-foreground">No podcasts match your filter</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {discoverShows.map(show => renderDiscoverShowCard(show))}
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
-
-              <Separator />
-
-              <div>
-                <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-                  <Rss className="w-4 h-4" /> All Podcasts
-                  <Badge variant="outline" className="text-[10px]">{discoverShows.length}</Badge>
-                </h2>
-                {discoverShows.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Search className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
-                    <p className="text-sm text-muted-foreground">No podcasts match your search</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {discoverShows.map(show => renderDiscoverShowCard(show))}
-                  </div>
-                )}
-              </div>
             </TabsContent>
 
             <TabsContent value="all-episodes" className="space-y-4">

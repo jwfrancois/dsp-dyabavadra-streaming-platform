@@ -27,3 +27,25 @@ Stage Summary:
 - Podcasts: Persistent subscriptions (localStorage), real episode playback via proxy, speed control, resume positions
 - Local Library: Server-side directory scanning, music-metadata extraction, HTTP Range streaming, Plex-style browser UI
 - All playback modes unified through single AudioEngineProvider in the PlayerBar
+---
+Task ID: 1
+Agent: main
+Task: Fix two critical bugs — no audio playback and empty podcast Discover tab
+
+Work Log:
+- Diagnosed root cause of NO AUDIO: player store `play()` action set `isPlaying` and `currentTrack` but NEVER set `audioUrl`. AudioEngineProvider only reacts to `audioUrl` changes.
+- Fixed `play()`, `next()`, `previous()`, `setQueue()` in player.ts to always set `audioUrl` based on track source (local file → /api/library/stream, external URL → /api/proxy/podcast, fallback → demo audio from SoundHelix)
+- Fixed `playRadioStation()` to proxy stream URL through `/api/proxy/radio?url=` instead of direct icecast URL (fixes CORS on Vercel)
+- Fixed AudioEngineProvider URL comparison to use normalized URLs (prevents false negatives from URL resolution differences)
+- Added error logging to AudioEngineProvider for debugging
+- Diagnosed Podcast Discover tab: only filtered 6 local mock shows, no live search
+- Added real iTunes podcast search via `/api/podcasts/search` API with debounced input
+- Rewrote Discover tab to show iTunes results with artwork, subscribe button, and episode browser
+- Added `useEffect` for debounce, `useCallback` for search, `useRef` for debounce timer
+- Configured next.config.ts to allow iTunes CDN images (mzstatic.com)
+- Added demo audio fallback for mock music tracks (SoundHelix MP3s proxied)
+
+Stage Summary:
+- Audio playback now works for all 3 modes: music (demo audio), radio (SomaFM via proxy), podcasts (SoundHelix via proxy)
+- Podcast Discover tab now searches real iTunes directory with artwork, subscribe, and play buttons
+- Key files modified: src/store/player.ts, src/components/dsp/AudioEngineProvider.tsx, src/components/dsp/PodcastsView.tsx, next.config.ts

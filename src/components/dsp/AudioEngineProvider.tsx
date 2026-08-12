@@ -76,7 +76,9 @@ export function AudioEngineProvider({ children }: { children: React.ReactNode })
       }
     };
 
-    const onError = () => {
+    const onError = (e: Event) => {
+      const a = e.target as HTMLAudioElement;
+      console.error('[AudioEngine] Audio error:', a.error?.message || a.error?.code, 'src:', a.src);
       if (modeRef.current === 'radio') {
         setTimeout(() => {
           const s = usePlayerStore.getState();
@@ -151,11 +153,21 @@ export function AudioEngineProvider({ children }: { children: React.ReactNode })
       (state) => state.audioUrl,
       (url) => {
         const aa = getAudio();
-        if (url && url !== aa.src) {
+        if (url) {
+          // Normalize both URLs for comparison — browsers may add trailing slashes or resolve paths differently
+          try {
+            const normalizedNew = new URL(url, window.location.origin).href;
+            const normalizedExisting = new URL(aa.src, window.location.origin).href;
+            if (normalizedNew === normalizedExisting) return; // same URL, skip
+          } catch {
+            // URL parse failed — just compare raw strings
+            if (url === aa.src) return;
+          }
+          console.log('[AudioEngine] Loading new URL:', url);
           aa.src = url;
           aa.load();
           if (isPlayingRef.current) {
-            aa.play().catch(() => {});
+            aa.play().catch((e) => console.warn('[AudioEngine] play() failed:', e));
           }
         }
       }
