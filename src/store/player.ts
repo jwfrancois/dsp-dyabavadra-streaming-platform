@@ -94,6 +94,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   isMuted: false,
 
   play: (track) => {
+    // If a podcast is playing, clear podcast state first (dynamic import to avoid circular dep)
+    import('./podcast').then(({ usePodcastStore: ps }) => {
+      if (ps.getState().isPodcastMode) {
+        ps.setState({ isPodcastMode: false, currentEpisode: null });
+      }
+    });
+
     if (track) {
       const state = get();
       const existingIndex = state.queue.findIndex(t => t.id === track.id);
@@ -102,18 +109,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         set({ isPlaying: true, queueIndex: existingIndex, currentTrack: track, progress: 0, currentTime: 0, audioUrl, playbackMode: 'music' as const });
       } else {
         set({
-          isPlaying: true,
-          currentTrack: track,
-          queue: [track, ...state.queue],
-          queueIndex: 0,
-          progress: 0,
-          currentTime: 0,
-          audioUrl,
-          playbackMode: 'music' as const,
+          isPlaying: true, currentTrack: track,
+          queue: [track, ...state.queue], queueIndex: 0,
+          progress: 0, currentTime: 0, audioUrl, playbackMode: 'music' as const,
         });
       }
     } else {
-      // Resume: if we have a URL and not playing, just hit play
       const state = get();
       if (state.audioUrl) {
         set({ isPlaying: true });
@@ -232,7 +233,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   setAudioUrl: (url) => set({ audioUrl: url }),
 
   playRadioStation: (stationId, stationName, streamUrl, genre) => {
-    // Proxy radio stream through our API to avoid CORS issues on deployment
+    // If a podcast is playing, clear podcast state first (dynamic import to avoid circular dep)
+    import('./podcast').then(({ usePodcastStore: ps }) => {
+      if (ps.getState().isPodcastMode) {
+        ps.setState({ isPodcastMode: false, currentEpisode: null });
+      }
+    });
+
     const proxiedUrl = `/api/proxy/radio?url=${encodeURIComponent(streamUrl)}`;
     const radioTrack: Track = {
       id: `radio-${stationId}`,

@@ -186,8 +186,12 @@ export const usePodcastStore = create<PodcastState>()(
           }
         },
 
-        pausePodcast: () => set({ /* delegate to main player */ }),
-        resumePodcast: () => set({ /* delegate to main player */ }),
+        pausePodcast: () => {
+          usePlayerStore.setState({ isPlaying: false });
+        },
+        resumePodcast: () => {
+          usePlayerStore.setState({ isPlaying: true });
+        },
 
         seekPodcast: (_percent) => {
           // Handled by main player seek
@@ -269,7 +273,17 @@ export const usePodcastStore = create<PodcastState>()(
           };
         }),
 
-        stopPodcast: () => set({ currentEpisode: null, isPodcastMode: false }),
+        stopPodcast: () => {
+          usePlayerStore.setState({
+            isPlaying: false,
+            audioUrl: null,
+            playbackMode: 'music' as const,
+            isBuffering: false,
+            currentTime: 0,
+            progress: 0,
+          });
+          set({ currentEpisode: null, isPodcastMode: false });
+        },
 
         getTotalNewEpisodes: () => {
           const state = get();

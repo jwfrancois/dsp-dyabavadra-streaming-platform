@@ -47,10 +47,10 @@ export function PlayerBar() {
     setVolume(value[0]);
   }, [setVolume]);
 
-  // Determine what we're showing
-  const showingPodcast = isPodcastMode && currentEpisode;
-  const showingRadio = playbackMode === 'radio' && currentTrack;
-  const showingMusic = currentTrack && !showingPodcast && !showingRadio;
+  // Determine what we're showing — use playbackMode from player store as authoritative source
+  const showingPodcast = playbackMode === 'podcast' && isPodcastMode && !!currentEpisode;
+  const showingRadio = playbackMode === 'radio' && !!currentTrack;
+  const showingMusic = playbackMode === 'music' && !!currentTrack && !showingPodcast && !showingRadio;
   if (!showingPodcast && !showingRadio && !showingMusic) return null;
 
   // ── RADIO MODE ──
@@ -178,6 +178,16 @@ export function PlayerBar() {
             >
               <FastForward className="w-3 h-3" />
               {playbackSpeed}x
+            </Button>
+            {/* Stop button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground"
+              onClick={() => usePodcastStore.getState().stopPodcast()}
+              title="Stop"
+            >
+              <Square className="w-4 h-4" />
             </Button>
           </div>
           {/* Progress */}
