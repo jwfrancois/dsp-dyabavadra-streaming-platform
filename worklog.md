@@ -184,3 +184,27 @@ Stage Summary:
 - Subscriptions survive page refreshes (discoveredShows now persisted in localStorage)
 - "All Episodes" tab includes episodes from both local and discovered subscribed shows
 - New episode sidebar badge counts both local and discovered episodes
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix radio streaming + implement local music library scanning (Roon-style)
+
+Work Log:
+- Investigated radio buffering bug: AudioEngineProvider was already refactored, issue was in radio proxy (timeout, headers)
+- Fixed radio proxy: increased timeout 30s→60s, reduced reconnect delay 2s→1s, added ICY headers, backpressure handling
+- Fixed local-library store: corrected API URL from /api/local-library/scan (nonexistent) to POST /api/library/scan
+- Added SSE streaming progress to /api/library/scan endpoint for real-time progress bar
+- Added Zustand persist middleware to local-library store (tracks, directories, scanStats survive refresh)
+- Added scanAllDirectories() method to scan all configured folders sequentially with progress
+- Updated BrowseAlbumsView, BrowseArtistsView, BrowseTracksView to merge local tracks with mock data
+- Added Local badge/indicator and toggle buttons in browse views
+- Fixed playLocalTracks() bug: was calling play() with 2 args, changed to setQueue()
+- Added Scan All Folders button, per-folder rescan, and Clear Library button
+- Verified no new TypeScript errors introduced
+- Pushed all changes to GitHub
+
+Stage Summary:
+- 7 files changed, 829 insertions, 311 deletions
+- Radio proxy improved with better streaming headers and backpressure
+- Full local library scanning pipeline working: scan→persist→browse→play
+- Local tracks integrated into all three main browse views
