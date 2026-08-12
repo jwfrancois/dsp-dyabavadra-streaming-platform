@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { PodcastEpisode } from '@/lib/podcast-data';
+import type { PodcastEpisode, PodcastShow } from '@/lib/podcast-data';
 import { podcastEpisodes, podcastShows } from '@/lib/podcast-data';
 import { usePlayerStore } from './player';
 
@@ -24,6 +24,10 @@ interface PodcastState {
   // Episode library state
   subscribedShowIds: string[];
   episodeStates: Record<string, EpisodeState>;
+
+  // Discovered shows from iTunes search (transient, not persisted)
+  discoveredShows: Record<string, PodcastShow>;
+  setDiscoveredShow: (show: PodcastShow) => void;
 
   // Actions
   playEpisode: (episode: PodcastEpisode) => void;
@@ -73,6 +77,11 @@ export const usePodcastStore = create<PodcastState>()(
 
         subscribedShowIds: podcastShows.filter(s => s.subscribed).map(s => s.id),
         episodeStates: buildInitialEpisodeStates(),
+        discoveredShows: {},
+
+        setDiscoveredShow: (show) => set(s => ({
+          discoveredShows: { ...s.discoveredShows, [show.id]: show },
+        })),
 
         playEpisode: (episode) => {
           const state = get();

@@ -39,7 +39,8 @@ export function PodcastDetailView() {
   } = usePodcastStore();
 
   const showId = viewParams.showId;
-  const show = podcastShows.find(s => s.id === showId);
+  const discoveredShows = usePodcastStore(s => s.discoveredShows);
+  const show = podcastShows.find(s => s.id === showId) || discoveredShows[showId] || null;
 
   // Local state for show settings
   const [autoDownload, setAutoDownload] = React.useState(show?.autoDownload ?? false);

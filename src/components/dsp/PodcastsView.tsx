@@ -675,7 +675,26 @@ export function PodcastsView() {
                                   size="sm"
                                   className="h-7 gap-1 text-xs"
                                   onClick={() => {
-                                    navigate('podcast-detail', { showId: `itunes-${result.itunesId}` });
+                                    const showId = `itunes-${result.itunesId}`;
+                                    usePodcastStore.getState().setDiscoveredShow({
+                                      id: showId,
+                                      title: result.title,
+                                      author: result.author,
+                                      description: result.description,
+                                      artworkUrl: result.artworkUrl,
+                                      feedUrl: result.feedUrl,
+                                      genre: result.genre,
+                                      category: result.genre,
+                                      language: 'en',
+                                      rating: 'clean',
+                                      episodeCount: result.episodeCount,
+                                      subscribed: subscribedShowIds.includes(showId),
+                                      autoDownload: false,
+                                      newEpisodeCount: 0,
+                                      lastChecked: new Date().toISOString(),
+                                      averageDuration: 0,
+                                    });
+                                    navigate('podcast-detail', { showId });
                                   }}
                                 >
                                   <Play className="w-3 h-3" /> Episodes
