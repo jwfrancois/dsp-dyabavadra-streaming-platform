@@ -11,13 +11,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import {
   Play, ArrowLeft, Heart, Share2, Star, Clock, Gauge,
-  CheckCircle2, Zap, ChevronRight, AlertCircle, Download,
-  MoreHorizontal,
+  CheckCircle2, Zap, ChevronRight, AlertCircle, Mic,
+  Radio, Music, Disc3, User,
 } from 'lucide-react';
 
 export function AlbumDetailView() {
   const { viewParams, navigate } = useUIStore();
-  const { play, setQueue, activeZoneId } = usePlayerStore();
+  const { play, setQueue, activeZoneId, currentTrack, isPlaying } = usePlayerStore();
   const albumId = viewParams.albumId;
   const album = albums.find(a => a.id === albumId);
 
@@ -29,6 +29,35 @@ export function AlbumDetailView() {
   const totalDuration = albumTracks.reduce((sum, t) => sum + t.duration, 0);
   const signalPath = getSignalPath(albumTracks[0]?.id || '', activeZoneId);
   const isBitPerfect = signalPath.length > 0 && signalPath.every(s => s.isBitPerfect);
+
+  // Aggregate all unique credits across the album
+  const albumCredits = React.useMemo(() => {
+    const creditMap = new Map<string, { name: string; roles: string[]; instruments: string[]; trackIds: string[] }>();
+    for (const track of albumTracks) {
+      for (const perf of track.performers) {
+        const existing = creditMap.get(perf.name);
+        if (existing) {
+          if (!existing.roles.includes(perf.role)) existing.roles.push(perf.role);
+          if (perf.instrument && !existing.instruments.includes(perf.instrument)) existing.instruments.push(perf.instrument);
+          if (!existing.trackIds.includes(track.id)) existing.trackIds.push(track.id);
+        } else {
+          creditMap.set(perf.name, { name: perf.name, roles: [perf.role], instruments: perf.instrument ? [perf.instrument] : [], trackIds: [track.id] });
+        }
+      }
+    }
+    return Array.from(creditMap.values()).sort((a, b) => b.trackIds.length - a.trackIds.length);
+  }, [albumTracks]);
+
+  // Aggregate all composers
+  const albumComposers = React.useMemo(() => {
+    const compMap = new Map<string, number>();
+    for (const track of albumTracks) {
+      for (const comp of track.composers) {
+        compMap.set(comp, (compMap.get(comp) || 0) + 1);
+      }
+    }
+    return Array.from(compMap.entries()).sort((a, b) => b[1] - a[1]);
+  }, [albumTracks]);
 
   const playAll = () => {
     if (albumTracks.length > 0) setQueue(albumTracks, 0);
@@ -55,8 +84,15 @@ export function AlbumDetailView() {
           <div className="flex-1">
             <div className="flex flex-wrap gap-2 mb-2">
               <Badge variant="outline" className="text-[10px]">{album.type.charAt(0).toUpperCase() + album.type.slice(1)}</Badge>
-              <Badge variant="outline" className="text-[10px]">{album.genre}</Badge>
+              <Badge
+                variant="outline"
+                className="text-[10px] cursor-pointer hover:bg-primary/20 transition-colors"
+                onClick={() => navigate('genre-detail', { genreName: album.genre })}
+              >
+                {album.genre}
+              </Badge>
               <Badge variant="outline" className="text-[10px] font-mono">{album.format} {formatSampleRate(album.sampleRate)}</Badge>
+              <Badge variant="outline" className="text-[10px] font-mono">{album.bitDepth}-bit</Badge>
             </div>
             <h1 className="text-3xl font-bold mb-1">{album.title}</h1>
             <p
@@ -76,11 +112,17 @@ export function AlbumDetailView() {
               <span>{albumTracks.length} tracks</span>
               <span>·</span>
               <span>{formatDuration(totalDuration)}</span>
+              {album.channels === 1 && <Badge variant="outline" className="text-[10px]">Mono</Badge>}
+              {album.channels === 2 && <Badge variant="outline" className="text-[10px]">Stereo</Badge>}
+              {album.channels > 2 && <Badge variant="outline" className="text-[10px]">{album.channels}-ch</Badge>}
             </div>
 
             <div className="flex gap-3 mt-5">
               <Button onClick={playAll}>
                 <Play className="w-4 h-4 mr-2" /> Play Album
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => navigate('radio')}>
+                <Radio className="w-4 h-4 mr-2" /> Album Radio
               </Button>
               <Button variant="outline">
                 <Heart className="w-4 h-4 mr-2" /> Love
@@ -117,22 +159,37 @@ export function AlbumDetailView() {
 
         {/* Track List */}
         <section className="mb-8">
+          <h2 className="text-lg font-semibold mb-4">Track List</h2>
           <div className="space-y-0.5">
             {albumTracks.map(track => (
               <div
                 key={track.id}
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors group"
+                className={`flex items-center gap-3 p-3 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors group ${
+                  currentTrack?.id === track.id ? 'bg-accent/40' : ''
+                }`}
                 onClick={() => play(track)}
               >
                 <span className="text-sm text-muted-foreground w-8 text-right tabular-nums">
-                  <span className="group-hover:hidden">{track.trackNumber}</span>
+                  {currentTrack?.id === track.id && isPlaying ? (
+                    <Music className="w-3 h-3 text-primary" />
+                  ) : (
+                    <span className="group-hover:hidden">{track.trackNumber}</span>
+                  )}
                   <Play className="w-3 h-3 text-primary hidden group-hover:block ml-auto" />
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{track.title}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     <span className="text-[11px] text-muted-foreground font-mono">{track.format}</span>
                     <span className="text-[11px] text-muted-foreground font-mono">{formatSampleRate(track.sampleRate)}/{track.bitDepth}bit</span>
+                    {track.source !== 'local' && (
+                      <Badge variant="outline" className="text-[9px] px-1 py-0">{track.source.toUpperCase()}</Badge>
+                    )}
+                    {track.composers.length > 0 && (
+                      <span className="text-[11px] text-muted-foreground">
+                        {track.composers.join(', ')}
+                      </span>
+                    )}
                     {track.loved && <Heart className="w-3 h-3 fill-red-500 text-red-500" />}
                   </div>
                 </div>
@@ -142,23 +199,50 @@ export function AlbumDetailView() {
           </div>
         </section>
 
-        {/* Credits */}
+        {/* Credits - Cross-linked */}
         <section className="mb-8">
-          <h2 className="text-lg font-semibold mb-4">Credits</h2>
-          {albumTracks[0]?.performers && (
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Mic className="w-5 h-5 text-muted-foreground" />
+            Credits
+          </h2>
+          {albumCredits.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {albumTracks[0].performers.map((p, i) => (
-                <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-surface/50">
-                  <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${getCoverGradient(p.name)} flex-shrink-0`} />
-                  <div>
-                    <p className="text-sm font-medium">{p.name}</p>
-                    <p className="text-xs text-muted-foreground">{p.role}{p.instrument ? ` (${p.instrument})` : ''}</p>
+              {albumCredits.map(credit => (
+                <div
+                  key={credit.name}
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors group"
+                  onClick={() => navigate('performer-detail', { performerName: credit.name })}
+                >
+                  <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getCoverGradient(credit.name)} flex-shrink-0`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{credit.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {credit.roles.join(', ')}{credit.instruments.length > 0 ? ` (${credit.instruments.join(', ')})` : ''}
+                      {` · ${credit.trackIds.length} track${credit.trackIds.length > 1 ? 's' : ''}`}
+                    </p>
                   </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
               ))}
             </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No performer credits available for this album.</p>
           )}
         </section>
+
+        {/* Composers */}
+        {albumComposers.length > 0 && (
+          <section className="mb-8">
+            <h2 className="text-lg font-semibold mb-4">Composers</h2>
+            <div className="flex flex-wrap gap-2">
+              {albumComposers.map(([name, count]) => (
+                <Badge key={name} variant="outline" className="px-3 py-1">
+                  {name} <span className="text-muted-foreground ml-1">({count})</span>
+                </Badge>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Album Review */}
         {album.review && (

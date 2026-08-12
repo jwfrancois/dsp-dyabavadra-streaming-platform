@@ -5,6 +5,8 @@ import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
 import { artists, albums, tracks, playlists, genres } from '@/lib/data';
 import { formatDuration, getCoverGradient } from '@/lib/data';
+import { editorialCollections, radioStations, genreDetails } from '@/lib/metadata';
+import { useDiscoveryStore } from '@/store/discovery';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { CoverArt } from '@/components/dsp/CoverArt';
 import {
   Play, ArrowRight, Clock, TrendingUp, Star, Sparkles,
-  Headphones, Calendar, Music2,
+  Headphones, Calendar, Music2, Radio, Newspaper, BookOpen, LivePulse,
 } from 'lucide-react';
 
 export function HomeView() {
@@ -256,6 +258,88 @@ export function HomeView() {
             </div>
           </section>
         )}
+
+        {/* Editorial - Featured Collections */}
+        {editorialCollections.filter(c => c.featured).length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Newspaper className="w-5 h-5 text-primary" />
+                Editorial
+              </h2>
+              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('editorial')}>
+                View All <ArrowRight className="w-3 h-3 ml-1" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {editorialCollections.filter(c => c.featured).slice(0, 3).map(collection => {
+                const typeColors: Record<string, string> = {
+                  'new-releases': 'bg-primary',
+                  'genre-primer': 'bg-blue-600',
+                  'best-of': 'bg-gold text-black',
+                  'curated': 'bg-purple-600',
+                  'staff-picks': 'bg-green-600',
+                  'on-this-day': 'bg-amber-600',
+                };
+                return (
+                  <Card
+                    key={collection.id}
+                    className="bg-card border-border hover:bg-accent/30 cursor-pointer transition-colors group"
+                    onClick={() => navigate('editorial')}
+                  >
+                    <CardContent className="p-4">
+                      <div className={`w-full aspect-[2/1] rounded-lg bg-gradient-to-br ${getCoverGradient(collection.id)} mb-3 relative overflow-hidden`}>
+                        <Badge className={`absolute top-2 left-2 text-[9px] ${typeColors[collection.type] || 'bg-muted'}`}>
+                          {collection.type.replace(/-/g, ' ')}
+                        </Badge>
+                      </div>
+                      <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{collection.title}</p>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">{collection.subtitle}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">{collection.curator}</p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Radio Quick Access */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Radio className="w-5 h-5 text-signal-green" />
+              Internet Radio
+            </h2>
+            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('radio')}>
+              All Stations <ArrowRight className="w-3 h-3 ml-1" />
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {radioStations.slice(0, 4).map(station => (
+              <Card
+                key={station.id}
+                className="bg-card border-border hover:bg-accent/30 cursor-pointer transition-colors group"
+                onClick={() => navigate('radio')}
+              >
+                <CardContent className="p-3">
+                  <div className="flex gap-3">
+                    <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${getCoverGradient(station.id)} flex-shrink-0 flex items-center justify-center`}>
+                      <Radio className="w-4 h-4 text-white/60" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{station.name}</p>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Badge variant="outline" className="text-[9px] px-1 py-0">LIVE</Badge>
+                        <span className="text-[10px] text-muted-foreground">{station.genre}</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
       </div>
     </ScrollArea>
   );

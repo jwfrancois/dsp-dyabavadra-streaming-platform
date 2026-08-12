@@ -19,6 +19,13 @@ import { SettingsView } from '@/components/dsp/SettingsView';
 import { PodcastsView } from '@/components/dsp/PodcastsView';
 import { PodcastDetailView } from '@/components/dsp/PodcastDetailView';
 import { LibraryManagementView } from '@/components/dsp/LibraryManagementView';
+import { PerformerDetailView } from '@/components/dsp/PerformerDetailView';
+import { RadioView } from '@/components/dsp/RadioView';
+import { ComposerDetailView } from '@/components/dsp/ComposerDetailView';
+import { WorkDetailView } from '@/components/dsp/WorkDetailView';
+import { GenreDetailView } from '@/components/dsp/GenreDetailView';
+import { EditorialView } from '@/components/dsp/EditorialView';
+import { StreamingView } from '@/components/dsp/StreamingView';
 import { useUIStore } from '@/store/ui';
 import type { ViewName } from '@/store/player';
 import { Button } from '@/components/ui/button';
@@ -41,6 +48,13 @@ function ViewRouter({ view }: { view: ViewName }) {
     case 'podcasts': return <PodcastsView />;
     case 'podcast-detail': return <PodcastDetailView />;
     case 'library': return <LibraryManagementView />;
+    case 'performer-detail': return <PerformerDetailView />;
+    case 'radio': return <RadioView />;
+    case 'composer-detail': return <ComposerDetailView />;
+    case 'work-detail': return <WorkDetailView />;
+    case 'genre-detail': return <GenreDetailView />;
+    case 'editorial': return <EditorialView />;
+    case 'streaming': return <StreamingView />;
     default: return <HomeView />;
   }
 }

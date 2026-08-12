@@ -5,10 +5,12 @@ import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
 import { genres, albums, artists, tracks } from '@/lib/data';
 import { getCoverGradient } from '@/lib/data';
+import { genreDetails } from '@/lib/metadata';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Music, Users, Disc3 } from 'lucide-react';
+import { Music, Users, Disc3, ChevronRight, BookOpen } from 'lucide-react';
 
 export function BrowseGenresView() {
   const { navigate } = useUIStore();
@@ -42,30 +44,85 @@ export function BrowseGenresView() {
           <Badge variant="secondary" className="text-xs">{genres.length} genres</Badge>
         </div>
 
+        {/* Genre cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {genres.map(genre => (
-            <Card
-              key={genre.id}
-              className={`bg-gradient-to-br ${genreColors[genre.name] || 'from-gray-800 to-gray-900'} border-0 cursor-pointer hover:scale-[1.02] transition-transform overflow-hidden`}
-              onClick={() => playGenre(genre.name)}
-            >
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between mb-4">
-                  <div className={`w-12 h-12 rounded-lg bg-black/30 flex items-center justify-center`}>
-                    <Music className="w-6 h-6 text-white/80" />
+          {genres.map(genre => {
+            const hasDetail = genreDetails.some(gd => gd.name === genre.name);
+            return (
+              <Card
+                key={genre.id}
+                className={`bg-gradient-to-br ${genreColors[genre.name] || 'from-gray-800 to-gray-900'} border-0 hover:scale-[1.02] transition-transform overflow-hidden cursor-pointer relative group`}
+                onClick={() => {
+                  if (hasDetail) {
+                    navigate('genre-detail', { genreName: genre.name });
+                  } else {
+                    playGenre(genre.name);
+                  }
+                }}
+              >
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`w-12 h-12 rounded-lg bg-black/30 flex items-center justify-center`}>
+                      <Music className="w-6 h-6 text-white/80" />
+                    </div>
+                    <Badge variant="secondary" className="text-[10px] bg-white/10 text-white/80 border-white/10">
+                      {genre.trackCount} tracks
+                    </Badge>
                   </div>
-                  <Badge variant="secondary" className="text-[10px] bg-white/10 text-white/80 border-white/10">
-                    {genre.trackCount} tracks
-                  </Badge>
-                </div>
-                <h3 className="text-lg font-bold text-white mb-2">{genre.name}</h3>
-                <div className="flex gap-3 text-xs text-white/60">
-                  <span className="flex items-center gap-1"><Disc3 className="w-3 h-3" />{genre.albumCount} albums</span>
-                  <span className="flex items-center gap-1"><Users className="w-3 h-3" />{genre.artistCount} artists</span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <h3 className="text-lg font-bold text-white mb-2">{genre.name}</h3>
+                  <div className="flex gap-3 text-xs text-white/60">
+                    <span className="flex items-center gap-1"><Disc3 className="w-3 h-3" />{genre.albumCount} albums</span>
+                    <span className="flex items-center gap-1"><Users className="w-3 h-3" />{genre.artistCount} artists</span>
+                  </div>
+                  {hasDetail && (
+                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <ChevronRight className="w-5 h-5 text-white/60" />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Genre Primer Links */}
+        <div className="mt-10">
+          <div className="flex items-center gap-2 mb-4">
+            <BookOpen className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold">Genre Primers & Deep Dives</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Explore detailed genre guides with essential albums, artist spotlights, and editorial curations.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {genreDetails.map(gd => (
+              <Card
+                key={gd.id}
+                className="bg-card border-border hover:bg-accent/30 cursor-pointer transition-colors group"
+                onClick={() => navigate('genre-detail', { genreName: gd.name })}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${genreColors[gd.name] || 'from-gray-800 to-gray-900'} flex items-center justify-center flex-shrink-0`}>
+                      <Music className="w-5 h-5 text-white/80" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{gd.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {gd.essentialAlbums.length} essential albums
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-3">
+                    {gd.moods.slice(0, 4).map(mood => (
+                      <Badge key={mood} variant="outline" className="text-[9px] px-1.5 py-0">{mood}</Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </div>
     </ScrollArea>
