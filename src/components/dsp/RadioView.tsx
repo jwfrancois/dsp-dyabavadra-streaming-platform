@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { internetRadioStations, searchRadioStations, getRadioGenres, getRadioCountries, getFavoriteRadioStations, toggleRadioFavorite } from '@/lib/radio-stations';
 import type { RadioStation } from '@/lib/radio-stations';
 import { usePlayerStore } from '@/store/player';
