@@ -123,6 +123,7 @@ export function PodcastsView() {
   const [allEpisodesFilter, setAllEpisodesFilter] = React.useState('all');
   const [showSleepTimer, setShowSleepTimer] = React.useState(false);
   const [unsubscribeTarget, setUnsubscribeTarget] = React.useState<PodcastShow | null>(null);
+  const [expandedShowId, setExpandedShowId] = React.useState<string | null>(null);
 
   const subscribedShows = podcastShows.filter(s => subscribedShowIds.includes(s.id));
   const newEpisodes = getAllNewEpisodes();
@@ -365,14 +366,15 @@ export function PodcastsView() {
 
   const renderDiscoverShowCard = (show: PodcastShow) => {
     const isSub = subscribedShowIds.includes(show.id);
+    const isExpanded = expandedShowId === show.id;
+    const episodes = getEpisodesByShow(show.id);
     return (
       <Card
         key={show.id}
-        className="bg-card border-border hover:border-muted-foreground/20 cursor-pointer transition-all"
-        onClick={() => navigate('podcast-detail', { showId: show.id })}
+        className="bg-card border-border hover:border-muted-foreground/20 transition-all"
       >
         <CardContent className="p-3">
-          <div className="flex gap-3">
+          <div className="flex gap-3 cursor-pointer" onClick={() => setExpandedShowId(isExpanded ? null : show.id)}>
             <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${getCoverGradient(show.id)} flex-shrink-0`} />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{show.title}</p>
@@ -380,18 +382,46 @@ export function PodcastsView() {
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="outline" className="text-[10px]">{show.genre}</Badge>
                 <span className="text-[10px] text-muted-foreground">{show.episodeCount} eps</span>
+                <span className="text-[10px] text-muted-foreground">{episodes.length} available</span>
               </div>
               <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{show.description}</p>
             </div>
-            <Button
-              variant={isSub ? 'secondary' : 'default'}
-              size="sm"
-              className="h-8 gap-1.5 flex-shrink-0 self-start"
-              onClick={(e) => { e.stopPropagation(); toggleSubscribe(show.id); }}
-            >
-              {isSub ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-            </Button>
+            <div className="flex flex-col items-end gap-2 flex-shrink-0">
+              <Button
+                variant={isSub ? 'secondary' : 'default'}
+                size="sm"
+                className="h-8 gap-1.5"
+                onClick={(e) => { e.stopPropagation(); toggleSubscribe(show.id); }}
+              >
+                {isSub ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                {isSub ? 'Subscribed' : 'Subscribe'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 text-xs"
+                onClick={(e) => { e.stopPropagation(); if (episodes.length > 0) handlePlayEpisode(episodes[0]); }}
+              >
+                <Play className="w-3 h-3" />
+                Play Latest
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground"
+                onClick={(e) => { e.stopPropagation(); setExpandedShowId(isExpanded ? null : show.id); }}
+              >
+                {isExpanded ? 'Hide' : `${episodes.length} episodes`}
+              </Button>
+            </div>
           </div>
+
+          {isExpanded && episodes.length > 0 && (
+            <div className="mt-3 ml-[76px] space-y-1 border-l-2 border-primary/20 pl-3">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Episodes</p>
+              {episodes.map(ep => renderEpisodeRow(ep, 'sm', false))}
+            </div>
+          )}
         </CardContent>
       </Card>
     );
