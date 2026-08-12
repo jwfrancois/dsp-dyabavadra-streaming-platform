@@ -35,3 +35,29 @@ Work Log:
 Stage Summary:
 - Full podcast system implemented: discovery, subscription, episode management, playback with spoken-word controls
 - Podcasts fully integrated into existing DSP platform: sidebar nav, search, player bar, zone system
+---
+Task ID: 1
+Agent: Main Agent
+Task: Implement Section 2 (System Architecture) and Section 3 (Audio Engine & Signal Path) for DSP Platform
+
+Work Log:
+- Read existing codebase: stores, data.ts (1171 lines), all components, page.tsx, Sidebar.tsx
+- Extended data.ts with coreStatus mock data (Core server, machine info, audio engine, storage, network, API, streaming, library stats)
+- Enhanced getSignalPath() with detailed per-DSP-module step generation (room correction, parametric EQ, headphone correction, crossfeed, loudness, upsampling, volume control, DSD→DoP conversion, format conversion, network transport, DAC output)
+- Added getDetailedSignalPath() helper returning comprehensive signal analysis
+- Created src/store/system.ts — Zustand store for core status, endpoint discovery, network protocol, remote apps
+- Created src/store/dsp-engine.ts — Zustand store for per-zone DSP config, EQ band management, volume/clock modes
+- Created SystemArchitectureView.tsx (546 lines) — 8 sections: core status, machine info, audio engine, storage, network, remote apps, streaming, library stats
+- Created DSPConfigView.tsx (837 lines) — zone selector, DSP module toggles, parametric EQ editor with SVG curve, upsampling config, volume control modes, clock/timing settings
+- Created SignalPathView.tsx (551 lines) — detailed signal chain flow diagram, bit-perfect analysis with suggestions, zone/endpoint info, DAC capabilities grid
+- Created OutputEndpointsView.tsx (612 lines) — endpoint cards with status/DAC/capabilities, auto-discovery, multi-zone groups, network topology map
+- Updated ViewName type with 4 new views: system, dsp-config, signal-path, endpoints
+- Updated Sidebar with new "System" navigation section (Core/System, Endpoints, Signal Path, DSP Engine)
+- Updated page.tsx ViewRouter with 4 new cases
+- Build passed cleanly (Next.js 16.1.3 Turbopack, 0 errors)
+
+Stage Summary:
+- 4 new major views implemented for System Architecture and Audio Engine sections
+- 2 new Zustand stores created
+- Enhanced signal path engine with 10+ processing step types
+- All builds passing with no errors

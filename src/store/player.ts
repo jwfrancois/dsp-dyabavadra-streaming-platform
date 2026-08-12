@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { Track, Zone } from '@/lib/data';
 import { tracks as allTracks } from '@/lib/data';
 
-export type ViewName = 'home' | 'browse-artists' | 'browse-albums' | 'browse-tracks' | 'browse-genres' | 'browse-playlists' | 'podcasts' | 'podcast-detail' | 'library' | 'now-playing' | 'artist-detail' | 'album-detail' | 'performer-detail' | 'search' | 'zones' | 'settings' | 'radio' | 'composer-detail' | 'genre-detail' | 'editorial' | 'streaming' | 'work-detail';
+export type ViewName = 'home' | 'browse-artists' | 'browse-albums' | 'browse-tracks' | 'browse-genres' | 'browse-playlists' | 'podcasts' | 'podcast-detail' | 'library' | 'now-playing' | 'artist-detail' | 'album-detail' | 'performer-detail' | 'search' | 'zones' | 'settings' | 'radio' | 'composer-detail' | 'genre-detail' | 'editorial' | 'streaming' | 'work-detail' | 'system' | 'dsp-config' | 'signal-path' | 'endpoints';
 
 interface PlayerState {
   isPlaying: boolean;

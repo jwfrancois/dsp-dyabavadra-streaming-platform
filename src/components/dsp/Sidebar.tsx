@@ -15,7 +15,8 @@ import {
   Shuffle, Repeat, Repeat1, Volume2, VolumeX, Volume1, ChevronLeft,
   ChevronRight, Music, Mic2, Radio, ListMusic, Settings, Disc3,
   Headphones, LayoutGrid, Grip, X, Heart, Podcast, FolderOpen,
-  Newspaper, Globe, Clapperboard, Workflow,
+  Newspaper, Globe, Clapperboard, Workflow, Server, MonitorSpeaker,
+  Gauge, Sliders,
 } from 'lucide-react';
 import { formatDuration, getCoverGradient } from '@/lib/data';
 import { usePodcastStore } from '@/store/podcast';
@@ -34,6 +35,13 @@ const discoveryItems = [
   { icon: Clapperboard, label: 'Editorial', view: 'editorial' as const },
   { icon: Radio, label: 'Radio', view: 'radio' as const },
   { icon: Workflow, label: 'Composers', view: 'composer-detail' as const },
+];
+
+const systemItems = [
+  { icon: Server, label: 'Core / System', view: 'system' as const },
+  { icon: MonitorSpeaker, label: 'Endpoints', view: 'endpoints' as const },
+  { icon: Gauge, label: 'Signal Path', view: 'signal-path' as const },
+  { icon: Sliders, label: 'DSP Engine', view: 'dsp-config' as const },
 ];
 
 const libraryItems = [
@@ -138,6 +146,34 @@ export function Sidebar() {
               </p>
             )}
             {discoveryItems.map(item => {
+              const Icon = item.icon;
+              const isActive = currentView === item.view;
+              return (
+                <Button
+                  key={item.view}
+                  variant={isActive ? 'secondary' : 'ghost'}
+                  className={`w-full justify-start gap-3 h-9 mb-0.5 ${
+                    isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-muted-foreground hover:text-sidebar-foreground'
+                  } ${!sidebarOpen ? 'px-0 justify-center' : ''}`}
+                  onClick={() => navigate(item.view)}
+                >
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  {sidebarOpen && <span className="text-xs">{item.label}</span>}
+                </Button>
+              );
+            })}
+          </div>
+
+          <Separator className="bg-sidebar-border mx-3" />
+
+          {/* System / Architecture */}
+          <div className="p-2 mt-2">
+            {sidebarOpen && (
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 mb-2">
+                System
+              </p>
+            )}
+            {systemItems.map(item => {
               const Icon = item.icon;
               const isActive = currentView === item.view;
               return (

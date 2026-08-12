@@ -1118,53 +1118,339 @@ export function searchLibrary(query: string): { artists: Artist[]; albums: Album
 
 // Note: Podcast search is in podcast-data.ts via searchPodcasts()
 
+// ─── CORE STATUS (Mock Data) ───
+
+export const coreStatus: CoreStatus = {
+  id: 'core-1',
+  name: 'DSP Core — NAS Server',
+  version: '2.4.0-beta.7',
+  status: 'running',
+  uptime: 14 * 86400 + 7 * 3600 + 32 * 60,
+  machineInfo: {
+    hostname: 'nas-dsp-core',
+    os: 'Debian 12 (Bookworm)',
+    cpuModel: 'Intel Core i5-12400T',
+    cpuUsage: 18,
+    memoryTotal: 8589934592,
+    memoryUsed: 1288490189,
+    cores: 6,
+    architecture: 'x86_64',
+  },
+  audioEngine: {
+    status: 'active',
+    activeZones: 3,
+    totalZones: 4,
+    decodingLoad: 12,
+    dspLoad: 28,
+    outputLoad: 8,
+    currentSampleRate: 192000,
+    supportedFormats: ['FLAC', 'ALAC', 'WAV', 'AIFF', 'DSF', 'DFF', 'MP3', 'AAC', 'OGG Vorbis', 'WavPack'],
+    maxChannels: 8,
+    bitPerfectCapable: true,
+    dsdNativeCapable: true,
+    mqaPassthrough: true,
+  },
+  storageLocations: [
+    {
+      id: 'storage-1',
+      name: 'Music Library (NAS)',
+      path: '/nas/music',
+      type: 'nas',
+      enabled: true,
+      totalSpace: 4398046511104,
+      usedSpace: 2576980377344,
+      trackCount: 12450,
+      albumCount: 1580,
+      isWatching: true,
+      lastScan: '2026-08-12T06:00:00Z',
+      scanIntervalMin: 30,
+    },
+    {
+      id: 'storage-2',
+      name: 'Local SSD Cache',
+      path: '/local/music',
+      type: 'local',
+      enabled: true,
+      totalSpace: 274877906944,
+      usedSpace: 85899345920,
+      trackCount: 3200,
+      albumCount: 420,
+      isWatching: true,
+      lastScan: '2026-08-12T06:00:00Z',
+      scanIntervalMin: 15,
+    },
+    {
+      id: 'storage-3',
+      name: 'External USB Drive',
+      path: '/Volumes/External',
+      type: 'usb',
+      enabled: true,
+      totalSpace: 2199023255552,
+      usedSpace: 966367641600,
+      trackCount: 8900,
+      albumCount: 1120,
+      isWatching: false,
+      lastScan: '2026-08-11T18:00:00Z',
+      scanIntervalMin: 60,
+    },
+  ],
+  networkInfo: {
+    hostname: 'nas-dsp-core',
+    ipAddress: '192.168.1.100',
+    macAddress: 'AA:BB:CC:DD:EE:FF',
+    protocol: 'dsp-native',
+    port: 9500,
+    discoveryPort: 9501,
+    encryption: true,
+    remoteAccess: true,
+    vpnActive: false,
+    connectedEndpoints: 6,
+  },
+  apiInfo: {
+    version: 'v2',
+    protocol: 'websocket',
+    port: 9600,
+    wsPort: 9601,
+    authenticated: true,
+    remoteApps: [
+      { id: 'app-1', name: 'DSP Remote (iPhone)', type: 'ios', connected: true, lastSeen: '2026-08-12T14:30:00Z', ipAddress: '192.168.1.50' },
+      { id: 'app-2', name: 'DSP Remote (iPad)', type: 'ios', connected: true, lastSeen: '2026-08-12T14:29:55Z', ipAddress: '192.168.1.51' },
+      { id: 'app-3', name: 'DSP Desktop', type: 'desktop', connected: false, lastSeen: '2026-08-12T08:00:00Z', ipAddress: '192.168.1.200' },
+      { id: 'app-4', name: 'Web Controller', type: 'web', connected: true, lastSeen: '2026-08-12T14:30:10Z', ipAddress: '192.168.1.201' },
+    ],
+  },
+  streamingServices: [
+    { id: 'svc-1', name: 'TIDAL', type: 'tidal', status: 'connected', linked: true, username: 'user@example.com', qualityTier: 'HiRes', maxQuality: '24-bit/96kHz FLAC', lastSync: '2026-08-12T12:00:00Z', librarySize: 2840 },
+    { id: 'svc-2', name: 'Qobuz', type: 'qobuz', status: 'disconnected', linked: false, qualityTier: '—' },
+    { id: 'svc-3', name: 'Deezer', type: 'deezer', status: 'disconnected', linked: false, qualityTier: '—' },
+  ],
+  libraryStats: {
+    totalTracks: 24550,
+    totalAlbums: 3120,
+    totalArtists: 890,
+    totalDuration: 9424800,
+    totalSize: 3500000000000,
+    localTracks: 24550,
+    streamingTracks: 0,
+    formatBreakdown: { FLAC: 14200, ALAC: 3200, WAV: 1800, DSD: 1200, MP3: 2800, AAC: 1350 },
+    sampleRateBreakdown: { '44.1kHz': 8200, '48kHz': 1800, '88.2kHz': 2400, '96kHz': 5100, '176.4kHz': 3200, '192kHz': 2500, '352.8kHz': 800, '384kHz': 550 },
+  },
+  discoveryMode: 'lan',
+  autoDiscovery: true,
+  lastScanAt: '2026-08-12T06:00:00Z',
+};
+
+// ─── ENHANCED SIGNAL PATH ───
+
 export function getSignalPath(trackId: string, zoneId: string): SignalPathStep[] {
   const track = getTrackById(trackId);
   const zone = zones.find(z => z.id === zoneId);
   if (!track || !zone) return [];
 
   const steps: SignalPathStep[] = [];
+  let currentFormat = track.format;
+  let currentSR = track.sampleRate;
+  let currentBD = track.bitDepth;
+  let isDSD = track.format === 'DSF' || track.format === 'DFF';
 
   // Source step
   steps.push({
     label: 'Source',
-    format: track.format,
-    sampleRate: track.sampleRate,
-    bitDepth: track.bitDepth,
+    format: currentFormat,
+    sampleRate: currentSR,
+    bitDepth: currentBD,
     isBitPerfect: true,
+    isDSD,
+    dsdMode: isDSD ? 'native' : undefined,
+    processingDetail: `Local: ${track.filePath}`,
+    latencyMs: 0,
   });
 
-  // DSP steps
-  if (zone.dspEnabled && zone.dspChain && zone.dspChain.length > 0) {
-    for (const dsp of zone.dspChain) {
+  if (zone.dspConfig) {
+    // Room Correction (convolution)
+    if (zone.dspConfig.roomCorrection?.enabled) {
       steps.push({
-        label: dsp,
+        label: 'Room Correction',
         format: 'PCM',
-        sampleRate: track.sampleRate,
-        bitDepth: track.bitDepth,
+        sampleRate: currentSR,
+        bitDepth: currentBD,
         isBitPerfect: false,
+        filterType: 'linear-phase',
+        processingDetail: `Filter: ${zone.dspConfig.roomCorrection.filterName}`,
+        latencyMs: 5.2,
+      });
+    }
+
+    // Parametric EQ
+    const activeBands = zone.dspConfig.eq?.filter(b => b.enabled) || [];
+    if (activeBands.length > 0) {
+      steps.push({
+        label: 'Parametric EQ',
+        format: 'PCM',
+        sampleRate: currentSR,
+        bitDepth: currentBD,
+        isBitPerfect: false,
+        processingDetail: `${activeBands.length} active band${activeBands.length > 1 ? 's' : ''}`,
+        latencyMs: 0.1,
+      });
+    }
+
+    // Headphone Correction
+    if (zone.dspConfig.headphoneCorrection?.enabled) {
+      steps.push({
+        label: `Headphone: ${zone.dspConfig.headphoneCorrection.profileName}`,
+        format: 'PCM',
+        sampleRate: currentSR,
+        bitDepth: currentBD,
+        isBitPerfect: false,
+        processingDetail: `${zone.dspConfig.headphoneCorrection.manufacturer} ${zone.dspConfig.headphoneCorrection.model}`,
+        latencyMs: 0.3,
+      });
+    }
+
+    // Crossfeed
+    if (zone.dspConfig.crossfeed?.enabled && zone.dspConfig.crossfeed.preset !== 'none') {
+      steps.push({
+        label: `Crossfeed (${zone.dspConfig.crossfeed.preset})`,
+        format: 'PCM',
+        sampleRate: currentSR,
+        bitDepth: currentBD,
+        isBitPerfect: false,
+        processingDetail: `Preset: ${zone.dspConfig.crossfeed.preset}`,
+        latencyMs: 0.1,
+      });
+    }
+
+    // Loudness / ReplayGain
+    if (zone.dspConfig.loudness?.enabled) {
+      steps.push({
+        label: `Loudness (${zone.dspConfig.loudness.method})`,
+        format: 'PCM',
+        sampleRate: currentSR,
+        bitDepth: currentBD,
+        isBitPerfect: false,
+        processingDetail: `Target: ${zone.dspConfig.loudness.targetLUFS} LUFS`,
+        latencyMs: 0,
+      });
+    }
+
+    // Upsampling
+    if (zone.dspConfig.upsampling?.enabled && currentSR <= zone.dspConfig.upsampling.maxSrcRate) {
+      const wasBitPerfect = steps.every(s => s.isBitPerfect);
+      currentSR = zone.dspConfig.upsampling.targetRate / 1000;
+      currentBD = zone.dspConfig.upsampling.targetBitDepth;
+      isDSD = false;
+      currentFormat = 'PCM';
+      steps.push({
+        label: 'Upsampling',
+        format: 'PCM',
+        sampleRate: currentSR,
+        bitDepth: currentBD,
+        isBitPerfect: false,
+        filterType: zone.dspConfig.upsampling.filterType,
+        processingDetail: `${formatSampleRate(zone.dspConfig.upsampling.targetRate / 1000)} / ${currentBD}-bit`,
+        latencyMs: 2.8,
       });
     }
   }
 
-  // Volume control
+  // Volume Control
+  const isVolBitPerfect = zone.volumeMode !== 'dsp';
   steps.push({
     label: 'Volume Control',
-    format: 'PCM',
-    sampleRate: track.sampleRate,
-    bitDepth: track.bitDepth,
-    isBitPerfect: zone.volume === 100,
+    format: isDSD ? (track.format) : 'PCM',
+    sampleRate: currentSR,
+    bitDepth: currentBD,
+    isBitPerfect: isVolBitPerfect,
+    processingDetail: zone.volumeMode === 'hardware' ? 'Hardware (DAC)' : zone.volumeMode === 'dsp' ? 'DSP attenuator + TPDF dither' : 'Fixed output',
+    ditherType: zone.volumeMode === 'dsp' ? 'tpdf' : 'none',
+    latencyMs: 0,
   });
 
-  // Output step
-  const endpointNeedsDownsample = track.sampleRate > zone.sampleRate;
+  // Format conversion if needed for output
+  const endpoint = zone.endpoints[0];
+  const needsDownsample = currentSR > (endpoint?.maxSampleRate || zone.sampleRate);
+  const needsBDReduce = currentBD > (endpoint?.maxBitDepth || zone.bitDepth);
+  const needsDoP = isDSD && endpoint?.supportsDoP && !endpoint?.supportsDSD;
+
+  if (needsDoP) {
+    steps.push({
+      label: 'DSD → DoP Conversion',
+      format: 'PCM (DoP)',
+      sampleRate: currentSR,
+      bitDepth: currentBD,
+      isBitPerfect: false,
+      isDSD: true,
+      dsdMode: 'DoP',
+      processingDetail: `DSD over PCM for ${endpoint?.name}`,
+      latencyMs: 0.1,
+    });
+    isDSD = false;
+    currentFormat = 'PCM';
+  }
+
+  if (needsDownsample || needsBDReduce) {
+    steps.push({
+      label: 'Format Conversion',
+      format: currentFormat,
+      sampleRate: needsDownsample ? (endpoint?.maxSampleRate || zone.sampleRate) : currentSR,
+      bitDepth: needsBDReduce ? (endpoint?.maxBitDepth || zone.bitDepth) : currentBD,
+      isBitPerfect: false,
+      filterType: 'linear-phase',
+      processingDetail: `Target: ${formatSampleRate(needsDownsample ? (endpoint?.maxSampleRate || zone.sampleRate) : currentSR)}`,
+      latencyMs: 1.5,
+    });
+  }
+
+  // Network transport
   steps.push({
-    label: `Output (${zone.endpoints[0]?.name || 'Unknown'})`,
-    format: zone.outputFormat,
-    sampleRate: endpointNeedsDownsample ? zone.sampleRate : track.sampleRate,
-    bitDepth: endpointNeedsDownsample ? zone.bitDepth : track.bitDepth,
-    isBitPerfect: !endpointNeedsDownsample && zone.volume === 100 && (!zone.dspEnabled || !zone.dspChain?.length),
+    label: 'Network Transport',
+    format: currentFormat,
+    sampleRate: needsDownsample ? (endpoint?.maxSampleRate || zone.sampleRate) : currentSR,
+    bitDepth: needsBDReduce ? (endpoint?.maxBitDepth || zone.bitDepth) : currentBD,
+    isBitPerfect: true,
+    processingDetail: `DSP Audio Protocol · ${(endpoint?.latencyMs || 5).toFixed(1)}ms latency`,
+    latencyMs: endpoint?.latencyMs || 5,
+  });
+
+  // Output endpoint / DAC
+  steps.push({
+    label: `DAC: ${endpoint?.dac || 'Unknown'}`,
+    format: needsDoP ? 'DoP' : currentFormat,
+    sampleRate: needsDownsample ? (endpoint?.maxSampleRate || zone.sampleRate) : currentSR,
+    bitDepth: needsBDReduce ? (endpoint?.maxBitDepth || zone.bitDepth) : currentBD,
+    isBitPerfect: !needsDownsample && !needsBDReduce && isVolBitPerfect,
+    processingDetail: endpoint?.clockSource ? `Clock: ${endpoint.clockSource}` : undefined,
+    latencyMs: 0.01,
   });
 
   return steps;
+}
+
+export function getDetailedSignalPath(trackId: string, zoneId: string): {
+  steps: SignalPathStep[];
+  overallBitPerfect: boolean;
+  sourceFormat: string;
+  outputFormat: string;
+  totalLatencyMs: number;
+  dspChainCount: number;
+  zoneInfo: Zone | undefined;
+  trackInfo: Track | undefined;
+} {
+  const steps = getSignalPath(trackId, zoneId);
+  const track = getTrackById(trackId);
+  const zone = zones.find(z => z.id === zoneId);
+  const dspSteps = steps.filter(s => !s.isBitPerfect);
+  const totalLatency = steps.reduce((sum, s) => sum + (s.latencyMs || 0), 0);
+
+  return {
+    steps,
+    overallBitPerfect: steps.every(s => s.isBitPerfect),
+    sourceFormat: track ? `${track.format} ${formatSampleRate(track.sampleRate)} ${track.bitDepth}-bit` : '—',
+    outputFormat: steps.length > 0 ? `${steps[steps.length - 1].format} ${formatSampleRate(steps[steps.length - 1].sampleRate)} ${steps[steps.length - 1].bitDepth}-bit` : '—',
+    totalLatencyMs: totalLatency,
+    dspChainCount: dspSteps.length,
+    zoneInfo: zone,
+    trackInfo: track,
+  };
 }

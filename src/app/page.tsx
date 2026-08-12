@@ -26,6 +26,10 @@ import { WorkDetailView } from '@/components/dsp/WorkDetailView';
 import { GenreDetailView } from '@/components/dsp/GenreDetailView';
 import { EditorialView } from '@/components/dsp/EditorialView';
 import { StreamingView } from '@/components/dsp/StreamingView';
+import { SystemArchitectureView } from '@/components/dsp/SystemArchitectureView';
+import { DSPConfigView } from '@/components/dsp/DSPConfigView';
+import { SignalPathView } from '@/components/dsp/SignalPathView';
+import { OutputEndpointsView } from '@/components/dsp/OutputEndpointsView';
 import { useUIStore } from '@/store/ui';
 import type { ViewName } from '@/store/player';
 import { Button } from '@/components/ui/button';
@@ -55,6 +59,10 @@ function ViewRouter({ view }: { view: ViewName }) {
     case 'genre-detail': return <GenreDetailView />;
     case 'editorial': return <EditorialView />;
     case 'streaming': return <StreamingView />;
+    case 'system': return <SystemArchitectureView />;
+    case 'dsp-config': return <DSPConfigView />;
+    case 'signal-path': return <SignalPathView />;
+    case 'endpoints': return <OutputEndpointsView />;
     default: return <HomeView />;
   }
 }
