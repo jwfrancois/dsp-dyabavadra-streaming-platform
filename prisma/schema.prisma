@@ -133,3 +133,56 @@ model StorageLocation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// ─── Podcast Models (Section 8: iTunes-Sourced) ───
+
+model Podcast {
+  id             String    @id @default(cuid())
+  title          String
+  author         String
+  description    String?
+  artworkUrl     String?
+  feedUrl        String    @unique
+  genre          String    @default("Podcast")
+  category       String?
+  language       String    @default("en")
+  rating         String    @default("clean")   // "clean" or "explicit"
+  itunesId       Int?
+  subscribed     Boolean   @default(false)
+  autoDownload   Boolean   @default(false)
+  autoArchive    Boolean   @default(false)      // mark episodes as archived after being played
+  keepEpisodes   Int       @default(0)          // 0 = keep all, N = keep last N played episodes
+  lastChecked    DateTime?
+  episodeCount   Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  episodes       PodcastEpisode[]
+}
+
+model PodcastEpisode {
+  id             String    @id @default(cuid())
+  podcastId      String
+  podcast        Podcast  @relation(fields: [podcastId], references: [id], onDelete: Cascade)
+  title          String
+  description    String?
+  showNotes      String?
+  artworkUrl     String?
+  audioUrl       String
+  audioType      String    @default("audio/mpeg")
+  duration       Int       @default(0)           // seconds
+  publishDate    DateTime?
+  fileSize       Int       @default(0)           // bytes
+  format         String    @default("MP3")
+  bitrate        Int       @default(128)
+  season         Int?
+  episodeNumber  Int?
+  isDownloaded   Boolean   @default(false)
+  isPlayed       Boolean   @default(false)
+  completed      Boolean   @default(false)
+  resumePosition Int       @default(0)           // seconds — where listener left off
+  favorite       Boolean   @default(false)
+  archived       Boolean   @default(false)
+  playedAt       DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}

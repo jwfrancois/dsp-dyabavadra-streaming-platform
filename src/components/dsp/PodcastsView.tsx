@@ -25,6 +25,25 @@ import {
 } from 'lucide-react';
 import { getCoverGradient } from '@/lib/data';
 
+// Shape of an iTunes API result returned from our proxy
+interface ITunesAPIResult {
+  id: string;
+  itunesId: number;
+  title: string;
+  author: string;
+  artworkUrl: string;
+  artworkUrlSmall: string;
+  artworkUrlMedium: string;
+  artworkUrlLarge: string;
+  genre: string;
+  category: string;
+  feedUrl: string;
+  episodeCount: number;
+  description: string;
+  rating: string;
+  storeUrl: string;
+}
+
 export function PodcastsView() {
   const { navigate } = useUIStore();
   const {
@@ -39,17 +58,57 @@ export function PodcastsView() {
   const [activeTab, setActiveTab] = React.useState('subscriptions');
   const [showSleepTimer, setShowSleepTimer] = React.useState(false);
 
+  // iTunes API search state
+  const [apiResults, setApiResults] = React.useState<ITunesAPIResult[]>([]);
+  const [apiLoading, setApiLoading] = React.useState(false);
+  const [apiError, setApiError] = React.useState('');
+  const searchTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
   const subscribedShows = podcastShows.filter(s => subscribedShowIds.includes(s.id));
   const inProgress = getInProgressEpisodes();
   const newEpisodes = getAllNewEpisodes();
   const downloaded = getDownloadedEpisodes();
 
+  // Local mock fallback
   const filteredITunes = iTunesSearch.length > 1
     ? iTunesSearchResults.filter(r =>
         r.title.toLowerCase().includes(iTunesSearch.toLowerCase()) ||
         r.author.toLowerCase().includes(iTunesSearch.toLowerCase())
       )
     : [];
+
+  // Debounced iTunes API search
+  React.useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+
+    if (iTunesSearch.length > 2) {
+      setApiLoading(true);
+      setApiError('');
+      searchTimerRef.current = setTimeout(async () => {
+        try {
+          const res = await fetch(`/api/podcasts/search?q=${encodeURIComponent(iTunesSearch)}&limit=25`);
+          if (!res.ok) throw new Error(`API returned ${res.status}`);
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+          setApiResults(data.results || []);
+        } catch (err) {
+          console.error('iTunes search error:', err);
+          setApiError(err instanceof Error ? err.message : 'Search failed');
+          // Fallback to local mock data
+          setApiResults([]);
+        } finally {
+          setApiLoading(false);
+        }
+      }, 400);
+    } else {
+      setApiResults([]);
+      setApiError('');
+    }
+
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [iTunesSearch]);
 
   const playEpisodeInPlayer = (ep: typeof podcastEpisodes[0]) => {
     const resumePos = episodeStates[ep.id]?.resumePosition || 0;
@@ -354,21 +413,55 @@ export function PodcastsView() {
                 onChange={(e) => setITunesSearch(e.target.value)}
                 className="pl-12 h-12 text-lg bg-card border-border rounded-xl"
               />
+              {apiLoading && (
+                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                  <RefreshCw className="w-5 h-5 text-primary animate-spin" />
+                </div>
+              )}
             </div>
 
-            {iTunesSearch.length > 1 && (
+            {/* Loading state */}
+            {apiLoading && (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="w-6 h-6 text-primary animate-spin mr-3" />
+                <span className="text-sm text-muted-foreground">Searching iTunes...</span>
+              </div>
+            )}
+
+            {/* API Error with fallback notice */}
+            {apiError && !apiLoading && (
+              <div className="p-3 rounded-lg bg-signal-amber/10 border border-signal-amber/30">
+                <p className="text-xs text-signal-amber">iTunes search unavailable: {apiError}</p>
+                <p className="text-[11px] text-muted-foreground mt-1">Showing local results instead.</p>
+              </div>
+            )}
+
+            {/* API Results (real iTunes data) */}
+            {iTunesSearch.length > 2 && !apiLoading && apiResults.length > 0 && (
               <div>
                 <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-                  <Rss className="w-4 h-4" /> iTunes Results ({filteredITunes.length})
+                  <Rss className="w-4 h-4" /> iTunes Results ({apiResults.length})
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {filteredITunes.map(result => {
+                  {apiResults.map(result => {
                     const isSubscribed = subscribedShowIds.includes(result.id);
                     return (
                       <Card key={result.id} className="bg-card border-border hover:border-muted-foreground/20 transition-all">
                         <CardContent className="p-3">
                           <div className="flex gap-3">
-                            <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${getCoverGradient(result.id)} flex-shrink-0`} />
+                            {/* Use real artwork if available, otherwise gradient */}
+                            {result.artworkUrlMedium ? (
+                              <img
+                                src={result.artworkUrlMedium}
+                                alt={result.title}
+                                className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                  (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                                }}
+                              />
+                            ) : null}
+                            <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${getCoverGradient(result.id)} flex-shrink-0 ${result.artworkUrlMedium ? 'hidden' : ''}`} />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">{result.title}</p>
                               <p className="text-xs text-muted-foreground truncate">{result.author}</p>
@@ -385,14 +478,50 @@ export function PodcastsView() {
                               onClick={() => toggleSubscribe(result.id)}
                             >
                               {isSubscribed ? (
-                                <>
-                                  <Check className="w-3.5 h-3.5" /> Subscribed
-                                </>
+                                <><Check className="w-3.5 h-3.5" /> Subscribed</>
                               ) : (
-                                <>
-                                  <Plus className="w-3.5 h-3.5" /> Subscribe
-                                </>
+                                <><Plus className="w-3.5 h-3.5" /> Subscribe</>
                               )}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Fallback to local mock data when API has no results or not yet loaded */}
+            {((iTunesSearch.length > 2 && !apiLoading && apiResults.length === 0) || (iTunesSearch.length > 1 && iTunesSearch.length <= 2)) && (
+              <div>
+                <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                  <Rss className="w-4 h-4" /> {iTunesSearch.length > 2 ? 'Local Results' : 'iTunes Results'} ({filteredITunes.length})
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {filteredITunes.map(result => {
+                    const isSubscribed = subscribedShowIds.includes(result.id);
+                    return (
+                      <Card key={result.id} className="bg-card border-border hover:border-muted-foreground/20 transition-all">
+                        <CardContent className="p-3">
+                          <div className="flex gap-3">
+                            <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${getCoverGradient(result.id)} flex-shrink-0`} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{result.title}</p>
+                              <p className="text-xs text-muted-foreground truncate">{result.author}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge variant="outline" className="text-[10px]">{result.genre}</Badge>
+                                <span className="text-[10px] text-muted-foreground">{result.episodeCount} eps</span>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{result.description}</p>
+                            </div>
+                            <Button
+                              variant={isSubscribed ? 'secondary' : 'default'}
+                              size="sm"
+                              className="h-8 gap-1.5 flex-shrink-0 self-start"
+                              onClick={() => toggleSubscribe(result.id)}
+                            >
+                              {isSubscribed ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
                             </Button>
                           </div>
                         </CardContent>
