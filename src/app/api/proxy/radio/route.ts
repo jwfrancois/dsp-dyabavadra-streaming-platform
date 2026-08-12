@@ -11,10 +11,11 @@ const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Expose-Headers': 'Content-Range, Content-Type',
 };
 
-const CONNECTION_TIMEOUT_MS = 30_000;
-const RECONNECT_DELAY_MS = 2_000;
+const CONNECTION_TIMEOUT_MS = 60_000;
+const RECONNECT_DELAY_MS = 1_000;
 const MAX_RECONNECT_DELAY_MS = 30_000;
 const MAX_CONSECUTIVE_ERRORS = 10;
+const INITIAL_BUFFER_MS = 5_000;
 
 function isValidUrl(url: string): boolean {
   try {
@@ -57,11 +58,9 @@ function createReconnectingStream(
             signal: fetchAbort.signal,
             headers: {
               'User-Agent': 'DSP/1.0 (Radio Proxy)',
-              // Keep-alive to reduce TCP handshake overhead
-              Connection: 'keep-alive',
+              'Icy-MetaData': '1',
             },
             redirect: 'follow',
-            // Prevent buffering — we want live data ASAP
             cache: 'no-store',
           });
 
@@ -105,6 +104,18 @@ function createReconnectingStream(
                 break;
               }
 
+              // High-water-mark: pause reading if internal queue is large
+              // to avoid unbounded memory growth for fast upstream streams
+              if (controller.desiredSize !== null && controller.desiredSize <= 0) {
+                // Backpressure: wait until browser consumes some data
+                await new Promise<void>((resolve) => {
+                  const check = () => {
+                    if (controller.desiredSize === null || controller.desiredSize > 0) resolve();
+                    else setTimeout(check, 100);
+                  };
+                  check();
+                });
+              }
               controller.enqueue(value);
             }
           } finally {
@@ -189,10 +200,11 @@ export async function GET(request: NextRequest) {
     status: 200,
     headers: {
       ...CORS_HEADERS,
-      'Content-Type': 'audio/mpeg', // default for most radio streams
+      'Content-Type': 'audio/mpeg',
       'Cache-Control': 'no-store, no-cache, must-revalidate',
-      // Inform the browser this is a live / unbounded stream
       'X-Content-Duration': 'infinity',
+      // ICEcast/SHOUTcast compatibility headers
+      'ICY-Metaint': '0',
     },
   });
 }

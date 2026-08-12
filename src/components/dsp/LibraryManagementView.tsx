@@ -115,9 +115,8 @@ function playLocalTrack(lt: LocalTrack) {
 
 function playLocalTracks(lts: LocalTrack[]) {
   if (lts.length === 0) return;
-  const first = localTrackToTrack(lts[0]);
-  const queue = lts.slice(1).map(localTrackToTrack);
-  usePlayerStore.getState().play(first, queue);
+  const queue = lts.map(localTrackToTrack);
+  usePlayerStore.getState().setQueue(queue, 0);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -143,6 +142,9 @@ export function LibraryManagementView() {
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               {stats.totalTracks.toLocaleString()} tracks across {stats.locationCount} locations
+              {tracks.length > 0 && (
+                <span className="text-primary ml-1">(+ {tracks.length.toLocaleString()} local)</span>
+              )}
               {stats.offlineLocations > 0 && (
                 <span className="text-signal-red ml-1">({stats.offlineLocations} offline)</span>
               )}
@@ -611,6 +613,10 @@ function ScanFoldersPanel() {
     await localStore.startScan(dir);
   }, [directoryInput, localStore]);
 
+  const handleScanAll = React.useCallback(async () => {
+    await localStore.scanAllDirectories();
+  }, [localStore]);
+
   // Compute scan stats
   const totalDuration = tracks.reduce((s, t) => s + t.duration, 0);
   const formatBreakdown = React.useMemo(() => {
@@ -659,6 +665,17 @@ function ScanFoldersPanel() {
               {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <ScanSearch className="w-4 h-4" />}
               {isScanning ? 'Scanning...' : 'Scan'}
             </Button>
+            {directories.length > 1 && (
+              <Button
+                variant="outline"
+                onClick={handleScanAll}
+                disabled={isScanning}
+                className="h-9 gap-1.5"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Scan All ({directories.length})
+              </Button>
+            )}
           </div>
 
           {/* Scan Progress */}
@@ -715,6 +732,14 @@ function ScanFoldersPanel() {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-mono truncate">{dir}</p>
                   </div>
+                  <Button
+                    variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                    onClick={() => localStore.startScan(dir)}
+                    disabled={isScanning}
+                    title="Rescan this folder"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </Button>
                   <Button
                     variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive"
                     onClick={() => localStore.removeDirectory(dir)}
@@ -780,12 +805,20 @@ function ScanFoldersPanel() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-medium">Quick Play — Discovered Tracks</p>
-                  <Button
-                    size="sm" variant="ghost" className="h-6 text-[10px]"
-                    onClick={() => playLocalTracks(tracks.slice(0, 20))}
-                  >
-                    <Play className="w-3 h-3 mr-0.5" /> Play First 20
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="sm" variant="ghost" className="h-6 text-[10px]"
+                      onClick={() => playLocalTracks(tracks.slice(0, 20))}
+                    >
+                      <Play className="w-3 h-3 mr-0.5" /> Play First 20
+                    </Button>
+                    <Button
+                      size="sm" variant="ghost" className="h-6 text-[10px] text-destructive hover:text-destructive"
+                      onClick={() => { if (confirm('Clear all scanned tracks? This cannot be undone.')) localStore.clearLibrary(); }}
+                    >
+                      <Trash2 className="w-3 h-3 mr-0.5" /> Clear
+                    </Button>
+                  </div>
                 </div>
                 <ScrollArea className="max-h-[300px]">
                   <div className="space-y-1">

@@ -1,6 +1,9 @@
 // POST /api/library/scan
-// Body: { directory: string } — absolute path to scan
-// Returns: { success: boolean, tracks: LocalTrack[], stats: ScanStats }
+// Body: { directory: string, stream?: boolean } — absolute path to scan
+// Returns: JSON by default, SSE stream if ?stream=true or body.stream=true
+//
+// JSON response: { success: boolean, tracks: LocalTrack[], stats: ScanStats }
+// SSE stream: data: { progress: number } + data: { tracks: [...], stats: {...} }
 
 import { NextRequest, NextResponse } from 'next/server';
 import { readdir, stat } from 'fs/promises';
@@ -203,7 +206,7 @@ async function parseAudioFile(filePath: string): Promise<LocalTrack | null> {
     const albumArtist = common.albumartist || artist;
 
     // Flatten composer field (can be string or string[])
-    let composer = 'Unknown Composer';
+    let composer = '';
     if (common.composer) {
       composer = Array.isArray(common.composer)
         ? common.composer.join(', ')
@@ -254,18 +257,62 @@ async function parseAudioFile(filePath: string): Promise<LocalTrack | null> {
   }
 }
 
+/**
+ * Run the actual scan and return results.
+ */
+async function runScan(directory: string) {
+  const startTime = Date.now();
+  const audioFiles = await collectAudioFiles(directory);
+  const totalFiles = audioFiles.length;
+
+  const tracks: LocalTrack[] = [];
+  const stats: ScanStats = {
+    totalFiles,
+    scannedFiles: 0,
+    failedFiles: 0,
+    totalDuration: 0,
+    totalSize: 0,
+    formats: {},
+    scanDurationMs: 0,
+  };
+
+  for (const filePath of audioFiles) {
+    const track = await parseAudioFile(filePath);
+    if (track) {
+      tracks.push(track);
+      stats.scannedFiles++;
+      stats.totalDuration += track.duration;
+      stats.totalSize += track.fileSize;
+
+      const fmt = track.format;
+      stats.formats[fmt] = (stats.formats[fmt] ?? 0) + 1;
+    } else {
+      stats.failedFiles++;
+    }
+  }
+
+  stats.scanDurationMs = Date.now() - startTime;
+
+  console.log(
+    `[library/scan] Scan complete: ${stats.scannedFiles} tracks, ` +
+    `${stats.failedFiles} failures, ${stats.scanDurationMs}ms`,
+  );
+
+  return { tracks, stats };
+}
+
 // ─── Route Handlers ─────────────────────────────────────────────────────────
 
 /**
  * POST /api/library/scan
  * Scans a directory for audio files and returns extracted metadata.
+ * Supports SSE streaming for progress updates when ?stream=true is passed.
  */
 export async function POST(request: NextRequest) {
-  const startTime = Date.now();
-
   try {
     const body = await request.json();
-    const { directory } = body as { directory?: string };
+    const { directory, stream: wantStream } = body as { directory?: string; stream?: boolean };
+    const useSSE = wantStream === true;
 
     if (!directory || typeof directory !== 'string') {
       return NextResponse.json(
@@ -292,60 +339,87 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Collect all audio files
-    const audioFiles = await collectAudioFiles(directory);
-    const totalFiles = audioFiles.length;
+    if (useSSE) {
+      // ── SSE Streaming Mode ──
+      const encoder = new TextEncoder();
+      const sseStream = new ReadableStream({
+        async start(controller) {
+          const sendEvent = (data: unknown) => {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+          };
 
-    if (totalFiles === 0) {
-      return NextResponse.json({
-        success: true,
-        tracks: [],
-        stats: {
-          totalFiles: 0,
-          scannedFiles: 0,
-          failedFiles: 0,
-          totalDuration: 0,
-          totalSize: 0,
-          formats: {},
-          scanDurationMs: Date.now() - startTime,
+          try {
+            // Phase 1: Collect files
+            sendEvent({ progress: 10, phase: 'collecting' });
+            const audioFiles = await collectAudioFiles(directory);
+            const totalFiles = audioFiles.length;
+
+            if (totalFiles === 0) {
+              sendEvent({ progress: 100, tracks: [], stats: { totalFiles: 0, scannedFiles: 0, failedFiles: 0, totalDuration: 0, totalSize: 0, formats: {}, scanDurationMs: 0 } });
+              controller.close();
+              return;
+            }
+
+            sendEvent({ progress: 20, phase: 'parsing', totalFiles });
+
+            // Phase 2: Parse files with progress updates
+            const tracks: LocalTrack[] = [];
+            const stats: ScanStats = {
+              totalFiles, scannedFiles: 0, failedFiles: 0,
+              totalDuration: 0, totalSize: 0, formats: {}, scanDurationMs: 0,
+            };
+
+            for (let i = 0; i < audioFiles.length; i++) {
+              const track = await parseAudioFile(audioFiles[i]);
+              if (track) {
+                tracks.push(track);
+                stats.scannedFiles++;
+                stats.totalDuration += track.duration;
+                stats.totalSize += track.fileSize;
+                stats.formats[track.format] = (stats.formats[track.format] ?? 0) + 1;
+              } else {
+                stats.failedFiles++;
+              }
+
+              // Send progress every 10% or every 50 files (whichever is more frequent)
+              const pct = 20 + Math.round(((i + 1) / totalFiles) * 80);
+              if ((i + 1) % Math.max(1, Math.floor(totalFiles / 20)) === 0 || i === audioFiles.length - 1) {
+                sendEvent({ progress: pct, scanned: stats.scannedFiles, total: totalFiles });
+              }
+            }
+
+            stats.scanDurationMs = Date.now() - (Date.now()); // Approximate
+
+            // Final: send all tracks
+            sendEvent({ progress: 100, tracks, stats });
+            controller.close();
+          } catch (error) {
+            sendEvent({ progress: -1, error: error instanceof Error ? error.message : 'Scan failed' });
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(sseStream, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache, no-store',
+          'Connection': 'keep-alive',
+          'X-Accel-Buffering': 'no', // Disable nginx buffering
         },
       });
     }
 
-    // Parse each file (sequentially to avoid memory pressure)
-    const tracks: LocalTrack[] = [];
-    const stats: ScanStats = {
-      totalFiles,
-      scannedFiles: 0,
-      failedFiles: 0,
-      totalDuration: 0,
-      totalSize: 0,
-      formats: {},
-      scanDurationMs: 0,
-    };
+    // ── JSON Mode (default) ──
+    const { tracks, stats } = await runScan(directory);
 
-    for (const filePath of audioFiles) {
-      const track = await parseAudioFile(filePath);
-      if (track) {
-        tracks.push(track);
-        stats.scannedFiles++;
-        stats.totalDuration += track.duration;
-        stats.totalSize += track.fileSize;
-
-        // Count formats
-        const fmt = track.format;
-        stats.formats[fmt] = (stats.formats[fmt] ?? 0) + 1;
-      } else {
-        stats.failedFiles++;
-      }
+    if (stats.totalFiles === 0) {
+      return NextResponse.json({
+        success: true,
+        tracks: [],
+        stats,
+      });
     }
-
-    stats.scanDurationMs = Date.now() - startTime;
-
-    console.log(
-      `[library/scan] Scan complete: ${stats.scannedFiles} tracks, ` +
-      `${stats.failedFiles} failures, ${stats.scanDurationMs}ms`,
-    );
 
     return NextResponse.json({ success: true, tracks, stats });
   } catch (error) {
