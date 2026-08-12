@@ -129,14 +129,14 @@ export function PodcastsView() {
       if (!res.ok) throw new Error(`Search failed (${res.status})`);
       const data = await res.json();
       setITunesResults((data.results || []).map((r: Record<string, unknown>, idx: number) => ({
-        id: String(r.collectionId || r.trackId || `result-${idx}`),
-        itunesId: Number(r.collectionId || r.trackId || 0),
-        title: String(r.collectionName || r.trackName || 'Unknown'),
-        author: String(r.artistName || 'Unknown Author'),
-        artworkUrl: String(r.artworkUrl100 || r.artworkUrl600 || ''),
-        genre: String(r.primaryGenreName || 'Podcast'),
+        id: String(r.id || `result-${idx}`),
+        itunesId: Number(r.itunesId || 0),
+        title: String(r.title || 'Unknown'),
+        author: String(r.author || 'Unknown Author'),
+        artworkUrl: String(r.artworkUrl || r.artworkUrlLarge || ''),
+        genre: String(r.genre || 'Podcast'),
         feedUrl: String(r.feedUrl || ''),
-        episodeCount: Number(r.trackCount || r.collectionSize || 0),
+        episodeCount: Number(r.episodeCount || 0),
         description: String(r.description || ''),
       })));
     } catch (err) {
