@@ -18,6 +18,7 @@ import { ZonesView } from '@/components/dsp/ZonesView';
 import { SettingsView } from '@/components/dsp/SettingsView';
 import { PodcastsView } from '@/components/dsp/PodcastsView';
 import { PodcastDetailView } from '@/components/dsp/PodcastDetailView';
+import { LibraryManagementView } from '@/components/dsp/LibraryManagementView';
 import { useUIStore } from '@/store/ui';
 import type { ViewName } from '@/store/player';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ function ViewRouter({ view }: { view: ViewName }) {
     case 'settings': return <SettingsView />;
     case 'podcasts': return <PodcastsView />;
     case 'podcast-detail': return <PodcastDetailView />;
+    case 'library': return <LibraryManagementView />;
     default: return <HomeView />;
   }
 }

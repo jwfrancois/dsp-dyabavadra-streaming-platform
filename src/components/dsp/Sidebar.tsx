@@ -14,7 +14,7 @@ import {
   Home, Library, Search, Speaker, Play, Pause, SkipForward, SkipBack,
   Shuffle, Repeat, Repeat1, Volume2, VolumeX, Volume1, ChevronLeft,
   ChevronRight, Music, Mic2, Radio, ListMusic, Settings, Disc3,
-  Headphones, LayoutGrid, Grip, X, Heart, Podcast,
+  Headphones, LayoutGrid, Grip, X, Heart, Podcast, FolderOpen,
 } from 'lucide-react';
 import { formatDuration, getCoverGradient } from '@/lib/data';
 import { usePodcastStore } from '@/store/podcast';
@@ -30,6 +30,7 @@ const navItems: Array<{ icon: typeof Home; label: string; view: string; badge?: 
 ];
 
 const libraryItems = [
+  { icon: FolderOpen, label: 'Library', view: 'library' as const },
   { icon: Play, label: 'Now Playing', view: 'now-playing' as const },
   { icon: Speaker, label: 'Zones', view: 'zones' as const },
   { icon: Search, label: 'Search', view: 'search' as const },
