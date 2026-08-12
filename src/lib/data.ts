@@ -842,6 +842,8 @@ export function searchLibrary(query: string): { artists: Artist[]; albums: Album
   };
 }
 
+// Note: Podcast search is in podcast-data.ts via searchPodcasts()
+
 export function getSignalPath(trackId: string, zoneId: string): SignalPathStep[] {
   const track = getTrackById(trackId);
   const zone = zones.find(z => z.id === zoneId);

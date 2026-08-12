@@ -17,7 +17,21 @@ Work Log:
 - Updated Prisma schema with full music data model (Artist, Album, Track, Zone, Playlist, StorageLocation, PlayHistory)
 - Verified all views via agent-browser: navigation, artist detail, album detail, now playing all render correctly
 
+## 8. Podcasts (iTunes-Sourced) - Implementation
+
+Work Log:
+- Created comprehensive podcast data layer: PodcastShow, PodcastEpisode, ITunesSearchResult types
+- Built 6 mock podcast shows (audio/music-focused), 21 episodes with full metadata (descriptions, show notes, seasons/episodes, durations, file sizes)
+- Created 8 mock iTunes search results for discovery
+- Built Zustand podcast store: subscription management, per-episode state (played/unplayed/favorite/downloaded/resume position), playback speed (0.5x–3x cycle), skip-silence toggle, sleep timer (15/30/45/60/90 min)
+- Added 'podcasts' and 'podcast-detail' to ViewName type and ViewRouter
+- Updated sidebar: Podcasts nav item with red badge showing new episode count (computed from store)
+- Built PodcastsView: 4 tabs (Subscriptions, New Episodes, In Progress, Discover), playback controls strip, subscribed show cards with resume/latest play buttons, iTunes directory search with subscribe buttons
+- Built PodcastDetailView: show header with artwork/metadata/Unsubscribe/Mark All Played, episode list with per-episode status circles (red dot=unplayed, checkmark=played, progress ring=in progress), description with expandable show notes, context menu (play/resume/mark played/favorite/download)
+- Updated PlayerBar: podcast-aware mode showing speed control button, skip-silence toggle, sleep timer indicator, podcast badge, simplified controls (no shuffle/repeat for podcasts)
+- Updated SearchView: podcast shows and episodes now appear in unified search results alongside music
+- Verified all features via agent-browser: sidebar badge, subscriptions tab, detail page, search integration
+
 Stage Summary:
-- Complete music streaming platform UI with 12+ views, dark theme, responsive design
-- All interactions verified: navigation, detail pages, player controls, signal path display
-- Ready for preview at http://localhost:3000
+- Full podcast system implemented: discovery, subscription, episode management, playback with spoken-word controls
+- Podcasts fully integrated into existing DSP platform: sidebar nav, search, player bar, zone system

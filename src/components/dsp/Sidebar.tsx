@@ -14,17 +14,19 @@ import {
   Home, Library, Search, Speaker, Play, Pause, SkipForward, SkipBack,
   Shuffle, Repeat, Repeat1, Volume2, VolumeX, Volume1, ChevronLeft,
   ChevronRight, Music, Mic2, Radio, ListMusic, Settings, Disc3,
-  Headphones, LayoutGrid, Grip, X, Heart,
+  Headphones, LayoutGrid, Grip, X, Heart, Podcast,
 } from 'lucide-react';
 import { formatDuration, getCoverGradient } from '@/lib/data';
+import { usePodcastStore } from '@/store/podcast';
 
-const navItems = [
+const navItems: Array<{ icon: typeof Home; label: string; view: string; badge?: string }> = [
   { icon: Home, label: 'Home', view: 'home' as const },
   { icon: LayoutGrid, label: 'Artists', view: 'browse-artists' as const },
   { icon: Disc3, label: 'Albums', view: 'browse-albums' as const },
   { icon: Music, label: 'Tracks', view: 'browse-tracks' as const },
   { icon: Radio, label: 'Genres', view: 'browse-genres' as const },
   { icon: ListMusic, label: 'Playlists', view: 'browse-playlists' as const },
+  { icon: Podcast, label: 'Podcasts', view: 'podcasts' as const, badge: 'podcast' as const },
 ];
 
 const libraryItems = [
@@ -38,6 +40,8 @@ export function Sidebar() {
   const { currentView, navigate, sidebarOpen, setSidebarOpen } = useUIStore();
   const { isPlaying, currentTrack, activeZoneId, togglePlay } = usePlayerStore();
   const activeZone = zones.find(z => z.id === activeZoneId);
+  const { getTotalNewEpisodes } = usePodcastStore();
+  const newEpisodes = getTotalNewEpisodes();
 
   return (
     <>
@@ -101,7 +105,14 @@ export function Sidebar() {
                   } ${!sidebarOpen ? 'px-0 justify-center' : ''}`}
                   onClick={() => navigate(item.view)}
                 >
-                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  <div className="relative flex-shrink-0">
+                    <Icon className="w-4 h-4" />
+                    {item.badge === 'podcast' && newEpisodes > 0 && sidebarOpen && (
+                      <span className="absolute -top-1 -right-1.5 w-3.5 h-3.5 rounded-full bg-signal-red text-[8px] font-bold text-white flex items-center justify-center">
+                        {newEpisodes > 9 ? '9+' : newEpisodes}
+                      </span>
+                    )}
+                  </div>
                   {sidebarOpen && <span className="text-xs">{item.label}</span>}
                 </Button>
               );

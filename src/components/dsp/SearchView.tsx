@@ -4,20 +4,25 @@ import React from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
 import { searchLibrary, formatDuration, getCoverGradient } from '@/lib/data';
+import { searchPodcasts, formatEpisodeDuration, formatDate, podcastShows } from '@/lib/podcast-data';
+import { usePodcastStore } from '@/store/podcast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Search, Play, Users, Disc3, Music, X, TrendingUp } from 'lucide-react';
+import { Search, Play, Users, Disc3, Music, X, TrendingUp, Podcast, Rss } from 'lucide-react';
 
 export function SearchView() {
   const { navigate, searchQuery, setSearchQuery } = useUIStore();
   const { play } = usePlayerStore();
+  const { playEpisode } = usePodcastStore();
   const [localQuery, setLocalQuery] = React.useState(searchQuery);
 
   const results = localQuery.length > 1 ? searchLibrary(localQuery) : { artists: [], albums: [], tracks: [] };
-  const hasResults = results.artists.length > 0 || results.albums.length > 0 || results.tracks.length > 0;
+  const podcastResults = localQuery.length > 1 ? searchPodcasts(localQuery) : { shows: [], episodes: [], iTunes: [] };
+  const hasResults = results.artists.length > 0 || results.albums.length > 0 || results.tracks.length > 0
+    || podcastResults.shows.length > 0 || podcastResults.episodes.length > 0;
 
   return (
     <ScrollArea className="h-full">
@@ -28,7 +33,7 @@ export function SearchView() {
         <div className="relative mb-6">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
-            placeholder="Search artists, albums, tracks..."
+            placeholder="Search artists, albums, tracks, podcasts..."
             value={localQuery}
             onChange={(e) => { setLocalQuery(e.target.value); setSearchQuery(e.target.value); }}
             className="pl-12 h-12 text-lg bg-card border-border rounded-xl"
@@ -50,7 +55,7 @@ export function SearchView() {
           <div className="text-center py-12">
             <Search className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
             <p className="text-lg text-muted-foreground">Start typing to search</p>
-            <p className="text-sm text-muted-foreground mt-1">Search across your entire library</p>
+            <p className="text-sm text-muted-foreground mt-1">Search across your entire library including podcasts</p>
           </div>
         )}
 
@@ -106,6 +111,58 @@ export function SearchView() {
                   <p className="text-xs text-muted-foreground truncate">{album.artistName} · {album.year}</p>
                 </div>
               ))}
+            </div>
+          </section>
+        )}
+
+        {/* Podcast Shows */}
+        {podcastResults.shows.length > 0 && (
+          <section className="mb-8">
+            <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+              <Podcast className="w-4 h-4" /> Podcast Shows ({podcastResults.shows.length})
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {podcastResults.shows.map(show => (
+                <div
+                  key={show.id}
+                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors group"
+                  onClick={() => navigate('podcast-detail', { showId: show.id })}
+                >
+                  <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${getCoverGradient(show.id)} flex-shrink-0`} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{show.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">{show.author} · {show.episodeCount} episodes</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Podcast Episodes */}
+        {podcastResults.episodes.length > 0 && (
+          <section className="mb-8">
+            <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+              <Rss className="w-4 h-4" /> Podcast Episodes ({podcastResults.episodes.length})
+            </h2>
+            <div className="space-y-0.5">
+              {podcastResults.episodes.slice(0, 10).map(ep => {
+                const show = podcastShows.find(s => s.id === ep.showId);
+                return (
+                  <div
+                    key={ep.id}
+                    className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors group"
+                    onClick={() => playEpisode(ep)}
+                  >
+                    <div className={`w-10 h-10 rounded bg-gradient-to-br ${getCoverGradient(ep.showId)}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{ep.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">{show?.title} · {formatDate(ep.publishDate)}</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{formatEpisodeDuration(ep.duration)}</span>
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}
