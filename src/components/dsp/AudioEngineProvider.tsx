@@ -44,16 +44,22 @@ function stopTimeTracking() {
   }
 }
 
+// Normalize a URL for comparison (browsers may resolve paths differently)
+function normalizeUrl(raw: string): string {
+  try {
+    return new URL(raw, typeof window !== 'undefined' ? window.location.origin : 'http://localhost').href;
+  } catch {
+    return raw;
+  }
+}
+
 export function AudioEngineProvider({ children }: { children: React.ReactNode }) {
-  const isPlayingRef = useRef(false);
   const volumeRef = useRef(72);
   const modeRef = useRef<'music' | 'radio' | 'podcast'>('music');
-  // Flag to prevent the isPlaying subscription from fighting with the audioUrl subscription
-  const urlChangingRef = useRef(false);
 
-  // Sync audio element events
+  // Audio element event handlers
   useEffect(() => {
-    const a = getAudio(); // Ensure audio exists on client
+    const a = getAudio();
 
     const onEnded = () => {
       stopTimeTracking();
@@ -80,22 +86,31 @@ export function AudioEngineProvider({ children }: { children: React.ReactNode })
 
     const onError = (e: Event) => {
       const a = e.target as HTMLAudioElement;
-      console.error('[AudioEngine] Audio error:', a.error?.message || a.error?.code, 'src:', a.src);
+      const errCode = a.error?.code;
+      const errMsg = a.error?.message;
+      console.error('[AudioEngine] Audio error:', errMsg || errCode, 'src:', a.src?.substring(0, 120));
+      usePlayerStore.setState({ isBuffering: false });
+
       if (modeRef.current === 'radio') {
         setTimeout(() => {
           const s = usePlayerStore.getState();
           if (s.audioUrl && s.playbackMode === 'radio') {
             const aa = getAudio();
             aa.src = s.audioUrl;
-            aa.load();
             aa.play().catch(() => {});
           }
         }, 3000);
       }
     };
 
-    const onPlay = () => startTimeTracking();
-    const onPause = () => stopTimeTracking();
+    const onPlay = () => {
+      startTimeTracking();
+    };
+
+    const onPause = () => {
+      stopTimeTracking();
+    };
+
     const onWaiting = () => usePlayerStore.setState({ isBuffering: true });
     const onCanPlay = () => usePlayerStore.setState({ isBuffering: false });
 
@@ -117,29 +132,80 @@ export function AudioEngineProvider({ children }: { children: React.ReactNode })
     };
   }, []);
 
-  // Subscribe to player store changes
+  // ── SINGLE combined subscription for audioUrl + isPlaying ──
+  // This eliminates the race condition between two separate subscriptions.
+  // When both change in the same setState(), this handler fires once and
+  // can coordinate the load + play in the correct order.
   useEffect(() => {
     const a = getAudio();
     a.volume = 0.72;
 
-    const unsubPlay = usePlayerStore.subscribe(
-      (state) => state.isPlaying,
-      (isPlaying) => {
-        // If a URL change is in progress, let the URL handler manage playback
-        if (urlChangingRef.current) return;
+    // Generic subscribe: fires on every setState, receives (newState, prevState)
+    const unsub = usePlayerStore.subscribe(
+      (state, prevState) => {
+        const urlChanged = state.audioUrl !== prevState.audioUrl;
+        const playingChanged = state.isPlaying !== prevState.isPlaying;
+        const modeChanged = state.playbackMode !== prevState.playbackMode;
 
-        isPlayingRef.current = isPlaying;
-        const aa = getAudio();
-        if (isPlaying) {
-          aa.play().catch((e) => {
-            console.warn('[AudioEngine] play() from isPlaying subscription failed:', e);
-          });
-        } else {
-          aa.pause();
+        if (modeChanged) {
+          modeRef.current = state.playbackMode;
+        }
+
+        // ── URL changed: load new source ──
+        if (urlChanged) {
+          const url = state.audioUrl;
+          if (url) {
+            const normalizedNew = normalizeUrl(url);
+            const normalizedExisting = normalizeUrl(a.src || '');
+
+            if (normalizedNew === normalizedExisting) {
+              // Same URL — just ensure playback state matches
+              if (state.isPlaying && a.paused) {
+                // If at the end, restart from beginning
+                if (a.ended || (a.duration > 0 && a.currentTime >= a.duration - 1)) {
+                  a.currentTime = 0;
+                }
+                a.play().catch((e) => console.warn('[AudioEngine] resume same URL failed:', e));
+              } else if (!state.isPlaying && !a.paused) {
+                a.pause();
+              }
+            } else {
+              console.log('[AudioEngine] Loading:', url.substring(0, 120));
+              // Stop anything currently playing
+              a.pause();
+              stopTimeTracking();
+
+              // Load new source
+              a.src = url;
+              // Don't call load() explicitly — setting src implicitly loads.
+              // Calling load() can reset the readyState and prevent play() from working.
+
+              if (state.isPlaying) {
+                a.play().catch((e) => console.warn('[AudioEngine] play() after src change failed:', e));
+              }
+            }
+          } else {
+            // URL cleared — stop everything
+            a.pause();
+            a.removeAttribute('src');
+            a.load();
+            stopTimeTracking();
+          }
+          return; // Don't also process the isPlaying change below
+        }
+
+        // ── Only isPlaying changed (no URL change): toggle play/pause on current source ──
+        if (playingChanged) {
+          if (state.isPlaying) {
+            a.play().catch((e) => console.warn('[AudioEngine] play() toggle failed:', e));
+          } else {
+            a.pause();
+          }
         }
       }
     );
 
+    // Volume and mute are independent — simple selector subscriptions are fine
     const unsubVolume = usePlayerStore.subscribe(
       (state) => state.volume,
       (volume) => {
@@ -156,96 +222,10 @@ export function AudioEngineProvider({ children }: { children: React.ReactNode })
       }
     );
 
-    const unsubUrl = usePlayerStore.subscribe(
-      (state) => state.audioUrl,
-      (url) => {
-        const aa = getAudio();
-        if (url) {
-          // Normalize both URLs for comparison — browsers may add trailing slashes or resolve paths differently
-          try {
-            const normalizedNew = new URL(url, window.location.origin).href;
-            const normalizedExisting = new URL(aa.src, window.location.origin).href;
-            if (normalizedNew === normalizedExisting) {
-              // Same URL — but we still need to ensure playback if isPlaying is true
-              const storeIsPlaying = usePlayerStore.getState().isPlaying;
-              isPlayingRef.current = storeIsPlaying;
-              if (storeIsPlaying) {
-                // If the audio ended or is at the end, reset to beginning
-                if (aa.ended || (aa.duration > 0 && aa.currentTime >= aa.duration - 1)) {
-                  aa.currentTime = 0;
-                }
-                if (aa.paused) {
-                  aa.play().catch(() => {});
-                }
-              }
-              return; // same URL, skip reload
-            }
-          } catch {
-            // URL parse failed — just compare raw strings
-            if (url === aa.src) return;
-          }
-          console.log('[AudioEngine] Loading new URL:', url);
-
-          // Set flag to prevent isPlaying subscription from interfering
-          urlChangingRef.current = true;
-
-          // Pause current audio to ensure clean transition
-          aa.pause();
-          stopTimeTracking();
-
-          // Reset and load new source
-          aa.src = url;
-          aa.load();
-
-          // Check if we should auto-play after load
-          const storeIsPlaying = usePlayerStore.getState().isPlaying;
-          if (storeIsPlaying) {
-            // Wait for canplay before calling play() to avoid race conditions
-            const onCanPlayOnce = () => {
-              aa.removeEventListener('canplaythrough', onCanPlayOnce);
-              aa.removeEventListener('canplay', onCanPlayOnce);
-              aa.play().catch((e) => console.warn('[AudioEngine] play() after load failed:', e));
-              // Release the flag after a short delay to allow isPlaying subscription to work again
-              setTimeout(() => { urlChangingRef.current = false; }, 100);
-            };
-            aa.addEventListener('canplaythrough', onCanPlayOnce);
-            aa.addEventListener('canplay', onCanPlayOnce);
-            // Fallback: if canplay doesn't fire within 3s, try play anyway and release flag
-            setTimeout(() => {
-              if (urlChangingRef.current) {
-                urlChangingRef.current = false;
-                if (aa.paused && storeIsPlaying) {
-                  aa.play().catch(() => {});
-                }
-              }
-            }, 3000);
-          } else {
-            // Not playing, just release the flag
-            setTimeout(() => { urlChangingRef.current = false; }, 100);
-          }
-        } else {
-          // URL is null — stop playback
-          aa.pause();
-          aa.removeAttribute('src');
-          aa.load();
-          stopTimeTracking();
-        }
-      }
-    );
-
-    const unsubMode = usePlayerStore.subscribe(
-      (state) => state.playbackMode,
-      (mode) => {
-        modeRef.current = mode;
-      }
-    );
-
     return () => {
-      unsubPlay();
+      unsub();
       unsubVolume();
       unsubMute();
-      unsubUrl();
-      unsubMode();
     };
   }, []);
 

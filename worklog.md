@@ -133,3 +133,27 @@ Stage Summary:
 - AudioEngineProvider now handles simultaneous audioUrl + isPlaying state changes correctly
 - Podcast episodes from discovered shows should now play actual audio with working time slider
 - Large podcast files (150-300MB) handled with proper buffering wait and fallback timeout
+---
+Task ID: 4
+Agent: main
+Task: Fix persistent "no audio, slider not moving" issue with podcast playback
+
+Work Log:
+- Verified proxy returns valid MP3 data (fffb header), correct content-type, proper 206 partial responses
+- Identified the previous fix (urlChangingRef flag) was fundamentally broken: Zustand fires subscriptions in registration order, so isPlaying handler ALWAYS fires before audioUrl handler, making the flag useless
+- Completely rewrote AudioEngineProvider with a SINGLE combined subscription using `subscribe((state, prevState) => ...)`:
+  - One handler receives both state changes atomically — no race condition possible
+  - URL changes: pauses current audio, sets new src, calls play() if isPlaying
+  - isPlaying-only changes: toggles play/pause on current source
+  - Both changing simultaneously: URL handler processes both in correct order
+- Removed explicit `aa.load()` call after setting `aa.src` — per HTML spec, setting src implicitly invokes the media loading algorithm; calling load() additionally resets readyState and can prevent play() from working
+- Added `currentTime: 0, progress: 0, duration: 0` to playEpisode's setState call to reset stale initial values
+- Added `isBuffering: false` to error handler for all modes (not just radio)
+- Created `/api/test-audio` debug endpoint for browser-based audio testing
+- Build passes cleanly
+
+Stage Summary:
+- Audio engine rewritten with atomic state change handling
+- Key insight: setting audio.src then calling audio.load() double-loads and breaks play()
+- Key insight: separate subscriptions for isPlaying and audioUrl create unavoidable race conditions
+- Solution: single generic subscribe handler processes both changes atomically

@@ -157,6 +157,9 @@ export const usePodcastStore = create<PodcastState>()(
             isPlaying: true,
             playbackMode: 'podcast' as const,
             isBuffering: true,
+            currentTime: 0,
+            progress: 0,
+            duration: 0,
           });
 
           set({
