@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePodcastStore } from '@/store/podcast';
 import { usePlayerStore } from '@/store/player';
@@ -19,7 +19,7 @@ import {
   ArrowLeft, Play, Pause, Download, Circle, CircleCheck, Heart,
   Wifi, WifiOff, Rss, Clock, MoreHorizontal, Bell, BellOff,
   ExternalLink, Share2, Trash2, Scissors, Moon, Archive,
-  RefreshCw, HardDrive, Info,
+  RefreshCw, HardDrive, Info, Podcast,
 } from 'lucide-react';
 import { getCoverGradient, formatDuration } from '@/lib/data';
 import {
@@ -40,7 +40,37 @@ export function PodcastDetailView() {
 
   const showId = viewParams.showId;
   const discoveredShows = usePodcastStore(s => s.discoveredShows);
+  const discoveredEpisodes = usePodcastStore(s => s.discoveredEpisodes);
+  const feedLoading = usePodcastStore(s => s.feedLoading);
+  const feedError = usePodcastStore(s => s.feedError);
+  const fetchDiscoveredEpisodes = usePodcastStore(s => s.fetchDiscoveredEpisodes);
+
   const show = podcastShows.find(s => s.id === showId) || discoveredShows[showId] || null;
+  const isDiscovered = !!discoveredShows[showId];
+
+  // Auto-fetch episodes for discovered podcasts
+  useEffect(() => {
+    if (isDiscovered && show?.feedUrl) {
+      fetchDiscoveredEpisodes(showId, show.feedUrl);
+    }
+  }, [isDiscovered, showId, show?.feedUrl, fetchDiscoveredEpisodes]);
+
+  // Get episodes: local or discovered
+  const episodes = useMemo(() => {
+    if (isDiscovered) {
+      return (discoveredEpisodes[showId] || []).sort(
+        (a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime()
+      );
+    }
+    return getEpisodesByShow(showId);
+  }, [isDiscovered, showId, discoveredEpisodes]);
+
+  const unplayed = useMemo(() => {
+    return episodes.filter(ep => {
+      const st = episodeStates[ep.id];
+      return st && !st.isPlayed && !st.completed;
+    });
+  }, [episodes, episodeStates]);
 
   // Local state for show settings
   const [autoDownload, setAutoDownload] = React.useState(show?.autoDownload ?? false);
@@ -62,8 +92,6 @@ export function PodcastDetailView() {
     return <div className="flex items-center justify-center h-full text-muted-foreground">Podcast not found</div>;
   }
 
-  const episodes = getEpisodesByShow(show.id);
-  const unplayed = getUnplayedEpisodes(show.id);
   const isSubscribed = subscribedShowIds.includes(show.id);
 
   // Show-level stats
@@ -71,6 +99,30 @@ export function PodcastDetailView() {
   const downloadedCount = episodes.filter(e => episodeStates[e.id]?.isDownloaded).length;
   const totalFileSize = episodes.reduce((s, e) => s + e.fileSize, 0);
   const completedCount = episodes.filter(e => episodeStates[e.id]?.completed).length;
+
+  // Feed loading / error state for discovered podcasts
+  if (isDiscovered && feedLoading && episodes.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
+        <RefreshCw className="w-8 h-8 animate-spin" />
+        <p className="text-sm">Loading episodes from feed...</p>
+      </div>
+    );
+  }
+  if (isDiscovered && feedError && episodes.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3">
+        <p className="text-sm text-destructive">Failed to load episodes: {feedError}</p>
+        <p className="text-xs text-muted-foreground">The podcast feed may be unavailable or invalid.</p>
+        <Button variant="outline" size="sm" onClick={() => show?.feedUrl && fetchDiscoveredEpisodes(showId, show.feedUrl)}>
+          <RefreshCw className="w-3 h-3 mr-1" /> Retry
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => navigate('podcasts')}>
+          <ArrowLeft className="w-3 h-3 mr-1" /> Back to Podcasts
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <ScrollArea className="h-full">
@@ -81,15 +133,26 @@ export function PodcastDetailView() {
 
         {/* Show Header */}
         <div className="flex flex-col md:flex-row gap-6 mb-8">
-          <div className={`w-40 h-40 md:w-48 md:h-48 rounded-xl bg-gradient-to-br ${getCoverGradient(show.id)} shadow-2xl flex-shrink-0 relative overflow-hidden`}>
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.1),transparent_70%)]" />
+          <div className={`w-40 h-40 md:w-48 md:h-48 rounded-xl shadow-2xl flex-shrink-0 relative overflow-hidden ${show.artworkUrl && show.artworkUrl.startsWith('http') ? '' : `bg-gradient-to-br ${getCoverGradient(show.id)}`}`}>
+            {show.artworkUrl && show.artworkUrl.startsWith('http') ? (
+              <img src={show.artworkUrl} alt={show.title} className="w-full h-full object-cover" />
+            ) : (
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.1),transparent_70%)]" />
+            )}
           </div>
 
           <div className="flex-1">
             <div className="flex flex-wrap gap-2 mb-2">
               <Badge variant="outline" className="text-[10px]">{show.genre}</Badge>
-              <Badge variant="outline" className="text-[10px]">{show.category}</Badge>
-              <Badge variant="outline" className="text-[10px]">{show.rating === 'explicit' ? 'Explicit' : 'Clean'}</Badge>
+              {show.category && show.category !== show.genre && (
+                <Badge variant="outline" className="text-[10px]">{show.category}</Badge>
+              )}
+              {show.rating && (
+                <Badge variant="outline" className="text-[10px]">{show.rating === 'explicit' ? 'Explicit' : 'Clean'}</Badge>
+              )}
+              {isDiscovered && (
+                <Badge variant="outline" className="text-[10px]">{episodes.length} loaded</Badge>
+              )}
             </div>
             <h1 className="text-3xl font-bold mb-1">{show.title}</h1>
             <p className="text-lg text-muted-foreground">{show.author}</p>
@@ -112,10 +175,12 @@ export function PodcastDetailView() {
               )}
             </div>
 
-            <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-              <Rss className="w-3 h-3" />
-              <span className="text-xs font-mono">{show.feedUrl}</span>
-            </div>
+            {show.feedUrl && (
+              <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                <Rss className="w-3 h-3" />
+                <span className="text-xs font-mono truncate max-w-md">{show.feedUrl}</span>
+              </div>
+            )}
 
             <p className="text-sm text-muted-foreground mt-3 leading-relaxed">{show.description}</p>
 
@@ -234,12 +299,28 @@ export function PodcastDetailView() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Episodes ({episodes.length})</h2>
+            {isDiscovered && feedLoading && episodes.length > 0 && (
+              <Badge variant="outline" className="text-xs"><RefreshCw className="w-3 h-3 mr-1 animate-spin" />Loading more...</Badge>
+            )}
             {unplayed.length > 0 && (
               <Badge variant="outline" className="text-xs text-signal-red border-signal-red/30">
                 {unplayed.length} unplayed
               </Badge>
             )}
           </div>
+
+          {episodes.length === 0 && !feedLoading && (
+            <div className="text-center py-12 text-muted-foreground">
+              <Podcast className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">No episodes available</p>
+              <p className="text-xs mt-1">{feedError || 'The feed may not have any episodes yet.'}</p>
+              {isDiscovered && show?.feedUrl && (
+                <Button variant="outline" size="sm" className="mt-3" onClick={() => fetchDiscoveredEpisodes(showId, show.feedUrl)}>
+                  <RefreshCw className="w-3 h-3 mr-1" /> Retry Feed
+                </Button>
+              )}
+            </div>
+          )}
 
           <div className="space-y-1">
             {episodes.map(ep => {

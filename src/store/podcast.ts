@@ -29,6 +29,12 @@ interface PodcastState {
   discoveredShows: Record<string, PodcastShow>;
   setDiscoveredShow: (show: PodcastShow) => void;
 
+  // Episodes fetched from RSS feeds for discovered shows (transient, not persisted)
+  discoveredEpisodes: Record<string, PodcastEpisode[]>;  // keyed by showId
+  feedLoading: boolean;
+  feedError: string | null;
+  fetchDiscoveredEpisodes: (showId: string, feedUrl: string) => Promise<void>;
+
   // Actions
   playEpisode: (episode: PodcastEpisode) => void;
   pausePodcast: () => void;
@@ -78,12 +84,64 @@ export const usePodcastStore = create<PodcastState>()(
         subscribedShowIds: podcastShows.filter(s => s.subscribed).map(s => s.id),
         episodeStates: buildInitialEpisodeStates(),
         discoveredShows: {},
+        discoveredEpisodes: {},
+        feedLoading: false,
+        feedError: null,
 
         setDiscoveredShow: (show) => set(s => ({
           discoveredShows: { ...s.discoveredShows, [show.id]: show },
         })),
 
+        fetchDiscoveredEpisodes: async (showId, feedUrl) => {
+          // Skip if already fetched
+          const existing = get().discoveredEpisodes[showId];
+          if (existing && existing.length > 0) return;
+
+          set({ feedLoading: true, feedError: null });
+          try {
+            const res = await fetch(`/api/podcasts/feed?url=${encodeURIComponent(feedUrl)}&max=50`);
+            if (!res.ok) throw new Error(`Feed fetch failed (${res.status})`);
+            const data = await res.json();
+            const episodes: PodcastEpisode[] = (data.episodes || []).map((ep: Record<string, unknown>) => ({
+              id: String(ep.id || `ep-${Math.random().toString(36).slice(2, 10)}`),
+              showId,
+              title: String(ep.title || 'Untitled Episode'),
+              description: String(ep.description || ''),
+              showNotes: String(ep.showNotes || ''),
+              artworkUrl: String(ep.artworkUrl || ''),
+              audioUrl: String(ep.audioUrl || ''),
+              duration: Number(ep.duration || 0),
+              publishDate: String(ep.publishDate || new Date().toISOString()),
+              fileSize: Number(ep.fileSize || 0),
+              format: String(ep.format || 'MP3'),
+              bitrate: Number(ep.bitrate || 128),
+              isDownloaded: false,
+              isPlayed: false,
+              resumePosition: 0,
+              completed: false,
+              favorite: false,
+              season: ep.season ? Number(ep.season) : undefined,
+              episodeNumber: ep.episodeNumber ? Number(ep.episodeNumber) : undefined,
+            }));
+            set(s => ({
+              discoveredEpisodes: { ...s.discoveredEpisodes, [showId]: episodes },
+              feedLoading: false,
+            }));
+          } catch (err) {
+            set({
+              feedLoading: false,
+              feedError: err instanceof Error ? err.message : 'Failed to load episodes',
+            });
+          }
+        },
+
         playEpisode: (episode) => {
+          // Guard: skip episodes with no audio URL
+          if (!episode.audioUrl) {
+            console.warn('[PodcastStore] playEpisode called with no audioUrl:', episode.id, episode.title);
+            return;
+          }
+
           const state = get();
           const epState = state.episodeStates[episode.id];
           const startPos = epState && !epState.completed ? epState.resumePosition : 0;
@@ -180,10 +238,17 @@ export const usePodcastStore = create<PodcastState>()(
 
         markAllPlayed: (showId) => set(s => {
           const newStates = { ...s.episodeStates };
+          // Mark local episodes
           for (const ep of podcastEpisodes.filter(ep => ep.showId === showId)) {
             if (newStates[ep.id]) {
               newStates[ep.id] = { ...newStates[ep.id], isPlayed: true, completed: true };
             }
+          }
+          // Mark discovered episodes
+          const discoveredEps = s.discoveredEpisodes[showId] || [];
+          for (const ep of discoveredEps) {
+            const existing = newStates[ep.id] || { isPlayed: false, completed: false, resumePosition: 0, isDownloaded: false, favorite: false };
+            newStates[ep.id] = { ...existing, isPlayed: true, completed: true };
           }
           return { episodeStates: newStates };
         }),

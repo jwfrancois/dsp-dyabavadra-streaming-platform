@@ -79,3 +79,32 @@ Stage Summary:
 - Audio playback should now work for: music tracks (with demo fallback), radio stations (via proxy), and podcasts (from any view)
 - Podcast Discover tab should now work (was crashing due to missing useMemo)
 - App builds and runs successfully
+---
+Task ID: 2
+Agent: main
+Task: Fix "Podcast not found" and missing episodes when clicking play on discovered podcasts
+
+Work Log:
+- Diagnosed root cause: Discovered podcasts from iTunes search are stored in `discoveredShows` via `setDiscoveredShow()`, and navigation to `podcast-detail` works. However, `PodcastDetailView` calls `getEpisodesByShow(show.id)` which only queries the local `podcastEpisodes` array — discovered podcasts have NO local episodes, resulting in 0 episodes with 0 total duration.
+- Found existing RSS feed parser API at `/api/podcasts/feed` that fetches and parses real podcast RSS feeds into structured episode data.
+- Added `discoveredEpisodes` (Record<string, PodcastEpisode[]>), `feedLoading`, `feedError`, and `fetchDiscoveredEpisodes` action to the podcast store (`src/store/podcast.ts`).
+- `fetchDiscoveredEpisodes` fetches from `/api/podcasts/feed?url=...&max=50` and maps the response to `PodcastEpisode` objects stored by showId.
+- Updated `PodcastDetailView.tsx` to:
+  - Auto-trigger `fetchDiscoveredEpisodes` on mount for discovered shows via `useEffect`
+  - Use `discoveredEpisodes[showId]` instead of `getEpisodesByShow()` for discovered shows
+  - Show loading spinner while feed is being fetched
+  - Show error state with retry button if feed fetch fails
+  - Show "No episodes available" empty state when feed has no episodes
+  - Render real artwork images from iTunes for discovered shows (HTTP URLs)
+  - Handle missing optional fields (category, rating) gracefully
+  - Show "X loaded" badge indicating how many episodes were fetched from the feed
+- Updated `markAllPlayed` in podcast store to also mark discovered episodes
+- Added audioUrl guard in `playEpisode` to prevent crashes on episodes with no audio URL
+- Verified RSS feed API works: Successfully fetched 5 episodes from Joe Budden's podcast with real titles, audio URLs, and durations (e.g., Episode 954 at ~206 minutes)
+- Build passes cleanly with zero errors
+
+Stage Summary:
+- Discovered podcasts from iTunes search now load real episodes from their RSS feeds
+- Joe Budden podcast (752 episodes) correctly fetches episodes with titles, durations, and playable audio URLs
+- Loading/error/empty states provide good UX during feed fetching
+- Podcast artwork from iTunes displays correctly in detail view
