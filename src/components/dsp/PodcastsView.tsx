@@ -158,14 +158,33 @@ export function PodcastsView() {
     };
   }, [discoverSearch, doITunesSearch]);
 
-  const subscribedShows = podcastShows.filter(s => subscribedShowIds.includes(s.id));
+  const discoveredShows = usePodcastStore(s => s.discoveredShows);
+  const discoveredEpisodes = usePodcastStore(s => s.discoveredEpisodes);
+
+  // Merge local mock shows with discovered (iTunes) shows for subscription list
+  const subscribedShows = useMemo(() => {
+    const local = podcastShows.filter(s => subscribedShowIds.includes(s.id));
+    const discovered = subscribedShowIds
+      .filter(id => !podcastShows.find(s => s.id === id))
+      .map(id => discoveredShows[id])
+      .filter(Boolean);
+    return [...local, ...discovered];
+  }, [subscribedShowIds, discoveredShows]);
+
   const newEpisodes = getAllNewEpisodes();
 
   const allSubscribedEpisodes = useMemo(() => {
-    return podcastEpisodes
-      .filter(ep => subscribedShowIds.includes(ep.showId))
+    // Include both local mock episodes and discovered episodes for subscribed shows
+    const local = podcastEpisodes
+      .filter(ep => subscribedShowIds.includes(ep.showId));
+    const discovered: PodcastEpisode[] = [];
+    for (const showId of subscribedShowIds) {
+      const eps = discoveredEpisodes[showId] || [];
+      discovered.push(...eps);
+    }
+    return [...local, ...discovered]
       .sort((a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime());
-  }, [subscribedShowIds]);
+  }, [subscribedShowIds, discoveredEpisodes]);
 
   const filteredAllEpisodes = useMemo(() => {
     return allSubscribedEpisodes.filter(ep => {
@@ -318,26 +337,42 @@ export function PodcastsView() {
 
   const renderShowCard = (show: PodcastShow) => {
     const isSub = subscribedShowIds.includes(show.id);
-    const episodes = getEpisodesByShow(show.id);
+    const isDiscovered = !!discoveredShows[show.id];
+    // Get episodes: local mock or discovered RSS
+    const episodes = isDiscovered
+      ? (discoveredEpisodes[show.id] || []).sort((a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime())
+      : getEpisodesByShow(show.id);
     const unplayed = episodes.filter(ep => {
       const st = episodeStates[ep.id];
       return st && !st.isPlayed && !st.completed;
     });
     const latestEp = episodes[0];
     const latestState = latestEp ? episodeStates[latestEp.id] : null;
+    const hasArtworkUrl = show.artworkUrl && show.artworkUrl.startsWith('http');
 
     return (
       <Card
         key={show.id}
         className="bg-card border-border hover:border-muted-foreground/20 cursor-pointer transition-all group"
-        onClick={() => navigate('podcast-detail', { showId: show.id })}
+        onClick={() => {
+          // Ensure discovered show is set before navigating
+          if (isDiscovered) {
+            usePodcastStore.getState().setDiscoveredShow(show);
+          }
+          navigate('podcast-detail', { showId: show.id });
+        }}
         onContextMenu={(e) => handleShowContextMenu(e, show)}
       >
         <CardContent className="p-4">
           <div className="flex gap-4">
-            <div className={`w-20 h-20 rounded-lg bg-gradient-to-br ${getCoverGradient(show.id)} flex-shrink-0 relative`}>
+            <div className={`w-20 h-20 rounded-lg ${hasArtworkUrl ? '' : `bg-gradient-to-br ${getCoverGradient(show.id)}`} flex-shrink-0 relative overflow-hidden`}>
+              {hasArtworkUrl ? (
+                <img src={show.artworkUrl} alt={show.title} className="w-full h-full object-cover" />
+              ) : (
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.1),transparent_70%)]" />
+              )}
               {unplayed.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-signal-red text-[10px] font-bold text-white flex items-center justify-center">
+                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-signal-red text-[10px] font-bold text-white flex items-center justify-center z-10">
                   {unplayed.length > 9 ? '9+' : unplayed.length}
                 </span>
               )}
@@ -349,7 +384,7 @@ export function PodcastsView() {
               <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{show.description}</p>
               <div className="flex items-center gap-3 mt-2">
                 <Badge variant="outline" className="text-[10px]">{show.genre}</Badge>
-                <span className="text-[11px] text-muted-foreground">{show.episodeCount} episodes</span>
+                <span className="text-[11px] text-muted-foreground">{isDiscovered ? episodes.length : show.episodeCount} episodes</span>
                 {latestEp && (
                   <span className="text-[11px] text-muted-foreground flex items-center gap-1">
                     <Rss className="w-3 h-3" />
@@ -657,18 +692,42 @@ export function PodcastsView() {
                               <p className="text-[11px] text-muted-foreground mt-2 line-clamp-2">{result.description}</p>
                             )}
                             <div className="flex items-center gap-2 mt-2">
-                              {result.feedUrl && (
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  className="h-7 gap-1 text-xs flex-1"
-                                  onClick={() => {
-                                    toggleSubscribe(`itunes-${result.itunesId}`);
-                                  }}
-                                >
-                                  <Plus className="w-3 h-3" /> Subscribe
-                                </Button>
-                              )}
+                              {result.feedUrl && (() => {
+                                const showId = `itunes-${result.itunesId}`;
+                                const isSub = subscribedShowIds.includes(showId);
+                                return (
+                                  <Button
+                                    variant={isSub ? 'secondary' : 'default'}
+                                    size="sm"
+                                    className="h-7 gap-1 text-xs flex-1"
+                                    onClick={() => {
+                                      // Always store the show data so it appears in subscriptions
+                                      usePodcastStore.getState().setDiscoveredShow({
+                                        id: showId,
+                                        title: result.title,
+                                        author: result.author,
+                                        description: result.description,
+                                        artworkUrl: result.artworkUrl,
+                                        feedUrl: result.feedUrl,
+                                        genre: result.genre,
+                                        category: result.genre,
+                                        language: 'en',
+                                        rating: 'clean',
+                                        episodeCount: result.episodeCount,
+                                        subscribed: !isSub,
+                                        autoDownload: false,
+                                        newEpisodeCount: 0,
+                                        lastChecked: new Date().toISOString(),
+                                        averageDuration: 0,
+                                      });
+                                      toggleSubscribe(showId);
+                                    }}
+                                  >
+                                    {isSub ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                                    {isSub ? 'Subscribed' : 'Subscribe'}
+                                  </Button>
+                                );
+                              })()}
                               {result.feedUrl && (
                                 <Button
                                   variant="ghost"

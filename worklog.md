@@ -157,3 +157,30 @@ Stage Summary:
 - Key insight: setting audio.src then calling audio.load() double-loads and breaks play()
 - Key insight: separate subscriptions for isPlaying and audioUrl create unavoidable race conditions
 - Solution: single generic subscribe handler processes both changes atomically
+---
+Task ID: 5
+Agent: main
+Task: Fix podcast subscription not registering
+
+Work Log:
+- Diagnosed root cause: Three interconnected bugs preventing subscriptions from working for discovered (iTunes) podcasts
+  1. `subscribedShows` in PodcastsView was computed from `podcastShows.filter(s => subscribedShowIds.includes(s.id))` — only checks local mock data, so iTunes-discovered shows never appear in subscription list
+  2. `discoveredShows` was NOT persisted (not in `partialize`), so on refresh the subscription ID exists but show metadata is lost
+  3. Subscribe button in iTunes search only called `toggleSubscribe()` but never called `setDiscoveredShow()`, so show data wasn't stored
+- Fixed `src/store/podcast.ts`:
+  - Added `discoveredShows` to `partialize` so subscriptions survive page refreshes
+  - Updated `getTotalNewEpisodes()` to also count discovered episodes for subscribed shows
+- Fixed `src/components/dsp/PodcastsView.tsx`:
+  - Rewrote `subscribedShows` computation with `useMemo` to merge both local mock shows and discovered shows
+  - Rewrote `allSubscribedEpisodes` to include discovered episodes for "All Episodes" tab
+  - Updated Subscribe button in iTunes search results to also call `setDiscoveredShow()` with full show data before `toggleSubscribe()`
+  - Subscribe button now shows correct "Subscribed"/"Subscribe" state based on `subscribedShowIds`
+  - Updated `renderShowCard` to handle discovered shows: artwork URLs (vs gradient), episode counts from discoveredEpisodes, proper navigation with setDiscoveredShow
+- Build passes cleanly
+
+Stage Summary:
+- Subscribing to iTunes-discovered podcasts now properly stores show data AND subscription ID
+- "My Subscriptions" tab shows both local mock and discovered podcasts
+- Subscriptions survive page refreshes (discoveredShows now persisted in localStorage)
+- "All Episodes" tab includes episodes from both local and discovered subscribed shows
+- New episode sidebar badge counts both local and discovered episodes

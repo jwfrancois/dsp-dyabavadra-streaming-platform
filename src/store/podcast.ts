@@ -25,7 +25,7 @@ interface PodcastState {
   subscribedShowIds: string[];
   episodeStates: Record<string, EpisodeState>;
 
-  // Discovered shows from iTunes search (transient, not persisted)
+  // Discovered shows from iTunes search (persisted so subscriptions survive refreshes)
   discoveredShows: Record<string, PodcastShow>;
   setDiscoveredShow: (show: PodcastShow) => void;
 
@@ -205,11 +205,14 @@ export const usePodcastStore = create<PodcastState>()(
         toggleSkipSilence: () => set(s => ({ skipSilence: !s.skipSilence })),
         setSleepTimer: (minutes) => set({ sleepTimerMinutes: minutes, sleepTimerRemaining: minutes ? minutes * 60 : null }),
 
-        toggleSubscribe: (showId) => set(s => ({
-          subscribedShowIds: s.subscribedShowIds.includes(showId)
-            ? s.subscribedShowIds.filter(id => id !== showId)
-            : [...s.subscribedShowIds, showId],
-        })),
+        toggleSubscribe: (showId) => set(s => {
+          const isCurrentlySubscribed = s.subscribedShowIds.includes(showId);
+          return {
+            subscribedShowIds: isCurrentlySubscribed
+              ? s.subscribedShowIds.filter(id => id !== showId)
+              : [...s.subscribedShowIds, showId],
+          };
+        }),
 
         markEpisodePlayed: (episodeId) => set(s => ({
           episodeStates: {
@@ -272,7 +275,14 @@ export const usePodcastStore = create<PodcastState>()(
           const state = get();
           let count = 0;
           for (const showId of state.subscribedShowIds) {
+            // Count local mock episodes
             for (const ep of podcastEpisodes.filter(e => e.showId === showId)) {
+              const epState = state.episodeStates[ep.id];
+              if (epState && !epState.isPlayed && !epState.completed) count++;
+            }
+            // Count discovered episodes
+            const discoveredEps = state.discoveredEpisodes[showId] || [];
+            for (const ep of discoveredEps) {
               const epState = state.episodeStates[ep.id];
               if (epState && !epState.isPlayed && !epState.completed) count++;
             }
@@ -286,6 +296,7 @@ export const usePodcastStore = create<PodcastState>()(
       partialize: (state) => ({
         subscribedShowIds: state.subscribedShowIds,
         episodeStates: state.episodeStates,
+        discoveredShows: state.discoveredShows,
       }),
     }
   )
