@@ -1,0 +1,135 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  avatarUrl String?
+  role      String   @default("user")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Artist {
+  id          String   @id @default(cuid())
+  name        String
+  imageUrl    String?
+  bio         String?
+  genres      String   // JSON array stored as string
+  origin      String?
+  type        String   @default("individual")
+  members     String?  // JSON array stored as string
+  born        String?
+  yearsActive String?
+  playCount   Int      @default(0)
+  albums      Album[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Album {
+  id            String   @id @default(cuid())
+  title         String
+  artistId      String
+  artist        Artist   @relation(fields: [artistId], references: [id])
+  imageUrl      String?
+  year          Int
+  genre         String
+  format        String   @default("FLAC")
+  bitDepth      Int      @default(16)
+  sampleRate    Int      @default(44100)
+  channels      Int      @default(2)
+  label         String?
+  catalogNumber String?
+  type          String   @default("album")
+  rating        Int      @default(0)
+  review        String?
+  tracks        Track[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Track {
+  id          String   @id @default(cuid())
+  title       String
+  albumId     String
+  album       Album    @relation(fields: [albumId], references: [id])
+  artistId    String
+  artistName  String
+  trackNumber Int
+  discNumber  Int      @default(1)
+  duration    Int
+  format      String   @default("FLAC")
+  bitDepth    Int      @default(16)
+  sampleRate  Int      @default(44100)
+  channels    Int      @default(2)
+  bitrate     Int      @default(0)
+  filePath    String
+  fileSize    Int      @default(0)
+  composers   String?  // JSON array
+  credits     String?  // JSON array of Credit objects
+  genre       String?
+  loved       Boolean  @default(false)
+  playCount   Int      @default(0)
+  lastPlayed  DateTime?
+  source      String   @default("local")
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Zone {
+  id          String   @id @default(cuid())
+  name        String
+  isGroup     Boolean  @default(false)
+  isPlaying   Boolean  @default(false)
+  volume      Int      @default(50)
+  isMuted     Boolean  @default(false)
+  isOnline    Boolean  @default(true)
+  outputFormat String  @default("PCM")
+  sampleRate  Int      @default(44100)
+  bitDepth    Int      @default(16)
+  dspEnabled  Boolean  @default(false)
+  dspChain    String?  // JSON array
+  endpoints   String   // JSON array
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Playlist {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  trackIds    String   // JSON array of track IDs
+  coverUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PlayHistory {
+  id        String   @id @default(cuid())
+  trackId   String
+  playedAt  DateTime @default(now())
+  userId    String?
+}
+
+model StorageLocation {
+  id        String   @id @default(cuid())
+  name      String
+  path      String
+  enabled   Boolean  @default(true)
+  lastScan  DateTime?
+  trackCount Int     @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
