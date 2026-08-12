@@ -48,6 +48,8 @@ export function AudioEngineProvider({ children }: { children: React.ReactNode })
   const isPlayingRef = useRef(false);
   const volumeRef = useRef(72);
   const modeRef = useRef<'music' | 'radio' | 'podcast'>('music');
+  // Flag to prevent the isPlaying subscription from fighting with the audioUrl subscription
+  const urlChangingRef = useRef(false);
 
   // Sync audio element events
   useEffect(() => {
@@ -123,10 +125,15 @@ export function AudioEngineProvider({ children }: { children: React.ReactNode })
     const unsubPlay = usePlayerStore.subscribe(
       (state) => state.isPlaying,
       (isPlaying) => {
+        // If a URL change is in progress, let the URL handler manage playback
+        if (urlChangingRef.current) return;
+
         isPlayingRef.current = isPlaying;
         const aa = getAudio();
         if (isPlaying) {
-          aa.play().catch(() => {});
+          aa.play().catch((e) => {
+            console.warn('[AudioEngine] play() from isPlaying subscription failed:', e);
+          });
         } else {
           aa.pause();
         }
@@ -158,17 +165,70 @@ export function AudioEngineProvider({ children }: { children: React.ReactNode })
           try {
             const normalizedNew = new URL(url, window.location.origin).href;
             const normalizedExisting = new URL(aa.src, window.location.origin).href;
-            if (normalizedNew === normalizedExisting) return; // same URL, skip
+            if (normalizedNew === normalizedExisting) {
+              // Same URL — but we still need to ensure playback if isPlaying is true
+              const storeIsPlaying = usePlayerStore.getState().isPlaying;
+              isPlayingRef.current = storeIsPlaying;
+              if (storeIsPlaying) {
+                // If the audio ended or is at the end, reset to beginning
+                if (aa.ended || (aa.duration > 0 && aa.currentTime >= aa.duration - 1)) {
+                  aa.currentTime = 0;
+                }
+                if (aa.paused) {
+                  aa.play().catch(() => {});
+                }
+              }
+              return; // same URL, skip reload
+            }
           } catch {
             // URL parse failed — just compare raw strings
             if (url === aa.src) return;
           }
           console.log('[AudioEngine] Loading new URL:', url);
+
+          // Set flag to prevent isPlaying subscription from interfering
+          urlChangingRef.current = true;
+
+          // Pause current audio to ensure clean transition
+          aa.pause();
+          stopTimeTracking();
+
+          // Reset and load new source
           aa.src = url;
           aa.load();
-          if (isPlayingRef.current) {
-            aa.play().catch((e) => console.warn('[AudioEngine] play() failed:', e));
+
+          // Check if we should auto-play after load
+          const storeIsPlaying = usePlayerStore.getState().isPlaying;
+          if (storeIsPlaying) {
+            // Wait for canplay before calling play() to avoid race conditions
+            const onCanPlayOnce = () => {
+              aa.removeEventListener('canplaythrough', onCanPlayOnce);
+              aa.removeEventListener('canplay', onCanPlayOnce);
+              aa.play().catch((e) => console.warn('[AudioEngine] play() after load failed:', e));
+              // Release the flag after a short delay to allow isPlaying subscription to work again
+              setTimeout(() => { urlChangingRef.current = false; }, 100);
+            };
+            aa.addEventListener('canplaythrough', onCanPlayOnce);
+            aa.addEventListener('canplay', onCanPlayOnce);
+            // Fallback: if canplay doesn't fire within 3s, try play anyway and release flag
+            setTimeout(() => {
+              if (urlChangingRef.current) {
+                urlChangingRef.current = false;
+                if (aa.paused && storeIsPlaying) {
+                  aa.play().catch(() => {});
+                }
+              }
+            }, 3000);
+          } else {
+            // Not playing, just release the flag
+            setTimeout(() => { urlChangingRef.current = false; }, 100);
           }
+        } else {
+          // URL is null — stop playback
+          aa.pause();
+          aa.removeAttribute('src');
+          aa.load();
+          stopTimeTracking();
         }
       }
     );
@@ -180,20 +240,12 @@ export function AudioEngineProvider({ children }: { children: React.ReactNode })
       }
     );
 
-    const unsubSeek = usePlayerStore.subscribe(
-      (state) => state.currentTime,
-      () => {
-        // Seek is handled through the seek action, not direct time changes
-      }
-    );
-
     return () => {
       unsubPlay();
       unsubVolume();
       unsubMute();
       unsubUrl();
       unsubMode();
-      unsubSeek();
     };
   }, []);
 

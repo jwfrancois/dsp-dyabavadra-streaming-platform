@@ -108,3 +108,28 @@ Stage Summary:
 - Joe Budden podcast (752 episodes) correctly fetches episodes with titles, durations, and playable audio URLs
 - Loading/error/empty states provide good UX during feed fetching
 - Podcast artwork from iTunes displays correctly in detail view
+---
+Task ID: 3
+Agent: main
+Task: Fix podcast episodes showing as playing but no audio / time slider not moving
+
+Work Log:
+- Tested podcast audio proxy with real episode URLs — all return 200 with correct audio/mpeg content-type and proper content-length
+- Identified root cause: race condition in AudioEngineProvider between `isPlaying` and `audioUrl` subscriptions
+  - When `playEpisode()` calls `setState({ audioUrl, isPlaying: true })` simultaneously, both subscriptions fire
+  - The `isPlaying` subscription (registered first) fires first, calling `aa.play()` on the OLD/stale src
+  - Then `audioUrl` subscription fires, setting new src and calling `load()`, which interrupts the play started by the isPlaying handler
+  - The audio element ends up in a broken state: src is set but playback never actually starts
+- Rewrote AudioEngineProvider subscription logic:
+  - Added `urlChangingRef` flag to prevent `isPlaying` subscription from interfering during URL transitions
+  - URL handler now pauses audio before changing src, then waits for `canplay`/`canplaythrough` event before calling `play()`
+  - Added 3-second fallback timeout to ensure playback starts even if canplay events don't fire (large files)
+  - Added same-URL handling: if same URL is set again, reset to beginning if ended, then resume if paused
+  - Added null URL handling: stops playback and clears src
+- Removed unused `unsubSeek` subscription (was a no-op)
+- Build passes cleanly
+
+Stage Summary:
+- AudioEngineProvider now handles simultaneous audioUrl + isPlaying state changes correctly
+- Podcast episodes from discovered shows should now play actual audio with working time slider
+- Large podcast files (150-300MB) handled with proper buffering wait and fallback timeout
