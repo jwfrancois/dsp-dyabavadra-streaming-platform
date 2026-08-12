@@ -3,6 +3,8 @@
 import React from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
+import { usePodcastStore } from '@/store/podcast';
+import { podcastShows, formatEpisodeDuration } from '@/lib/podcast-data';
 import { tracks, zones, getSignalPath, formatDuration, formatSampleRate, getCoverGradient } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,14 +22,93 @@ import {
 export function NowPlayingView() {
   const {
     isPlaying, currentTrack, queue, queueIndex, activeZoneId,
-    progress, currentTime, volume, isShuffle, repeatMode, isMuted,
+    progress, currentTime, duration, volume, isShuffle, repeatMode, isMuted,
     togglePlay, next, previous, seek, setVolume, toggleMute,
-    toggleShuffle, toggleRepeat, setActiveZone,
+    toggleShuffle, toggleRepeat, setActiveZone, playbackMode,
   } = usePlayerStore();
   const { navigate } = useUIStore();
+  const { isPodcastMode, currentEpisode, playbackSpeed, cyclePlaybackSpeed } = usePodcastStore();
   const activeZone = zones.find(z => z.id === activeZoneId);
   const signalPath = currentTrack ? getSignalPath(currentTrack.id, activeZoneId) : [];
   const isBitPerfect = signalPath.length > 0 && signalPath.every(s => s.isBitPerfect);
+
+  // Podcast mode rendering
+  if (isPodcastMode && currentEpisode) {
+    const show = podcastShows.find(s => s.id === currentEpisode.showId);
+    const dur = duration > 0 ? duration : currentEpisode.duration;
+    const prog = dur > 0 ? (currentTime / dur) * 100 : 0;
+
+    return (
+      <ScrollArea className="h-full">
+        <div className="max-w-5xl mx-auto p-6">
+          <Button variant="ghost" size="sm" className="mb-4 text-muted-foreground" onClick={() => navigate('home')}>
+            <ArrowLeft className="w-4 h-4 mr-1" /> Back
+          </Button>
+
+          <div className="flex flex-col md:flex-row gap-8">
+            {/* Cover Art */}
+            <div className="flex-shrink-0">
+              <div className={`w-56 h-56 rounded-xl bg-gradient-to-br ${getCoverGradient(currentEpisode.showId)} shadow-lg`} />
+            </div>
+
+            {/* Track Info */}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Podcast Episode</p>
+              <h1 className="text-2xl font-bold mb-1">{currentEpisode.title}</h1>
+              <p className="text-sm text-muted-foreground mb-4">{show?.title}</p>
+
+              <div className="flex items-center gap-3 mb-4">
+                <Badge variant="outline" className="text-xs">{currentEpisode.format}</Badge>
+                <Badge variant="outline" className="text-xs">{formatEpisodeDuration(currentEpisode.duration)}</Badge>
+                <Button
+                  variant="secondary" size="sm" className="h-7 text-xs font-mono"
+                  onClick={cyclePlaybackSpeed}
+                >
+                  {playbackSpeed}x
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-2 w-full max-w-lg">
+                <span className="text-xs text-muted-foreground w-12 text-right tabular-nums">{formatDuration(currentTime)}</span>
+                <Slider value={[prog]} min={0} max={100} step={0.1} onValueChange={(v) => seek(v[0])} className="flex-1" />
+                <span className="text-xs text-muted-foreground w-16 tabular-nums">{formatEpisodeDuration(currentEpisode.duration)}</span>
+              </div>
+            </div>
+          </div>
+
+          <Separator className="my-8" />
+
+          {/* Controls */}
+          <div className="flex items-center justify-center gap-4">
+            <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" onClick={previous}>
+              <SkipBack className="w-5 h-5" />
+            </Button>
+            <Button variant="default" size="icon" className="h-12 w-12 rounded-full" onClick={togglePlay}>
+              {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-0.5" />}
+            </Button>
+            <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" onClick={next}>
+              <SkipForward className="w-5 h-5" />
+            </Button>
+          </div>
+
+          <Separator className="my-8" />
+
+          {/* Volume & Zone */}
+          <div className="flex items-center justify-center gap-4">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
+              {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-muted-foreground" /> : volume < 50 ? <Volume1 className="w-4 h-4 text-muted-foreground" /> : <Volume2 className="w-4 h-4 text-muted-foreground" />}
+            </Button>
+            <Slider value={[isMuted ? 0 : volume]} min={0} max={100} step={1} onValueChange={(v) => setVolume(v[0])} className="w-40" />
+            {activeZone && (
+              <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground" onClick={() => navigate('zones')}>
+                <Gauge className="w-3.5 h-3.5" /> {activeZone.name}
+              </Button>
+            )}
+          </div>
+        </div>
+      </ScrollArea>
+    );
+  }
 
   if (!currentTrack) {
     return (

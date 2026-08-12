@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePodcastStore } from '@/store/podcast';
 import { usePlayerStore } from '@/store/player';
@@ -11,7 +11,7 @@ import {
 } from '@/lib/podcast-data';
 import type { PodcastEpisode, PodcastShow } from '@/lib/podcast-data';
 import { getCoverGradient } from '@/lib/data';
-import { audioSeekTo, audioSetPlaybackSpeed } from './AudioEngineProvider';
+import { audioSetPlaybackSpeed } from './AudioEngineProvider';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,31 +26,8 @@ import {
 } from 'lucide-react';
 
 function handlePlayEpisode(episode: PodcastEpisode) {
-  const podcastStore = usePodcastStore.getState();
-  const epState = podcastStore.episodeStates[episode.id];
-  const startPos = epState && !epState.completed ? (epState.resumePosition || 0) : 0;
-
-  const url = episode.audioUrl.startsWith('http')
-    ? `/api/proxy/podcast?url=${encodeURIComponent(episode.audioUrl)}`
-    : episode.audioUrl;
-
-  audioSetPlaybackSpeed(podcastStore.playbackSpeed);
-
-  usePlayerStore.setState({
-    audioUrl: url,
-    isPlaying: true,
-    playbackMode: 'podcast' as const,
-    isBuffering: true,
-  });
-
-  podcastStore.playEpisode(episode);
-
-  if (startPos > 0 && episode.duration > 0) {
-    const seekPercent = (startPos / episode.duration) * 100;
-    setTimeout(() => {
-      audioSeekTo(seekPercent);
-    }, 300);
-  }
+  // Delegate to the podcast store which handles all audio setup
+  usePodcastStore.getState().playEpisode(episode);
 }
 
 function SpeedBadge() {

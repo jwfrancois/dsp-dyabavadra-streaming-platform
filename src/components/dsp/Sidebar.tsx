@@ -31,10 +31,10 @@ const navItems: Array<{ icon: typeof Home; label: string; view: string; badge?: 
   { icon: Podcast, label: 'Podcasts', view: 'podcasts' as const, badge: 'podcast' as const },
 ];
 
-const discoveryItems = [
+const discoveryItems: Array<{ icon: typeof Home; label: string; view: string; params?: Record<string, string> }> = [
   { icon: Clapperboard, label: 'Editorial', view: 'editorial' as const },
   { icon: Radio, label: 'Radio', view: 'radio' as const },
-  { icon: Workflow, label: 'Composers', view: 'composer-detail' as const },
+  { icon: Workflow, label: 'Composers', view: 'composer-detail' as const, params: { composerId: 'comp-1' } },
 ];
 
 const systemItems = [
@@ -161,7 +161,7 @@ export function Sidebar() {
                   className={`w-full justify-start gap-3 h-9 mb-0.5 ${
                     isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-muted-foreground hover:text-sidebar-foreground'
                   } ${!sidebarOpen ? 'px-0 justify-center' : ''}`}
-                  onClick={() => navigate(item.view)}
+                  onClick={() => navigate(item.view as any, item.params)}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />
                   {sidebarOpen && <span className="text-xs">{item.label}</span>}

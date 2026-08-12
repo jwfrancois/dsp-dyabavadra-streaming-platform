@@ -49,3 +49,33 @@ Stage Summary:
 - Audio playback now works for all 3 modes: music (demo audio), radio (SomaFM via proxy), podcasts (SoundHelix via proxy)
 - Podcast Discover tab now searches real iTunes directory with artwork, subscribe, and play buttons
 - Key files modified: src/store/player.ts, src/components/dsp/AudioEngineProvider.tsx, src/components/dsp/PodcastsView.tsx, next.config.ts
+---
+Task ID: 1
+Agent: main
+Task: Comprehensive bug audit and fix of DSP music streaming app
+
+Work Log:
+- Read and analyzed all critical source files (player.ts, AudioEngineProvider.tsx, PodcastsView.tsx, podcast.ts, ui.ts, PlayerBar.tsx, proxy routes, data files)
+- Launched sub-agent to do full audit of all 30+ component files
+- Identified 8 bugs across the codebase, prioritized by severity
+- Fixed all 8 bugs:
+  1. CRITICAL: Added missing `useMemo` import to PodcastsView.tsx (was causing runtime crash)
+  2. CRITICAL: Enhanced podcast store `playEpisode` to also set player store (audioUrl, isPlaying, playbackMode) + handle resume position and playback speed
+  3. HIGH: Fixed sidebar Composers link to navigate with composerId param
+  4. MEDIUM: Replaced `require()` in ArtistDetailView with proper import
+  5. HIGH: Extracted `buildAudioUrl()` helper with demo fallback for next()/previous()/setQueue()
+  6. MEDIUM: Added podcast mode rendering to NowPlayingView
+  7. LOW: Fixed formatDuration to floor seconds (no fractional display)
+  8. MEDIUM: Wired up play button in ArtistDetailView discography
+- Simplified PodcastsView handlePlayEpisode to delegate to enhanced store
+- Cleaned up unused imports
+- Verified build passes cleanly
+- Verified dev server responds with 200
+- Verified podcast search API returns results
+- Verified audio proxy returns 200
+
+Stage Summary:
+- All 8 identified bugs have been fixed
+- Audio playback should now work for: music tracks (with demo fallback), radio stations (via proxy), and podcasts (from any view)
+- Podcast Discover tab should now work (was crashing due to missing useMemo)
+- App builds and runs successfully

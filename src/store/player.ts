@@ -6,6 +6,25 @@ export type ViewName = 'home' | 'browse-artists' | 'browse-albums' | 'browse-tra
 
 export type PlaybackMode = 'music' | 'radio' | 'podcast';
 
+// ── Helper: build a playable audio URL for any Track ──
+const DEMO_TRACKS = [
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+];
+
+function buildAudioUrl(track: Track): string {
+  if (track.filePath) {
+    if (track.filePath.startsWith('http://') || track.filePath.startsWith('https://'))
+      return `/api/proxy/podcast?url=${encodeURIComponent(track.filePath)}`;
+    if (track.filePath.startsWith('/'))
+      return `/api/library/stream?file=${encodeURIComponent(track.filePath)}`;
+  }
+  // Fallback: demo audio for mock library tracks
+  const hash = track.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  return `/api/proxy/podcast?url=${encodeURIComponent(DEMO_TRACKS[hash % DEMO_TRACKS.length])}`;
+}
+
 interface PlayerState {
   isPlaying: boolean;
   currentTrack: Track | null;
@@ -78,29 +97,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (track) {
       const state = get();
       const existingIndex = state.queue.findIndex(t => t.id === track.id);
-      // Build audio URL based on track source
-      let audioUrl: string | null = null;
-      if (track.filePath) {
-        if (track.filePath.startsWith('http://') || track.filePath.startsWith('https://')) {
-          // External URL — proxy it to avoid CORS
-          audioUrl = `/api/proxy/podcast?url=${encodeURIComponent(track.filePath)}`;
-        } else if (track.filePath.startsWith('/')) {
-          // Local library file — stream from server
-          audioUrl = `/api/library/stream?file=${encodeURIComponent(track.filePath)}`;
-        }
-      }
-      // Fallback: use demo audio if no real source
-      // This allows the mock music library to produce sound
-      if (!audioUrl) {
-        const demoTracks = [
-          'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-          'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-          'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-        ];
-        const hash = track.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-        const demoUrl = demoTracks[hash % demoTracks.length];
-        audioUrl = `/api/proxy/podcast?url=${encodeURIComponent(demoUrl)}`;
-      }
+      const audioUrl = buildAudioUrl(track);
       if (existingIndex >= 0) {
         set({ isPlaying: true, queueIndex: existingIndex, currentTrack: track, progress: 0, currentTime: 0, audioUrl, playbackMode: 'music' as const });
       } else {
@@ -141,14 +138,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       }
     }
     const nextTrack = queue[nextIndex];
-    let nextAudioUrl: string | null = null;
-    if (nextTrack?.filePath) {
-      if (nextTrack.filePath.startsWith('http://') || nextTrack.filePath.startsWith('https://')) {
-        nextAudioUrl = `/api/proxy/podcast?url=${encodeURIComponent(nextTrack.filePath)}`;
-      } else if (nextTrack.filePath.startsWith('/')) {
-        nextAudioUrl = `/api/library/stream?file=${encodeURIComponent(nextTrack.filePath)}`;
-      }
-    }
+    const nextAudioUrl = nextTrack ? buildAudioUrl(nextTrack) : null;
     set({
       queueIndex: nextIndex,
       currentTrack: nextTrack,
@@ -169,14 +159,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     let prevIndex = queueIndex - 1;
     if (prevIndex < 0) prevIndex = queue.length - 1;
     const prevTrack = queue[prevIndex];
-    let prevAudioUrl: string | null = null;
-    if (prevTrack?.filePath) {
-      if (prevTrack.filePath.startsWith('http://') || prevTrack.filePath.startsWith('https://')) {
-        prevAudioUrl = `/api/proxy/podcast?url=${encodeURIComponent(prevTrack.filePath)}`;
-      } else if (prevTrack.filePath.startsWith('/')) {
-        prevAudioUrl = `/api/library/stream?file=${encodeURIComponent(prevTrack.filePath)}`;
-      }
-    }
+    const prevAudioUrl = prevTrack ? buildAudioUrl(prevTrack) : null;
     set({
       queueIndex: prevIndex,
       currentTrack: prevTrack,
@@ -189,14 +172,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   setQueue: (newTracks, startIndex = 0) => {
     const startTrack = newTracks[startIndex] || null;
-    let startAudioUrl: string | null = null;
-    if (startTrack?.filePath) {
-      if (startTrack.filePath.startsWith('http://') || startTrack.filePath.startsWith('https://')) {
-        startAudioUrl = `/api/proxy/podcast?url=${encodeURIComponent(startTrack.filePath)}`;
-      } else if (startTrack.filePath.startsWith('/')) {
-        startAudioUrl = `/api/library/stream?file=${encodeURIComponent(startTrack.filePath)}`;
-      }
-    }
+    const startAudioUrl = startTrack ? buildAudioUrl(startTrack) : null;
     set({
       queue: newTracks,
       queueIndex: startIndex,

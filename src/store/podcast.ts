@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { PodcastEpisode } from '@/lib/podcast-data';
 import { podcastEpisodes, podcastShows } from '@/lib/podcast-data';
+import { usePlayerStore } from './player';
 
 interface EpisodeState {
   isPlayed: boolean;
@@ -77,11 +78,42 @@ export const usePodcastStore = create<PodcastState>()(
           const state = get();
           const epState = state.episodeStates[episode.id];
           const startPos = epState && !epState.completed ? epState.resumePosition : 0;
+
+          // Build proxied audio URL
+          const url = episode.audioUrl.startsWith('http')
+            ? `/api/proxy/podcast?url=${encodeURIComponent(episode.audioUrl)}`
+            : episode.audioUrl;
+
+          // Sync player store so AudioEngineProvider picks up the new source
+          usePlayerStore.setState({
+            audioUrl: url,
+            isPlaying: true,
+            playbackMode: 'podcast' as const,
+            isBuffering: true,
+          });
+
           set({
             currentEpisode: episode,
             isPodcastMode: true,
           });
           get().updateResumePosition(episode.id, startPos);
+
+          // Seek to resume position after audio element loads
+          if (startPos > 0 && episode.duration > 0) {
+            const seekPercent = (startPos / episode.duration) * 100;
+            setTimeout(() => {
+              // Dynamic import to avoid circular dependency at module load time
+              import('@/components/dsp/AudioEngineProvider').then(({ audioSeekTo, audioSetPlaybackSpeed }) => {
+                audioSetPlaybackSpeed(state.playbackSpeed);
+                audioSeekTo(seekPercent);
+              });
+            }, 300);
+          } else {
+            // Ensure playback speed is set even without resume
+            import('@/components/dsp/AudioEngineProvider').then(({ audioSetPlaybackSpeed }) => {
+              audioSetPlaybackSpeed(state.playbackSpeed);
+            });
+          }
         },
 
         pausePodcast: () => set({ /* delegate to main player */ }),

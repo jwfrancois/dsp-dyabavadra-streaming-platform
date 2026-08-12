@@ -3,7 +3,7 @@
 import React from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
-import { artists, getAlbumsByArtist, tracks, getCoverGradient, formatDuration, formatSampleRate } from '@/lib/data';
+import { artists, albums, getAlbumsByArtist, tracks, getCoverGradient, formatDuration, formatSampleRate } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -74,9 +74,9 @@ export function ArtistDetailView() {
       }
     }
     return Array.from(albumIds).map(id => {
-      const album = { ...(require('@/lib/data').albums as typeof import('@/lib/data').albums).find((a: typeof artistAlbums[0]) => a.id === id) };
-      return album;
-    }).filter(Boolean);
+      const found = albums.find(a => a.id === id);
+      return found ? { ...found } : null;
+    }).filter((a): a is NonNullable<typeof a> => a !== null);
   }, [artist.name]);
 
   const playAll = () => {
@@ -177,7 +177,7 @@ export function ArtistDetailView() {
                     variant="default"
                     size="icon"
                     className="absolute bottom-2 right-2 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-all translate-y-1 group-hover:translate-y-0"
-                    onClick={(e) => { e.stopPropagation(); }}
+                    onClick={(e) => { e.stopPropagation(); const albumTracks = tracks.filter(t => t.albumId === album.id).sort((a, b) => a.trackNumber - b.trackNumber); if (albumTracks.length > 0) setQueue(albumTracks, 0); }}
                   >
                     <Play className="w-3.5 h-3.5 ml-0.5" />
                   </Button>
