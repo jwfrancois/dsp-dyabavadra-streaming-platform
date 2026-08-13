@@ -76,6 +76,7 @@ export interface Track {
   lastPlayed?: string;
   source: 'local' | 'tidal' | 'qobuz';
   isAvailable: boolean;
+  blobUrl?: string; // Client-side blob URL for browser-imported tracks
 }
 
 export interface Credit {

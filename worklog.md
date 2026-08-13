@@ -208,3 +208,22 @@ Stage Summary:
 - Radio proxy improved with better streaming headers and backpressure
 - Full local library scanning pipeline working: scan→persist→browse→play
 - Local tracks integrated into all three main browse views
+
+---
+Task ID: 2-c
+Agent: main
+Task: Fix recursive folder scanning and add album-grouped view for imported music
+
+Work Log:
+- Fixed drag-and-drop recursive directory reading: `readEntries()` in Chrome returns max 100 entries per call. Added `readAllEntries()` helper that loops until batch is empty.
+- Added album-grouped view to ImportMusicPanel: tracks organized by album with collapsible sections, expand/collapse all, per-album play buttons.
+- Added view toggle (album grid vs flat track list) in Import panel with LayoutGrid/List icons.
+- Updated info card hint to tell users to select their root music folder for recursive scanning.
+- Updated Browse Local panel to filter only `isLocal` tracks with dedicated artist/album derivation via `useMemo`.
+- Build verified: `next build` compiles successfully with zero errors.
+
+Stage Summary:
+- Users can browse entire music folder at once and see all albums with tracks organized by album.
+- Album-grouped view is default in Import panel; flat list view available via toggle.
+- Browse Local tab now correctly shows only browser-imported music.
+- Drag-and-drop no longer misses files beyond first 100 in any directory.

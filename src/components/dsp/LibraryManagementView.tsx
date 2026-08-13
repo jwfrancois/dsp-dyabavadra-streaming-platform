@@ -41,7 +41,7 @@ import {
   BarChart3, TrendingUp, Calendar, Volume2, Zap, Search, MoreHorizontal,
   Scissors, Merge, Split, Layers, Radio, Cloud, Settings, Loader2,
   ChevronLeft, Disc, User, Album as AlbumIcon, Library as LibraryIcon,
-  Globe, Network, Server, FolderSymlink,
+  ChevronDown, LayoutGrid, List,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -106,6 +106,7 @@ function localTrackToTrack(lt: LocalTrack): Track {
     playCount: 0,
     source: 'local',
     isAvailable: true,
+    blobUrl: (lt as any).blobUrl as string | undefined,
   };
 }
 
@@ -128,7 +129,7 @@ export function LibraryManagementView() {
   const { navigate } = useUIStore();
   const { play } = usePlayerStore();
   const store = useLibraryStore();
-  const [activeTab, setActiveTab] = React.useState('browse-local');
+  const [activeTab, setActiveTab] = React.useState('import');
 
   const stats = getTotalLibraryStats();
 
@@ -214,32 +215,37 @@ export function LibraryManagementView() {
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-surface w-full justify-start overflow-x-auto">
+            <TabsTrigger value="import" className="text-xs gap-1.5"><Upload className="w-3.5 h-3.5" /> Import Music</TabsTrigger>
             <TabsTrigger value="browse-local" className="text-xs gap-1.5"><LibraryIcon className="w-3.5 h-3.5" /> Browse Local</TabsTrigger>
             <TabsTrigger value="scan-folders" className="text-xs gap-1.5"><FolderOpen className="w-3.5 h-3.5" /> Scan Folders</TabsTrigger>
             <TabsTrigger value="network-shares" className="text-xs gap-1.5"><Globe className="w-3.5 h-3.5" /> Network Shares</TabsTrigger>
-            <TabsTrigger value="sources" className="text-xs gap-1.5"><FolderOpen className="w-3.5 h-3.5" /> Sources</TabsTrigger>
+            <TabsTrigger value="sources" className="text-xs gap-1.5"><HardDrive className="w-3.5 h-3.5" /> Sources</TabsTrigger>
             <TabsTrigger value="scanner" className="text-xs gap-1.5"><ScanSearch className="w-3.5 h-3.5" /> Scanner</TabsTrigger>
             <TabsTrigger value="metadata" className="text-xs gap-1.5"><Edit3 className="w-3.5 h-3.5" /> Metadata</TabsTrigger>
             <TabsTrigger value="dedup" className="text-xs gap-1.5"><Layers className="w-3.5 h-3.5" /> Dedup</TabsTrigger>
             <TabsTrigger value="playlists" className="text-xs gap-1.5"><ListMusic className="w-3.5 h-3.5" /> Playlists</TabsTrigger>
-            <TabsTrigger value="tags" className="text-xs gap-1.5"><Tag className="w-3.5 h-3.5" /> Tags & Collections</TabsTrigger>
+            <TabsTrigger value="tags" className="text-xs gap-1.5"><Tag className="w-3.5 h-3.5" /> Tags</TabsTrigger>
             <TabsTrigger value="history" className="text-xs gap-1.5"><History className="w-3.5 h-3.5" /> History</TabsTrigger>
             <TabsTrigger value="backup" className="text-xs gap-1.5"><Archive className="w-3.5 h-3.5" /> Backup</TabsTrigger>
           </TabsList>
+
+          {/* ═══ IMPORT MUSIC TAB ═══ */}
+          <TabsContent value="import" className="mt-6">
+            <ImportMusicPanel />
+          </TabsContent>
 
           {/* ═══ BROWSE LOCAL TAB ═══ */}
           <TabsContent value="browse-local" className="mt-6">
             <BrowseLocalPanel />
           </TabsContent>
 
+          <TabsContent value="network-shares" className="mt-6">
+            <NetworkSharesPanel />
+          </TabsContent>
+
           {/* ═══ SCAN FOLDERS TAB ═══ */}
           <TabsContent value="scan-folders" className="mt-6">
             <ScanFoldersPanel />
-          </TabsContent>
-
-          {/* ═══ NETWORK SHARES TAB ═══ */}
-          <TabsContent value="network-shares" className="mt-6">
-            <NetworkSharesPanel />
           </TabsContent>
 
           {/* ═══ SOURCES TAB ═══ */}
@@ -300,9 +306,45 @@ function BrowseLocalPanel() {
   const [selectedArtist, setSelectedArtist] = React.useState<string | null>(null);
   const [selectedAlbum, setSelectedAlbum] = React.useState<string | null>(null);
 
-  const allArtists = localStore.getArtists();
-  const allAlbums = localStore.getAlbums();
-  const allTracks = localStore.tracks;
+  // Filter only browser-imported tracks (isLocal === true)
+  const allLocalTracks = localStore.tracks.filter((t: any) => t.isLocal);
+
+  // Derive artists / albums only from local tracks
+  const localArtists = React.useMemo(() => {
+    const set = new Set<string>();
+    for (const t of allLocalTracks) {
+      if (t.artist) set.add(t.artist);
+      if (t.albumArtist && t.albumArtist !== t.artist) set.add(t.albumArtist);
+    }
+    return [...set].sort();
+  }, [allLocalTracks]);
+
+  const localAlbums = React.useMemo(() => {
+    const map = new Map<string, { name: string; artist: string; albumArtist: string; trackCount: number; year: number; coverArt: string | null }>();
+    for (const t of allLocalTracks) {
+      const key = `${t.albumArtist || t.artist}|||${t.album}`;
+      const existing = map.get(key);
+      if (existing) {
+        existing.trackCount++;
+        if (t.year && (!existing.year || t.year > existing.year)) existing.year = t.year;
+        if (!existing.coverArt && t.coverArt) existing.coverArt = t.coverArt;
+      } else {
+        map.set(key, {
+          name: t.album,
+          artist: t.artist,
+          albumArtist: t.albumArtist || t.artist,
+          trackCount: 1,
+          year: t.year,
+          coverArt: t.coverArt,
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [allLocalTracks]);
+
+  const allArtists = localArtists;
+  const allAlbums = localAlbums;
+  const allTracks = allLocalTracks;
 
   // Derived data based on navigation state
   const breadcrumbs: BreadcrumbItem[] = [{ label: 'Artists', onClick: () => { setSelectedArtist(null); setSelectedAlbum(null); setView('artists'); } }];
@@ -311,13 +353,27 @@ function BrowseLocalPanel() {
   let displayedAlbums = allAlbums;
   let displayedTracks = allTracks;
 
+  // Local-only search helper
+  const searchLocalTracks = React.useCallback((query: string) => {
+    const q = query.toLowerCase();
+    return allLocalTracks.filter(
+      t =>
+        t.title.toLowerCase().includes(q) ||
+        t.artist.toLowerCase().includes(q) ||
+        t.album.toLowerCase().includes(q) ||
+        t.genre.toLowerCase().includes(q) ||
+        (t.composer && t.composer.toLowerCase().includes(q)) ||
+        (t.albumArtist && t.albumArtist.toLowerCase().includes(q))
+    );
+  }, [allLocalTracks]);
+
   if (searchQuery.trim()) {
-    displayedTracks = localStore.searchTracks(searchQuery.trim());
+    displayedTracks = searchLocalTracks(searchQuery.trim());
     displayedAlbums = allAlbums.filter(a =>
-      displayedTracks.some(t => t.album === a.name && t.artist === a.artist)
+      displayedTracks.some(t => t.album === a.name && (t.artist === a.artist || t.albumArtist === a.albumArtist))
     );
     displayedArtists = allArtists.filter(a =>
-      displayedTracks.some(t => t.artist === a)
+      displayedTracks.some(t => t.artist === a || t.albumArtist === a)
     );
   } else if (selectedArtist && selectedAlbum) {
     // Artist > Album > Tracks
@@ -325,16 +381,16 @@ function BrowseLocalPanel() {
       { label: selectedArtist, onClick: () => { setSelectedAlbum(null); } },
       { label: selectedAlbum, onClick: () => {} },
     );
-    displayedTracks = localStore.getTracksByAlbum(selectedAlbum).filter(t => t.artist === selectedArtist);
+    displayedTracks = allLocalTracks.filter(t => t.album === selectedAlbum && (t.artist === selectedArtist || t.albumArtist === selectedArtist));
   } else if (selectedArtist) {
     // Artist > Albums
     breadcrumbs.push({ label: selectedArtist, onClick: () => {} });
-    displayedAlbums = allAlbums.filter(a => a.artist === selectedArtist);
-    displayedTracks = localStore.getTracksByArtist(selectedArtist);
+    displayedAlbums = allAlbums.filter(a => a.artist === selectedArtist || a.albumArtist === selectedArtist);
+    displayedTracks = allLocalTracks.filter(t => t.artist === selectedArtist || t.albumArtist === selectedArtist);
   } else if (selectedAlbum) {
     // Albums > Tracks
     breadcrumbs.push({ label: selectedAlbum, onClick: () => {} });
-    displayedTracks = localStore.getTracksByAlbum(selectedAlbum);
+    displayedTracks = allLocalTracks.filter(t => t.album === selectedAlbum);
   }
 
   const showArtistsView = !selectedArtist && !selectedAlbum && view === 'artists' && !searchQuery.trim();
@@ -444,7 +500,7 @@ function BrowseLocalPanel() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {displayedAlbums.map(album => {
-                const albumTracks = localStore.getTracksByAlbum(album.name).filter(t => !selectedArtist || t.artist === selectedArtist);
+                const albumTracks = allLocalTracks.filter(t => t.album === album.name && (!selectedArtist || t.artist === selectedArtist || t.albumArtist === selectedArtist));
                 const firstTrack = albumTracks[0];
                 return (
                   <Card
@@ -609,24 +665,12 @@ function BrowseLocalPanel() {
 function ScanFoldersPanel() {
   const localStore = useLocalLibraryStore();
   const [directoryInput, setDirectoryInput] = React.useState('');
-  const [uncWarning, setUncWarning] = React.useState(false);
 
   const { tracks, isScanning, scanProgress, scanError, directories, lastScanTime } = localStore;
-
-  const isUncPath = (path: string) => {
-    const normalized = path.replace(/\\/g, '/');
-    return normalized.startsWith('//') || normalized.startsWith('smb://');
-  };
 
   const handleScan = React.useCallback(async () => {
     const dir = directoryInput.trim();
     if (!dir) return;
-
-    if (isUncPath(dir)) {
-      setUncWarning(true);
-      return;
-    }
-
     localStore.addDirectory(dir);
     setDirectoryInput('');
     await localStore.startScan(dir);
@@ -664,31 +708,11 @@ function ScanFoldersPanel() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* UNC Path Warning */}
-          {uncWarning && (
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-signal-amber/5 border border-signal-amber/20">
-              <AlertTriangle className="w-4 h-4 text-signal-amber flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-medium text-signal-amber">Network Path Detected</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  This looks like a network (SMB/CIFS) path. Please use the &quot;Network Shares&quot; tab to mount it first, or mount it manually and enter the local mount path here.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-6 text-[10px] mt-2"
-                  onClick={() => setUncWarning(false)}
-                >
-                  Dismiss
-                </Button>
-              </div>
-            </div>
-          )}
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <FolderClosed className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="/path/to/your/music/folder (or use Network Shares tab for NAS)"
+                placeholder="/path/to/your/music/folder"
                 value={directoryInput}
                 onChange={e => setDirectoryInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleScan()}
@@ -913,6 +937,531 @@ function ScanFoldersPanel() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// IMPORT MUSIC PANEL (Browser file/folder picker)
+// ═══════════════════════════════════════════════════════════
+
+interface ImportStats {
+  totalFiles: number;
+  scannedFiles: number;
+  failedFiles: number;
+  totalSize: number;
+  cacheSize: number;
+}
+
+function ImportMusicPanel() {
+  const localStore = useLocalLibraryStore();
+  const [scanning, setScanning] = React.useState(false);
+  const [dragOver, setDragOver] = React.useState(false);
+  const [progress, setProgress] = React.useState<import("@/lib/client-scanner").ScanProgress | null>(null);
+  const [importStats, setImportStats] = React.useState<ImportStats | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const [importView, setImportView] = React.useState<'albums' | 'tracks'>('albums');
+  const [expandedAlbums, setExpandedAlbums] = React.useState<Set<string>>(new Set());
+
+  // Count locally-imported tracks (isLocal === true)
+  const localTracks = localStore.tracks.filter((t: any) => t.isLocal);
+  const localImportCount = localTracks.length;
+
+  // Group local tracks by album for album view
+  const albumGroups = React.useMemo(() => {
+    const map = new Map<string, { album: string; albumArtist: string; artist: string; year: number; coverArt: string | null; tracks: typeof localTracks }>();
+    for (const t of localTracks) {
+      const key = `${t.albumArtist || t.artist}|||${t.album}`;
+      let group = map.get(key);
+      if (!group) {
+        group = { album: t.album, albumArtist: t.albumArtist || t.artist, artist: t.artist, year: t.year, coverArt: t.coverArt, tracks: [] };
+        map.set(key, group);
+      }
+      group.tracks.push(t);
+    }
+    // Sort tracks within each album by disc number then track number
+    for (const group of map.values()) {
+      group.tracks.sort((a, b) => (a.discNumber - b.discNumber) || (a.trackNumber - b.trackNumber));
+    }
+    return Array.from(map.values()).sort((a, b) => a.album.localeCompare(b.album));
+  }, [localTracks]);
+
+  const toggleAlbum = React.useCallback((key: string) => {
+    setExpandedAlbums(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const expandAllAlbums = React.useCallback(() => {
+    setExpandedAlbums(new Set(albumGroups.map(g => `${g.albumArtist}|||${g.album}`)));
+  }, [albumGroups]);
+
+  const collapseAllAlbums = React.useCallback(() => {
+    setExpandedAlbums(new Set());
+  }, []);
+
+  const handleImportTracks = React.useCallback(async (tracks: import("@/lib/client-scanner").ScannedTrack[]) => {
+    if (tracks.length === 0) return;
+
+    // Convert ScannedTrack to LocalTrack format for the store
+    const newTracks = tracks.map(t => ({
+      id: t.id,
+      title: t.title,
+      artist: t.artist,
+      album: t.album,
+      albumArtist: t.albumArtist,
+      trackNumber: t.trackNumber,
+      discNumber: t.discNumber,
+      duration: t.duration,
+      format: t.format,
+      sampleRate: t.sampleRate,
+      bitDepth: t.bitDepth,
+      channels: t.channels,
+      bitrate: t.bitrate,
+      filePath: t.fileName,
+      fileSize: t.fileSize,
+      year: t.year,
+      genre: t.genre,
+      composer: t.composer,
+      coverArt: t.coverArt || null,
+      isLocal: true,
+      cached: t.cached || false,
+      blobUrl: t._blobUrl || undefined,
+    }));
+
+    // Merge with existing tracks (by ID)
+    const existingIds = new Set(localStore.tracks.map((t: any) => t.id));
+    const toAdd = newTracks.filter(t => !existingIds.has(t.id));
+
+    if (toAdd.length > 0) {
+      useLocalLibraryStore.setState({
+        tracks: [...localStore.tracks, ...toAdd] as any,
+        lastScanTime: new Date().toISOString(),
+        directories: [...localStore.directories, 'Browser Import'].filter((v, i, a) => a.indexOf(v) === i),
+      });
+    }
+
+    const totalSize = tracks.reduce((s, t) => s + t.fileSize, 0);
+    setImportStats({
+      totalFiles: progress?.total || tracks.length,
+      scannedFiles: tracks.length,
+      failedFiles: (progress?.total || tracks.length) - tracks.length,
+      totalSize,
+      cacheSize: totalSize,
+    });
+
+    setScanning(false);
+    setProgress(null);
+  }, [localStore, progress]);
+
+  const handleScanFolder = React.useCallback(async () => {
+    setScanning(true);
+    setError(null);
+    setProgress({ phase: 'reading', current: 0, total: 0, tracksFound: 0 });
+
+    try {
+      const { scanFolder } = await import("@/lib/client-scanner");
+      const tracks = await scanFolder({
+        cacheAudio: true,
+        onProgress: setProgress,
+      });
+      await handleImportTracks(tracks);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to scan folder');
+      setScanning(false);
+    }
+  }, [handleImportTracks]);
+
+  const handleScanFiles = React.useCallback(async () => {
+    setScanning(true);
+    setError(null);
+    setProgress({ phase: 'reading', current: 0, total: 0, tracksFound: 0 });
+
+    try {
+      const { scanSelectedFiles } = await import("@/lib/client-scanner");
+      const tracks = await scanSelectedFiles({
+        cacheAudio: true,
+        onProgress: setProgress,
+      });
+      await handleImportTracks(tracks);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to scan files');
+      setScanning(false);
+    }
+  }, [handleImportTracks]);
+
+  const handleDrop = React.useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    setScanning(true);
+    setError(null);
+    setProgress({ phase: 'reading', current: 0, total: 0, tracksFound: 0 });
+
+    try {
+      const items = e.dataTransfer.items;
+      const files: File[] = [];
+
+      if (items) {
+        const entries: any[] = [];
+        for (let i = 0; i < items.length; i++) {
+          const entry = items[i].webkitGetAsEntry?.();
+          if (entry) entries.push(entry);
+        }
+
+        // readEntries() may return at most 100 entries per call (Chrome).
+        // We must keep calling until it returns an empty array.
+        async function readAllEntries(reader: any): Promise<any[]> {
+          const all: any[] = [];
+          let batch: any[];
+          do {
+            batch = await new Promise<any[]>((resolve, reject) => {
+              reader.readEntries(resolve, reject);
+            });
+            all.push(...batch);
+          } while (batch.length > 0);
+          return all;
+        }
+
+        async function readEntry(entry: any) {
+          if (entry.isFile) {
+            const file = await new Promise<File>((resolve) => entry.file(resolve));
+            files.push(file);
+          } else if (entry.isDirectory) {
+            const reader = entry.createReader();
+            const subEntries = await readAllEntries(reader);
+            for (const sub of subEntries) {
+              await readEntry(sub);
+            }
+          }
+        }
+
+        for (const entry of entries) {
+          await readEntry(entry);
+        }
+      } else {
+        files.push(...Array.from(e.dataTransfer.files));
+      }
+
+      if (files.length === 0) {
+        setError('No audio files found in dropped items.');
+        setScanning(false);
+        return;
+      }
+
+      const { scanFiles } = await import("@/lib/client-scanner");
+      const tracks = await scanFiles(files, {
+        cacheAudio: true,
+        onProgress: setProgress,
+      });
+      await handleImportTracks(tracks);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to process dropped files');
+      setScanning(false);
+    }
+  }, [handleImportTracks]);
+
+  const handleClearLocal = React.useCallback(() => {
+    const remaining = localStore.tracks.filter((t: any) => !t.isLocal);
+    useLocalLibraryStore.setState({ tracks: remaining as any });
+  }, [localStore]);
+
+  const formatBytes = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Info Card */}
+      <Card className="bg-card border-border">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <FolderOpen className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground">Import music from your computer</p>
+              <p>
+                Select your <span className="text-foreground font-medium">root music folder</span> (e.g. &quot;My Music&quot;) and DSP will
+                automatically scan <span className="text-foreground font-medium">all subfolders</span> including every album.
+                Metadata (tags, cover art, audio quality) is scanned directly in your browser.
+                No files are uploaded to any server.
+              </p>
+              {localImportCount > 0 && (
+                <p className="text-primary font-medium">
+                  {localImportCount} tracks in {albumGroups.length} albums imported
+                </p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Drop Zone */}
+      <Card className={`bg-card border-2 transition-colors ${dragOver ? 'border-primary bg-primary/5' : 'border-border'}`}>
+        <CardContent className="p-6">
+          <div
+            className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${dragOver ? 'border-primary bg-primary/5' : 'border-muted-foreground/20 hover:border-muted-foreground/40'}`}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+          >
+            {scanning ? (
+              <div className="space-y-4">
+                <Loader2 className="w-10 h-10 mx-auto text-primary animate-spin" />
+                <div>
+                  <p className="text-sm font-medium">
+                    {progress?.phase === 'reading' ? 'Discovering files...' :
+                     progress?.phase === 'parsing' ? `Scanning: ${progress.fileName || ''}` :
+                     'Caching audio...'}
+                  </p>
+                  {progress && progress.total > 0 && (
+                    <div className="mt-3 max-w-sm mx-auto">
+                      <Progress value={(progress.current / progress.total) * 100} className="h-2" />
+                      <p className="text-[11px] text-muted-foreground mt-1.5">
+                        {progress.current} / {progress.total} files &mdash; {progress.tracksFound} tracks found
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <Upload className="w-10 h-10 mx-auto text-muted-foreground/40" />
+                <div>
+                  <p className="text-sm font-medium">Drag &amp; drop your music folder here</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Select your root music folder to scan all albums at once
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          {!scanning && (
+            <div className="flex items-center gap-3 mt-4 justify-center">
+              <Button onClick={handleScanFolder} className="h-9 gap-1.5">
+                <FolderOpen className="w-4 h-4" />
+                Browse Folder
+              </Button>
+              <Button variant="outline" onClick={handleScanFiles} className="h-9 gap-1.5">
+                <Music2 className="w-4 h-4" />
+                Browse Files
+              </Button>
+            </div>
+          )}
+          <p className="text-[10px] text-muted-foreground text-center mt-2">
+            Tip: Pick your top-level music folder to import all albums at once. Subfolders are scanned recursively.
+          </p>
+
+          {/* Error */}
+          {error && (
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-signal-red/5 border border-signal-red/20 mt-4">
+              <AlertTriangle className="w-4 h-4 text-signal-red flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-medium text-signal-red">Import Error</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{error}</p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Import Stats */}
+      {importStats && (
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-primary" /> Import Results
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="p-3 rounded-lg bg-surface/50">
+                <p className="text-[10px] text-muted-foreground">Tracks Found</p>
+                <p className="text-lg font-bold">{importStats.scannedFiles}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-surface/50">
+                <p className="text-[10px] text-muted-foreground">Total Size</p>
+                <p className="text-lg font-bold">{formatBytes(importStats.totalSize)}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-surface/50">
+                <p className="text-[10px] text-muted-foreground">Cached for Playback</p>
+                <p className="text-lg font-bold">{formatBytes(importStats.cacheSize)}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-surface/50">
+                <p className="text-[10px] text-muted-foreground">Failed</p>
+                <p className="text-lg font-bold text-signal-red">{importStats.failedFiles}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Imported Tracks Preview — Album Grouped View */}
+      {localImportCount > 0 && (
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Music2 className="w-4 h-4 text-primary" /> Imported Music ({albumGroups.length} albums, {localImportCount} tracks)
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                {/* View toggle */}
+                <div className="flex items-center bg-surface rounded-md p-0.5">
+                  <Button
+                    variant={importView === 'albums' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="h-7 w-7 p-0 rounded-md"
+                    onClick={() => setImportView('albums')}
+                    title="Album view"
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    variant={importView === 'tracks' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="h-7 w-7 p-0 rounded-md"
+                    onClick={() => setImportView('tracks')}
+                    title="Track list view"
+                  >
+                    <List className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="h-7 text-[10px] gap-1"
+                  onClick={handleClearLocal}
+                >
+                  <Trash2 className="w-3 h-3" /> Clear All
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {importView === 'albums' ? (
+              /* ── Album-grouped view ── */
+              <ScrollArea className="max-h-[500px]">
+                {/* Expand / Collapse all */}
+                <div className="flex items-center gap-2 mb-3">
+                  <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={expandAllAlbums}>
+                    <ChevronDown className="w-3 h-3" /> Expand All
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={collapseAllAlbums}>
+                    <ChevronRight className="w-3 h-3" /> Collapse All
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 ml-auto" onClick={() => playLocalTracks(localTracks)}>
+                    <Play className="w-3 h-3" /> Play All
+                  </Button>
+                </div>
+                <div className="space-y-1.5">
+                  {albumGroups.map(group => {
+                    const key = `${group.albumArtist}|||${group.album}`;
+                    const isExpanded = expandedAlbums.has(key);
+                    const albumDuration = group.tracks.reduce((s, t) => s + t.duration, 0);
+                    return (
+                      <div key={key} className="rounded-lg border border-border overflow-hidden">
+                        {/* Album header row */}
+                        <div
+                          className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-accent/20 transition-colors"
+                          onClick={() => toggleAlbum(key)}
+                        >
+                          <ChevronRight className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                          {group.coverArt ? (
+                            <img src={group.coverArt.startsWith('data:') ? group.coverArt : `data:image/jpeg;base64,${group.coverArt}`} alt="" className="w-9 h-9 rounded object-cover flex-shrink-0" />
+                          ) : (
+                            <div className={`w-9 h-9 rounded bg-gradient-to-br ${getCoverGradient(group.album + group.albumArtist)} flex items-center justify-center flex-shrink-0`}>
+                              <Disc3 className="w-4 h-4 text-white/20" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate">{group.album}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">{group.albumArtist}</p>
+                          </div>
+                          <Badge variant="outline" className="text-[9px] h-5 font-mono">{group.tracks.length} tracks</Badge>
+                          <span className="text-[10px] text-muted-foreground">{formatDuration(albumDuration)}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                            onClick={(e) => { e.stopPropagation(); playLocalTracks(group.tracks); }}
+                          >
+                            <Play className="w-3 h-3" />
+                          </Button>
+                        </div>
+                        {/* Expanded track list */}
+                        {isExpanded && (
+                          <div className="border-t border-border/50">
+                            {group.tracks.map((track, i) => (
+                              <div
+                                key={track.id}
+                                className="flex items-center gap-3 pl-12 pr-3 py-1.5 hover:bg-accent/10 cursor-pointer transition-colors group"
+                                onClick={() => playLocalTrack(track)}
+                              >
+                                <span className="text-[10px] text-muted-foreground w-5 text-right font-mono">{i + 1}</span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[11px] font-medium truncate">{track.title}</p>
+                                </div>
+                                <span className="text-[9px] text-muted-foreground/60 font-mono">{track.format}</span>
+                                <span className="text-[9px] text-muted-foreground/60">{formatDuration(track.duration)}</span>
+                                {(track as any).cached && (
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-500 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            ) : (
+              /* ── Flat track list view ── */
+              <ScrollArea className="max-h-[500px]">
+                <div className="space-y-1">
+                  {localTracks
+                    .sort((a, b) => {
+                      const albumCmp = a.album.localeCompare(b.album);
+                      if (albumCmp !== 0) return albumCmp;
+                      return (a.discNumber - b.discNumber) || (a.trackNumber - b.trackNumber);
+                    })
+                    .map((track, i) => (
+                    <div
+                      key={track.id}
+                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/20 cursor-pointer transition-colors group"
+                      onClick={() => playLocalTrack(track)}
+                    >
+                      {track.coverArt ? (
+                        <img src={track.coverArt.startsWith('data:') ? track.coverArt : `data:image/jpeg;base64,${track.coverArt}`} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
+                      ) : (
+                        <div className={`w-8 h-8 rounded bg-gradient-to-br ${getCoverGradient(track.album + track.artist)} flex items-center justify-center flex-shrink-0`}>
+                          <Music2 className="w-3.5 h-3.5 text-white/20" />
+                        </div>
+                      )}
+                      <span className="text-[10px] text-muted-foreground w-5 text-right font-mono">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{track.title}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{track.artist} &mdash; {track.album}</p>
+                      </div>
+                      <span className="text-[9px] text-muted-foreground/60 font-mono">{track.format}</span>
+                      <span className="text-[9px] text-muted-foreground/60">{formatDuration(track.duration)}</span>
+                      {(track as any).cached && (
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
 // NETWORK SHARES PANEL (SMB/CIFS)
 // ═══════════════════════════════════════════════════════════
 
@@ -939,312 +1488,127 @@ function NetworkSharesPanel() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Load existing shares on mount
-  React.useEffect(() => {
-    fetchShares();
-  }, []);
+  React.useEffect(() => { fetchShares(); }, []);
 
   const fetchShares = async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/library/mount');
       const data = await res.json();
-      if (data.success) {
-        setShares(data.shares || []);
-        setError(null);
-      } else {
-        setError(data.error || 'Failed to load network shares');
-      }
-    } catch (err) {
-      setError('Failed to connect to server');
-    }
+      if (data.success) { setShares(data.shares || []); setError(null); }
+      else { setError(data.error || 'Failed to load network shares'); }
+    } catch { setError('Failed to connect to server'); }
     setLoading(false);
   };
 
   const handleMount = async () => {
     const unc = uncInput.trim();
     if (!unc) return;
-
-    setMounting(unc);
-    setError(null);
-
+    setMounting(unc); setError(null);
     try {
       const res = await fetch('/api/library/mount', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          uncPath: unc,
-          username: usernameInput.trim() || undefined,
-          password: passwordInput || undefined,
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uncPath: unc, username: usernameInput.trim() || undefined, password: passwordInput || undefined }),
       });
-
       const data = await res.json();
-
       if (data.success && data.share) {
-        // Add the scan path to local directories and start scan
-        if (data.scanPath) {
-          localStore.addDirectory(data.scanPath);
-          localStore.startScan(data.scanPath);
-        }
-        setUncInput('');
-        setUsernameInput('');
-        setPasswordInput('');
+        if (data.scanPath) { localStore.addDirectory(data.scanPath); localStore.startScan(data.scanPath); }
+        setUncInput(''); setUsernameInput(''); setPasswordInput('');
         await fetchShares();
-      } else {
-        setError(data.error || 'Mount failed');
-      }
-    } catch (err) {
-      setError('Failed to mount share');
-    }
+      } else { setError(data.error || 'Mount failed'); }
+    } catch { setError('Failed to mount share'); }
     setMounting(null);
   };
 
   const handleUnmount = async (shareId: string) => {
-    try {
-      await fetch(`/api/library/mount?id=${encodeURIComponent(shareId)}`, { method: 'DELETE' });
-      await fetchShares();
-    } catch {
-      setError('Failed to unmount');
-    }
+    try { await fetch(`/api/library/mount?id=${encodeURIComponent(shareId)}`, { method: 'DELETE' }); await fetchShares(); }
+    catch { setError('Failed to unmount'); }
   };
 
   const handleRemount = async (share: NetworkShareInfo) => {
-    setMounting(share.id);
-    setError(null);
+    setMounting(share.id); setError(null);
     try {
-      const res = await fetch('/api/library/mount', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uncPath: share.uncPath }),
-      });
+      const res = await fetch('/api/library/mount', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uncPath: share.uncPath }) });
       const data = await res.json();
-      if (data.success) {
-        if (data.scanPath) {
-          localStore.addDirectory(data.scanPath);
-        }
-        await fetchShares();
-      } else {
-        setError(data.error || 'Remount failed');
-      }
-    } catch {
-      setError('Failed to remount');
-    }
+      if (data.success) { if (data.scanPath) localStore.addDirectory(data.scanPath); await fetchShares(); }
+      else { setError(data.error || 'Remount failed'); }
+    } catch { setError('Failed to remount'); }
     setMounting(null);
   };
 
   const handleScanMounted = (share: NetworkShareInfo) => {
     const scanPath = share.mountPoint + (share.subPath ? `/${share.subPath}` : '');
-    localStore.addDirectory(scanPath);
-    localStore.startScan(scanPath);
+    localStore.addDirectory(scanPath); localStore.startScan(scanPath);
   };
 
   return (
     <div className="space-y-6">
-      {/* What are Network Shares */}
       <Card className="bg-card border-border">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
             <Server className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
             <div className="text-xs text-muted-foreground space-y-1">
               <p className="font-medium text-foreground">Access your NAS or network storage</p>
-              <p>
-                Mount SMB/CIFS network shares (TrueNAS, Synology, Windows shares, etc.)
-                to scan and play music from network-attached storage. The share will be
-                mounted on the server and scanned for audio files.
-              </p>
+              <p>Mount SMB/CIFS network shares (TrueNAS, Synology, Windows shares, etc.) to scan and play music from network-attached storage.</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Add Network Share */}
       <Card className="bg-card border-border">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Globe className="w-4 h-4 text-primary" /> Add Network Share
-          </CardTitle>
-        </CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center gap-2"><Globe className="w-4 h-4 text-primary" /> Add Network Share</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground">Network Path (UNC or SMB URL)</label>
-            <Input
-              placeholder="\\10.0.0.80\iguey\Media\Music"
-              value={uncInput}
-              onChange={e => setUncInput(e.target.value)}
-              className="h-9 text-sm font-mono"
-              disabled={!!mounting}
-            />
-            <p className="text-[10px] text-muted-foreground">
-              Formats: {'\\\\'}SERVER{'\\'}share{'\\'}path &nbsp;|&nbsp; //SERVER/share/path &nbsp;|&nbsp; smb://user:pass@SERVER/share/path
-            </p>
+            <Input placeholder="\\10.0.0.80\iguey\Media\Music" value={uncInput} onChange={e => setUncInput(e.target.value)} className="h-9 text-sm font-mono" disabled={!!mounting} />
           </div>
-
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground">Username (optional)</label>
-              <Input
-                placeholder="guest"
-                value={usernameInput}
-                onChange={e => setUsernameInput(e.target.value)}
-                className="h-9 text-sm"
-                disabled={!!mounting}
-              />
+              <Input placeholder="guest" value={usernameInput} onChange={e => setUsernameInput(e.target.value)} className="h-9 text-sm" disabled={!!mounting} />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground">Password (optional)</label>
-              <Input
-                type="password"
-                placeholder="Leave empty for guest access"
-                value={passwordInput}
-                onChange={e => setPasswordInput(e.target.value)}
-                className="h-9 text-sm"
-                disabled={!!mounting}
-              />
+              <Input type="password" placeholder="Leave empty for guest" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} className="h-9 text-sm" disabled={!!mounting} />
             </div>
           </div>
-
-          {error && (
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-signal-red/5 border border-signal-red/20">
-              <AlertTriangle className="w-4 h-4 text-signal-red flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-medium text-signal-red">Error</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5 whitespace-pre-wrap">{error}</p>
-              </div>
-            </div>
-          )}
-
-          <Button
-            onClick={handleMount}
-            disabled={!uncInput.trim() || !!mounting}
-            className="h-9 gap-1.5"
-          >
-            {mounting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Network className="w-4 h-4" />}
-            {mounting ? 'Mounting...' : 'Mount & Scan'}
+          {error && <div className="flex items-start gap-3 p-3 rounded-lg bg-signal-red/5 border border-signal-red/20"><AlertTriangle className="w-4 h-4 text-signal-red flex-shrink-0 mt-0.5" /><div><p className="text-xs font-medium text-signal-red">Error</p><p className="text-[11px] text-muted-foreground mt-0.5">{error}</p></div></div>}
+          <Button onClick={handleMount} disabled={!uncInput.trim() || !!mounting} className="h-9 gap-1.5">
+            {mounting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Network className="w-4 h-4" />} {mounting ? 'Mounting...' : 'Mount & Scan'}
           </Button>
         </CardContent>
       </Card>
 
-      {/* Mounted Shares */}
       <Card className="bg-card border-border">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <FolderSymlink className="w-4 h-4" /> Network Shares ({shares.length})
-          </CardTitle>
-        </CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center gap-2"><FolderSymlink className="w-4 h-4" /> Network Shares ({shares.length})</CardTitle></CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-xs text-muted-foreground">Loading shares...</span>
-            </div>
-          ) : shares.length === 0 ? (
-            <div className="text-center py-8">
-              <Server className="w-10 h-10 mx-auto mb-3 text-muted-foreground/20" />
-              <p className="text-xs text-muted-foreground">No network shares configured. Add one above to access your NAS music library.</p>
-            </div>
-          ) : (
+          {loading ? (<div className="flex items-center justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /><span className="ml-2 text-xs text-muted-foreground">Loading shares...</span></div>) :
+          shares.length === 0 ? (<div className="text-center py-8"><Server className="w-10 h-10 mx-auto mb-3 text-muted-foreground/20" /><p className="text-xs text-muted-foreground">No network shares configured. Add one above to access your NAS music library.</p></div>) : (
             <div className="space-y-2">
               {shares.map(share => (
-                <div
-                  key={share.id}
-                  className={`p-3 rounded-lg border transition-colors ${share.mounted ? 'bg-signal-green/5 border-signal-green/20' : 'bg-surface/50 border-border'}`}
-                >
+                <div key={share.id} className={`p-3 rounded-lg border transition-colors ${share.mounted ? 'bg-signal-green/5 border-signal-green/20' : 'bg-surface/50 border-border'}`}>
                   <div className="flex items-start gap-3">
                     <Server className={`w-4 h-4 flex-shrink-0 mt-0.5 ${share.mounted ? 'text-signal-green' : 'text-muted-foreground'}`} />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-mono truncate">{share.uncPath}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant={share.mounted ? 'default' : 'outline'} className="text-[10px] h-5">
-                          {share.mounted ? (
-                            <><Wifi className="w-2.5 h-2.5 mr-1" /> Mounted</>
-                          ) : (
-                            <><WifiOff className="w-2.5 h-2.5 mr-1" /> Unmounted</>
-                          )}
+                          {share.mounted ? (<><Wifi className="w-2.5 h-2.5 mr-1" /> Mounted</>) : (<><WifiOff className="w-2.5 h-2.5 mr-1" /> Unmounted</>)}
                         </Badge>
                         <span className="text-[10px] text-muted-foreground font-mono">{share.mountPoint}</span>
                       </div>
-                      {share.subPath && (
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                          Sub-path: <span className="font-mono">/{share.subPath}</span>
-                          {share.mounted && (
-                            <span className="text-primary ml-1">
-                              → Scan path: <span className="font-mono">{share.mountPoint}/{share.subPath}</span>
-                            </span>
-                          )}
-                        </p>
-                      )}
-                      {share.error && (
-                        <p className="text-[10px] text-signal-red mt-1">{share.error}</p>
-                      )}
-                      {share.mountedAt && (
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                          Mounted at {new Date(share.mountedAt).toLocaleString()}
-                        </p>
-                      )}
+                      {share.error && <p className="text-[10px] text-signal-red mt-1">{share.error}</p>}
                     </div>
                     <div className="flex items-center gap-1">
-                      {share.mounted && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-[10px] gap-1"
-                          onClick={() => handleScanMounted(share)}
-                          disabled={localStore.isScanning}
-                        >
-                          <ScanSearch className="w-3 h-3" /> Scan
-                        </Button>
-                      )}
-                      {!share.mounted && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-[10px] gap-1"
-                          onClick={() => handleRemount(share)}
-                          disabled={!!mounting}
-                        >
-                          <RefreshCw className="w-3 h-3" /> Mount
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive"
-                        onClick={() => handleUnmount(share.id)}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      {share.mounted && (<Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1" onClick={() => handleScanMounted(share)} disabled={localStore.isScanning}><ScanSearch className="w-3 h-3" /> Scan</Button>)}
+                      {!share.mounted && (<Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1" onClick={() => handleRemount(share)} disabled={!!mounting}><RefreshCw className="w-3 h-3" /> Mount</Button>)}
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleUnmount(share.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Manual Mount Instructions */}
-      <Card className="bg-card border-border">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <FileText className="w-4 h-4 text-muted-foreground" /> Manual Mount (if auto-mount fails)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-xs text-muted-foreground">
-            If the web UI cannot mount shares (due to permissions), you can mount manually in your server terminal:
-          </p>
-          <div className="space-y-2">
-            <div className="p-3 rounded-lg bg-surface font-mono text-[11px] space-y-1">
-              <p className="text-muted-foreground"># Install CIFS utilities (if needed)</p>
-              <p className="text-foreground">sudo apt install cifs-utils</p>
-              <p className="text-muted-foreground mt-2"># Create mount point</p>
-              <p className="text-foreground">sudo mkdir -p /mnt/music</p>
-              <p className="text-muted-foreground mt-2"># Mount your TrueNAS share</p>
-              <p className="text-foreground">sudo mount -t cifs //10.0.0.80/iguey/Media/Music /mnt/music -o guest,iocharset=utf8</p>
-              <p className="text-muted-foreground mt-2"># Then use "/mnt/music" in the Scan Folders tab</p>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
