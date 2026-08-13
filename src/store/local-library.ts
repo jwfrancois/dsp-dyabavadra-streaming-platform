@@ -58,6 +58,72 @@ interface LocalLibraryState {
   getFormatCounts: () => Record<string, number>;
 }
 
+// ── Helpers for safe localStorage + stripping heavy fields ──
+
+const STORAGE_KEY = 'dsp-local-library-store';
+
+/** Strip coverArt/blobUrl/isLocal/cached from tracks before persisting to localStorage */
+function stripForStorage(tracks: LocalTrack[]): LocalTrack[] {
+  return tracks.map(({ coverArt: _ca, ...rest }) => rest as LocalTrack);
+}
+
+/** Custom storage with SSR guards and QuotaExceeded handling */
+const safeStorage = {
+  getItem: (name: string): string | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem(name);
+      if (!raw) return null;
+      // Auto-migrate: strip coverArt from old data that exceeded quota
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed?.state?.tracks && Array.isArray(parsed.state.tracks)) {
+          let dirty = false;
+          for (const t of parsed.state.tracks) {
+            if (t.coverArt && typeof t.coverArt === 'string' && t.coverArt.length > 100) {
+              delete t.coverArt;
+              t.coverArt = null;
+              dirty = true;
+            }
+          }
+          if (dirty) {
+            console.log('[local-library] Auto-migrated: stripped coverArt from persisted tracks');
+            localStorage.setItem(name, JSON.stringify(parsed));
+          }
+        }
+      } catch {
+        // If parsing fails, clear the corrupted data
+        console.warn('[local-library] Corrupted data in localStorage, clearing');
+        localStorage.removeItem(name);
+        return null;
+      }
+      return raw;
+    } catch {
+      return null;
+    }
+  },
+  setItem: (name: string, value: string): void => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(name, value);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+        console.warn('[local-library] localStorage quota exceeded, clearing and retrying');
+        localStorage.removeItem(name);
+        try {
+          localStorage.setItem(name, value);
+        } catch {
+          console.error('[local-library] Still exceeds quota after clear — data too large');
+        }
+      }
+    }
+  },
+  removeItem: (name: string): void => {
+    if (typeof window === 'undefined') return;
+    try { localStorage.removeItem(name); } catch {}
+  },
+};
+
 export const useLocalLibraryStore = create<LocalLibraryState>()(
   persist(
     (set, get) => ({
@@ -312,14 +378,50 @@ export const useLocalLibraryStore = create<LocalLibraryState>()(
       },
     }),
     {
-      name: 'dsp-local-library-store',
-      // Persist tracks and directories, but not transient scanning state
+      name: STORAGE_KEY,
+      storage: safeStorage,
+      // Strip heavy fields (coverArt base64) before persisting to localStorage.
+      // Cover art is stored separately in IndexedDB.
       partialize: (state) => ({
-        tracks: state.tracks,
+        tracks: stripForStorage(state.tracks),
         directories: state.directories,
         lastScanTime: state.lastScanTime,
         scanStats: state.scanStats,
       }),
+      // After rehydration, restore coverArt from IndexedDB
+      onRehydrateStorage: () => (state) => {
+        if (!state || !state.tracks || typeof window === 'undefined') return;
+        // Rehydrate cover art from IndexedDB in the background
+        import('@/lib/audio-db').then(({ getCoverArt, getAudioBlobURL }) => {
+          const tracks = state.tracks;
+          let pending = 0;
+          const updated = new Map<string, { coverArt: string | null; blobUrl?: string }>();
+
+          for (const t of tracks) {
+            pending++;
+            Promise.all([
+              t.coverArt ? Promise.resolve(null) : getCoverArt(t.id),
+              getAudioBlobURL(t.id),
+            ]).then(([art, blobUrl]) => {
+              const entry: { coverArt: string | null; blobUrl?: string } = { coverArt: art };
+              if (blobUrl) entry.blobUrl = blobUrl;
+              updated.set(t.id, entry);
+              pending--;
+              if (pending === 0 && updated.size > 0) {
+                useLocalLibraryStore.setState((prev) => ({
+                  tracks: prev.tracks.map((t) => {
+                    const u = updated.get(t.id);
+                    if (!u) return t;
+                    return { ...t, coverArt: u.coverArt ?? t.coverArt, blobUrl: u.blobUrl } as any;
+                  }),
+                }));
+              }
+            }).catch(() => {
+              pending--;
+            });
+          }
+        }).catch(() => {});
+      },
     }
   )
 );

@@ -14,6 +14,8 @@ const DEMO_TRACKS = [
 ];
 
 function buildAudioUrl(track: Track): string {
+  // Browser-imported tracks have a blob URL for direct playback
+  if (track.blobUrl) return track.blobUrl;
   if (track.filePath) {
     if (track.filePath.startsWith('http://') || track.filePath.startsWith('https://'))
       return `/api/proxy/podcast?url=${encodeURIComponent(track.filePath)}`;
