@@ -41,6 +41,7 @@ import {
   BarChart3, TrendingUp, Calendar, Volume2, Zap, Search, MoreHorizontal,
   Scissors, Merge, Split, Layers, Radio, Cloud, Settings, Loader2,
   ChevronLeft, Disc, User, Album as AlbumIcon, Library as LibraryIcon,
+  Globe, Network, Server, FolderSymlink,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -215,6 +216,7 @@ export function LibraryManagementView() {
           <TabsList className="bg-surface w-full justify-start overflow-x-auto">
             <TabsTrigger value="browse-local" className="text-xs gap-1.5"><LibraryIcon className="w-3.5 h-3.5" /> Browse Local</TabsTrigger>
             <TabsTrigger value="scan-folders" className="text-xs gap-1.5"><FolderOpen className="w-3.5 h-3.5" /> Scan Folders</TabsTrigger>
+            <TabsTrigger value="network-shares" className="text-xs gap-1.5"><Globe className="w-3.5 h-3.5" /> Network Shares</TabsTrigger>
             <TabsTrigger value="sources" className="text-xs gap-1.5"><FolderOpen className="w-3.5 h-3.5" /> Sources</TabsTrigger>
             <TabsTrigger value="scanner" className="text-xs gap-1.5"><ScanSearch className="w-3.5 h-3.5" /> Scanner</TabsTrigger>
             <TabsTrigger value="metadata" className="text-xs gap-1.5"><Edit3 className="w-3.5 h-3.5" /> Metadata</TabsTrigger>
@@ -233,6 +235,11 @@ export function LibraryManagementView() {
           {/* ═══ SCAN FOLDERS TAB ═══ */}
           <TabsContent value="scan-folders" className="mt-6">
             <ScanFoldersPanel />
+          </TabsContent>
+
+          {/* ═══ NETWORK SHARES TAB ═══ */}
+          <TabsContent value="network-shares" className="mt-6">
+            <NetworkSharesPanel />
           </TabsContent>
 
           {/* ═══ SOURCES TAB ═══ */}
@@ -602,12 +609,24 @@ function BrowseLocalPanel() {
 function ScanFoldersPanel() {
   const localStore = useLocalLibraryStore();
   const [directoryInput, setDirectoryInput] = React.useState('');
+  const [uncWarning, setUncWarning] = React.useState(false);
 
   const { tracks, isScanning, scanProgress, scanError, directories, lastScanTime } = localStore;
+
+  const isUncPath = (path: string) => {
+    const normalized = path.replace(/\\/g, '/');
+    return normalized.startsWith('//') || normalized.startsWith('smb://');
+  };
 
   const handleScan = React.useCallback(async () => {
     const dir = directoryInput.trim();
     if (!dir) return;
+
+    if (isUncPath(dir)) {
+      setUncWarning(true);
+      return;
+    }
+
     localStore.addDirectory(dir);
     setDirectoryInput('');
     await localStore.startScan(dir);
@@ -645,11 +664,31 @@ function ScanFoldersPanel() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* UNC Path Warning */}
+          {uncWarning && (
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-signal-amber/5 border border-signal-amber/20">
+              <AlertTriangle className="w-4 h-4 text-signal-amber flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-medium text-signal-amber">Network Path Detected</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  This looks like a network (SMB/CIFS) path. Please use the &quot;Network Shares&quot; tab to mount it first, or mount it manually and enter the local mount path here.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] mt-2"
+                  onClick={() => setUncWarning(false)}
+                >
+                  Dismiss
+                </Button>
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <FolderClosed className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="/path/to/your/music/folder"
+                placeholder="/path/to/your/music/folder (or use Network Shares tab for NAS)"
                 value={directoryInput}
                 onChange={e => setDirectoryInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleScan()}
@@ -869,6 +908,345 @@ function ScanFoldersPanel() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// NETWORK SHARES PANEL (SMB/CIFS)
+// ═══════════════════════════════════════════════════════════
+
+interface NetworkShareInfo {
+  id: string;
+  uncPath: string;
+  server: string;
+  shareName: string;
+  subPath: string;
+  mountPoint: string;
+  username: string;
+  mounted: boolean;
+  mountedAt: string | null;
+  error: string | null;
+}
+
+function NetworkSharesPanel() {
+  const localStore = useLocalLibraryStore();
+  const [shares, setShares] = React.useState<NetworkShareInfo[]>([]);
+  const [uncInput, setUncInput] = React.useState('');
+  const [usernameInput, setUsernameInput] = React.useState('');
+  const [passwordInput, setPasswordInput] = React.useState('');
+  const [mounting, setMounting] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  // Load existing shares on mount
+  React.useEffect(() => {
+    fetchShares();
+  }, []);
+
+  const fetchShares = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/library/mount');
+      const data = await res.json();
+      if (data.success) {
+        setShares(data.shares || []);
+        setError(null);
+      } else {
+        setError(data.error || 'Failed to load network shares');
+      }
+    } catch (err) {
+      setError('Failed to connect to server');
+    }
+    setLoading(false);
+  };
+
+  const handleMount = async () => {
+    const unc = uncInput.trim();
+    if (!unc) return;
+
+    setMounting(unc);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/library/mount', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uncPath: unc,
+          username: usernameInput.trim() || undefined,
+          password: passwordInput || undefined,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success && data.share) {
+        // Add the scan path to local directories and start scan
+        if (data.scanPath) {
+          localStore.addDirectory(data.scanPath);
+          localStore.startScan(data.scanPath);
+        }
+        setUncInput('');
+        setUsernameInput('');
+        setPasswordInput('');
+        await fetchShares();
+      } else {
+        setError(data.error || 'Mount failed');
+      }
+    } catch (err) {
+      setError('Failed to mount share');
+    }
+    setMounting(null);
+  };
+
+  const handleUnmount = async (shareId: string) => {
+    try {
+      await fetch(`/api/library/mount?id=${encodeURIComponent(shareId)}`, { method: 'DELETE' });
+      await fetchShares();
+    } catch {
+      setError('Failed to unmount');
+    }
+  };
+
+  const handleRemount = async (share: NetworkShareInfo) => {
+    setMounting(share.id);
+    setError(null);
+    try {
+      const res = await fetch('/api/library/mount', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uncPath: share.uncPath }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (data.scanPath) {
+          localStore.addDirectory(data.scanPath);
+        }
+        await fetchShares();
+      } else {
+        setError(data.error || 'Remount failed');
+      }
+    } catch {
+      setError('Failed to remount');
+    }
+    setMounting(null);
+  };
+
+  const handleScanMounted = (share: NetworkShareInfo) => {
+    const scanPath = share.mountPoint + (share.subPath ? `/${share.subPath}` : '');
+    localStore.addDirectory(scanPath);
+    localStore.startScan(scanPath);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* What are Network Shares */}
+      <Card className="bg-card border-border">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <Server className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground">Access your NAS or network storage</p>
+              <p>
+                Mount SMB/CIFS network shares (TrueNAS, Synology, Windows shares, etc.)
+                to scan and play music from network-attached storage. The share will be
+                mounted on the server and scanned for audio files.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Add Network Share */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Globe className="w-4 h-4 text-primary" /> Add Network Share
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-muted-foreground">Network Path (UNC or SMB URL)</label>
+            <Input
+              placeholder="\\10.0.0.80\iguey\Media\Music"
+              value={uncInput}
+              onChange={e => setUncInput(e.target.value)}
+              className="h-9 text-sm font-mono"
+              disabled={!!mounting}
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Formats: {'\\\\'}SERVER{'\\'}share{'\\'}path &nbsp;|&nbsp; //SERVER/share/path &nbsp;|&nbsp; smb://user:pass@SERVER/share/path
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Username (optional)</label>
+              <Input
+                placeholder="guest"
+                value={usernameInput}
+                onChange={e => setUsernameInput(e.target.value)}
+                className="h-9 text-sm"
+                disabled={!!mounting}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Password (optional)</label>
+              <Input
+                type="password"
+                placeholder="Leave empty for guest access"
+                value={passwordInput}
+                onChange={e => setPasswordInput(e.target.value)}
+                className="h-9 text-sm"
+                disabled={!!mounting}
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-signal-red/5 border border-signal-red/20">
+              <AlertTriangle className="w-4 h-4 text-signal-red flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-medium text-signal-red">Error</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5 whitespace-pre-wrap">{error}</p>
+              </div>
+            </div>
+          )}
+
+          <Button
+            onClick={handleMount}
+            disabled={!uncInput.trim() || !!mounting}
+            className="h-9 gap-1.5"
+          >
+            {mounting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Network className="w-4 h-4" />}
+            {mounting ? 'Mounting...' : 'Mount & Scan'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Mounted Shares */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <FolderSymlink className="w-4 h-4" /> Network Shares ({shares.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-xs text-muted-foreground">Loading shares...</span>
+            </div>
+          ) : shares.length === 0 ? (
+            <div className="text-center py-8">
+              <Server className="w-10 h-10 mx-auto mb-3 text-muted-foreground/20" />
+              <p className="text-xs text-muted-foreground">No network shares configured. Add one above to access your NAS music library.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {shares.map(share => (
+                <div
+                  key={share.id}
+                  className={`p-3 rounded-lg border transition-colors ${share.mounted ? 'bg-signal-green/5 border-signal-green/20' : 'bg-surface/50 border-border'}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <Server className={`w-4 h-4 flex-shrink-0 mt-0.5 ${share.mounted ? 'text-signal-green' : 'text-muted-foreground'}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-mono truncate">{share.uncPath}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant={share.mounted ? 'default' : 'outline'} className="text-[10px] h-5">
+                          {share.mounted ? (
+                            <><Wifi className="w-2.5 h-2.5 mr-1" /> Mounted</>
+                          ) : (
+                            <><WifiOff className="w-2.5 h-2.5 mr-1" /> Unmounted</>
+                          )}
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground font-mono">{share.mountPoint}</span>
+                      </div>
+                      {share.subPath && (
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          Sub-path: <span className="font-mono">/{share.subPath}</span>
+                          {share.mounted && (
+                            <span className="text-primary ml-1">
+                              → Scan path: <span className="font-mono">{share.mountPoint}/{share.subPath}</span>
+                            </span>
+                          )}
+                        </p>
+                      )}
+                      {share.error && (
+                        <p className="text-[10px] text-signal-red mt-1">{share.error}</p>
+                      )}
+                      {share.mountedAt && (
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          Mounted at {new Date(share.mountedAt).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {share.mounted && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-[10px] gap-1"
+                          onClick={() => handleScanMounted(share)}
+                          disabled={localStore.isScanning}
+                        >
+                          <ScanSearch className="w-3 h-3" /> Scan
+                        </Button>
+                      )}
+                      {!share.mounted && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-[10px] gap-1"
+                          onClick={() => handleRemount(share)}
+                          disabled={!!mounting}
+                        >
+                          <RefreshCw className="w-3 h-3" /> Mount
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive"
+                        onClick={() => handleUnmount(share.id)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Manual Mount Instructions */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <FileText className="w-4 h-4 text-muted-foreground" /> Manual Mount (if auto-mount fails)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            If the web UI cannot mount shares (due to permissions), you can mount manually in your server terminal:
+          </p>
+          <div className="space-y-2">
+            <div className="p-3 rounded-lg bg-surface font-mono text-[11px] space-y-1">
+              <p className="text-muted-foreground"># Install CIFS utilities (if needed)</p>
+              <p className="text-foreground">sudo apt install cifs-utils</p>
+              <p className="text-muted-foreground mt-2"># Create mount point</p>
+              <p className="text-foreground">sudo mkdir -p /mnt/music</p>
+              <p className="text-muted-foreground mt-2"># Mount your TrueNAS share</p>
+              <p className="text-foreground">sudo mount -t cifs //10.0.0.80/iguey/Media/Music /mnt/music -o guest,iocharset=utf8</p>
+              <p className="text-muted-foreground mt-2"># Then use "/mnt/music" in the Scan Folders tab</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
