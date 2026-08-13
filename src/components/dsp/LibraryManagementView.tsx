@@ -41,6 +41,7 @@ import {
   BarChart3, TrendingUp, Calendar, Volume2, Zap, Search, MoreHorizontal,
   Scissors, Merge, Split, Layers, Radio, Cloud, Settings, Loader2,
   ChevronLeft, Disc, User, Album as AlbumIcon, Library as LibraryIcon,
+  Globe, Network, Server, FolderSymlink,
   ChevronDown, LayoutGrid, List,
 } from 'lucide-react';
 import {
