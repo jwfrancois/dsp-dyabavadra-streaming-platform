@@ -29,35 +29,8 @@ export function PerformerDetailView() {
   const credits = useMemo(() => {
     if (!performerName) return [];
 
+    // Mock tracks removed — performer search is no longer available
     const results: PerformerCredit[] = [];
-
-    for (const track of tracks) {
-      const performerCredits: Credit[] = track.performers.filter(
-        (p) => p.name.toLowerCase() === performerName.toLowerCase()
-      );
-
-      const isComposer = track.composers.some(
-        (c) => c.toLowerCase() === performerName.toLowerCase()
-      );
-
-      if (performerCredits.length > 0 || isComposer) {
-        const roles = [...new Set(performerCredits.map((c) => c.role))];
-        const instruments = [
-          ...new Set(
-            performerCredits
-              .map((c) => c.instrument)
-              .filter((i): i is string => !!i)
-          ),
-        ];
-
-        results.push({
-          track,
-          roles,
-          instruments,
-          isComposer,
-        });
-      }
-    }
 
     return results;
   }, [performerName]);
