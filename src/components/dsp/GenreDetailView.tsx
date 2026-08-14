@@ -2,10 +2,12 @@
 
 import React from 'react';
 import { useUIStore } from '@/store/ui';
+import { useLocalLibraryStore } from '@/store/local-library';
 import { usePlayerStore } from '@/store/player';
 import {
   getCoverGradient, formatDuration,
 } from '@/lib/data';
+import type { Track } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -65,21 +67,100 @@ export function GenreDetailView() {
   const { play, setQueue } = usePlayerStore();
   const genreName = viewParams.genreName;
 
-  // Mock data removed — show genre page with empty state
+  // Derive genre data from local library
+  const { tracks: localTracks } = useLocalLibraryStore();
   const gradientClass = genreColorMap[genreName || ''] || 'from-gray-800 to-gray-900';
 
-  const trackCount = 0;
-  const albumCount = 0;
-  const artistCount = 0;
+  // Filter tracks matching the genre name
+  const genreTracks = React.useMemo((): Track[] => {
+    if (!genreName) return [];
+    return localTracks.filter(t => t.genre.toLowerCase() === genreName.toLowerCase()).map(t => ({
+      id: t.id, title: t.title, artistName: t.artist, albumName: t.album, duration: t.duration,
+    } as Track));
+  }, [localTracks, genreName]);
 
-  const genreTracks: import('@/lib/data').Track[] = [];
-  const totalDuration = 0;
+  const trackCount = genreTracks.length;
+  const albumCount = new Set(localTracks.filter(t => t.genre.toLowerCase() === (genreName || '').toLowerCase()).map(t => `${t.albumArtist || t.artist}|||${t.album}`)).size;
+  const artistCount = new Set(localTracks.filter(t => t.genre.toLowerCase() === (genreName || '').toLowerCase()).flatMap(t => [t.artist, t.albumArtist].filter(Boolean))).size;
+  const totalDuration = genreTracks.reduce((s, t) => s + t.duration, 0);
 
-  const playAll = () => {};
+  const playAll = () => {
+    if (genreTracks.length === 0) return;
+    setQueue(genreTracks);
+    play(genreTracks[0]);
+  };
 
-  const topArtists: { id: string; name: string; imageUrl: string }[] = [];
-  const essentialAlbums: { id: string; title: string; artistName: string; imageUrl: string; year: number }[] = [];
-  const relatedEditorials: { id: string; title: string; type: string }[] = [];
+  // Derive top artists from filtered tracks
+  const topArtists = React.useMemo(() => {
+    const artistMap = new Map<string, { id: string; name: string; count: number }>();
+    const filtered = localTracks.filter(t => t.genre.toLowerCase() === (genreName || '').toLowerCase());
+    for (const t of filtered) {
+      const name = t.artist;
+      if (!artistMap.has(name)) artistMap.set(name, { id: name, name, count: 0 });
+      artistMap.get(name)!.count++;
+    }
+    return [...artistMap.values()]
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6)
+      .map(a => ({ id: a.id, name: a.name, imageUrl: '' }));
+  }, [localTracks, genreName]);
+
+  // Derive essential albums from filtered tracks
+  const essentialAlbums = React.useMemo(() => {
+    const albumMap = new Map<string, { id: string; title: string; artistName: string; year: number; count: number }>();
+    const filtered = localTracks.filter(t => t.genre.toLowerCase() === (genreName || '').toLowerCase());
+    for (const t of filtered) {
+      const key = `${t.albumArtist || t.artist}|||${t.album}`;
+      if (!albumMap.has(key)) {
+        albumMap.set(key, { id: key, title: t.album, artistName: t.albumArtist || t.artist, year: t.year, count: 0 });
+      }
+      albumMap.get(key)!.count++;
+    }
+    return [...albumMap.values()]
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [localTracks, genreName]);
+
+  const relatedEditorials: { id: string; title: string; type: string; subtitle?: string; curator?: string }[] = [];
+
+  // Static mood mapping based on genre name
+  const genreMoods: string[] = (() => {
+    const m: Record<string, string[]> = {
+      'Jazz': ['relaxed', 'sophisticated', 'improvisational'],
+      'Electronic': ['energetic', 'futuristic', 'hypnotic'],
+      'Classical': ['contemplative', 'dramatic', 'peaceful'],
+      'Ambient': ['atmospheric', 'floating', 'meditative'],
+      'Post-Rock': ['atmospheric', 'introspective', 'cinematic'],
+      'Neo-Soul': ['soulful', 'warm', 'groovy'],
+      'Progressive Metal': ['intense', 'powerful', 'complex'],
+      'Indie Pop': ['uplifting', 'intimate', 'groovy'],
+      'Afrobeat': ['energetic', 'groovy', 'uplifting'],
+      'Experimental': ['complex', 'introspective', 'atmospheric'],
+      'World': ['warm', 'soulful', 'groovy'],
+      'Fusion': ['complex', 'energetic', 'improvisational'],
+      'Contemporary Classical': ['contemplative', 'dramatic', 'cinematic'],
+    };
+    return m[genreName || ''] || ['atmospheric', 'contemplative', 'sophisticated'];
+  })();
+
+  // Derive related genres (genres that share artists with the current genre)
+  const relatedGenres = React.useMemo(() => {
+    if (!genreName) return [];
+    const filtered = localTracks.filter(t => t.genre.toLowerCase() === genreName!.toLowerCase());
+    if (filtered.length === 0) return [];
+    const genreArtists = new Set(filtered.map(t => t.artist));
+    const genreCounts = new Map<string, number>();
+    for (const t of localTracks) {
+      if (t.genre.toLowerCase() === genreName!.toLowerCase()) continue;
+      if (genreArtists.has(t.artist)) {
+        genreCounts.set(t.genre, (genreCounts.get(t.genre) || 0) + 1);
+      }
+    }
+    return [...genreCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([name]) => name);
+  }, [localTracks, genreName]);
 
   return (
     <ScrollArea className="h-full">
@@ -98,15 +179,15 @@ export function GenreDetailView() {
                   Genre
                 </Badge>
                 <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">{genreName}</h1>
-                {genreDetail?.origins && (
-                  <div className="flex items-center gap-2 text-white/70 mb-2">
-                    <Globe className="w-4 h-4" />
-                    <span className="text-sm">{genreDetail.origins}</span>
-                  </div>
-                )}
-                {genreDetail?.characteristics && (
-                  <p className="text-sm text-white/60 max-w-2xl">{genreDetail.characteristics}</p>
-                )}
+                <div className="flex items-center gap-2 text-white/70 mb-2">
+                  <Globe className="w-4 h-4" />
+                  <span className="text-sm">Your Library</span>
+                </div>
+                <p className="text-sm text-white/60 max-w-2xl">
+                  {trackCount > 0
+                    ? `${trackCount} tracks from ${artistCount} artists across ${albumCount} albums`
+                    : 'No tracks found in this genre'}
+                </p>
                 <div className="flex gap-3 mt-5">
                   <Button size="sm" onClick={playAll} className="bg-white text-black hover:bg-white/90">
                     <Play className="w-4 h-4 mr-2" /> Play All
@@ -140,24 +221,24 @@ export function GenreDetailView() {
         </div>
 
         {/* Description */}
-        {(genreDetail?.description || basicGenre) && (
+        {trackCount > 0 && (
           <section className="mb-8">
             <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-primary" />
               About
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-3xl">
-              {genreDetail?.description || `Explore the ${genreName} collection in your library. Browse ${trackCount} tracks across ${albumCount} albums from ${artistCount} artists.`}
+              Explore the {genreName} collection in your library. Browse {trackCount} tracks across {albumCount} albums from {artistCount} artists.
             </p>
           </section>
         )}
 
         {/* Moods */}
-        {genreDetail && genreDetail.moods.length > 0 && (
+        {genreMoods.length > 0 && (
           <section className="mb-8">
             <h2 className="text-lg font-semibold mb-3">Moods</h2>
             <div className="flex flex-wrap gap-2">
-              {genreDetail.moods.map(mood => (
+              {genreMoods.map(mood => (
                 <Badge
                   key={mood}
                   variant="outline"
@@ -170,27 +251,21 @@ export function GenreDetailView() {
           </section>
         )}
 
-        {/* Related Genres — mock data removed */}
-        {false && (
+        {relatedGenres.length > 0 && (
           <section className="mb-8">
             <h2 className="text-lg font-semibold mb-3">Related Genres</h2>
             <div className="flex flex-wrap gap-2">
-              {genreDetail.relatedGenres.map(related => {
-                const hasDetail = getGenreDetailByName(related);
-                return (
-                  <Badge
-                    key={related}
-                    variant="outline"
-                    className={`cursor-pointer hover:bg-accent/50 transition-colors text-xs px-3 py-1 ${
-                      hasDetail ? 'border-primary/40 text-primary' : 'border-border text-muted-foreground'
-                    }`}
-                    onClick={() => hasDetail && navigate('genre-detail', { genreName: related })}
-                  >
-                    {related}
-                    {hasDetail && <ChevronRight className="w-3 h-3 ml-1" />}
-                  </Badge>
-                );
-              })}
+              {relatedGenres.map(related => (
+                <Badge
+                  key={related}
+                  variant="outline"
+                  className="cursor-pointer hover:bg-accent/50 transition-colors text-xs px-3 py-1 border-primary/40 text-primary"
+                  onClick={() => navigate('genre-detail', { genreName: related })}
+                >
+                  {related}
+                  <ChevronRight className="w-3 h-3 ml-1" />
+                </Badge>
+              ))}
             </div>
           </section>
         )}
@@ -213,7 +288,7 @@ export function GenreDetailView() {
                 >
                   <div className={`w-full aspect-square rounded-full bg-gradient-to-br ${getCoverGradient(artist.id)} mx-auto mb-2 cover-art-hover`} />
                   <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{artist.name}</p>
-                  <p className="text-xs text-muted-foreground">{artist.type === 'group' ? 'Group' : 'Solo'}</p>
+                  <p className="text-xs text-muted-foreground">Artist</p>
                 </div>
               ))}
             </div>
@@ -285,8 +360,8 @@ export function GenreDetailView() {
           </section>
         )}
 
-        {/* Fallback: Top tracks when no genreDetail */}
-        {!genreDetail && genreTracks.length > 0 && (
+        {/* Top tracks */}
+        {genreTracks.length > 0 && (
           <section className="mb-8">
             <h2 className="text-lg font-semibold mb-4">Top Tracks</h2>
             <div className="space-y-1">
@@ -310,6 +385,14 @@ export function GenreDetailView() {
               ))}
             </div>
           </section>
+        )}
+
+        {trackCount === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <Music className="w-12 h-12 mb-3" />
+            <p className="text-sm font-medium">No tracks in this genre</p>
+            <p className="text-xs mt-1">Add music tagged as &quot;{genreName}&quot; to your library</p>
+          </div>
         )}
       </div>
     </ScrollArea>

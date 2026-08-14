@@ -1,7 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { usePlayerStore } from '@/store/player';
+import { useDSPEngineStore } from '@/store/dsp-engine';
+import { getSignalPathSteps } from '@/lib/dsp/audio-engine';
 import {
   formatDuration,
   formatSampleRate,
@@ -225,17 +227,25 @@ function PathStepCard({
 
 export function SignalPathView() {
   const { currentTrack, activeZoneId } = usePlayerStore();
-  const activeZone = undefined as any;
-  const endpoint = activeZone?.endpoints[0];
+  const dspStore = useDSPEngineStore(s => s);
+  const activeZoneId_actual = activeZoneId || dspStore.selectedZoneId;
 
-  // No mock signal path data available
-  const detailed = null as any;
+  // Get real signal path from DSP engine
+  const steps = useMemo(() => {
+    if (!currentTrack) return [];
+    const zoneConfig = dspStore.getZoneConfig(activeZoneId_actual);
+    return getSignalPathSteps(currentTrack.format, currentTrack.sampleRate, currentTrack.bitDepth);
+  }, [currentTrack, dspStore, activeZoneId_actual]);
 
-  const steps = detailed?.steps ?? [];
-  const isBitPerfect = detailed?.overallBitPerfect ?? true;
-  const breakdownItems = detailed ? getBreakdownItems(steps) : [];
+  const isBitPerfect = steps.length > 0 && steps.every(s => s.isBitPerfect);
+  const breakdownItems = steps.length > 0 ? getBreakdownItems(steps as SignalPathStep[]) : [];
 
-  if (!currentTrack || !detailed) {
+  // Summary info
+  const sourceStep = steps[0];
+  const outputStep = steps[steps.length - 1];
+  const totalLatency = steps.reduce((sum, s) => sum + (s.latencyMs || 0), 0);
+
+  if (!currentTrack || steps.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
         <div className="text-center">
@@ -287,7 +297,7 @@ export function SignalPathView() {
               {/* Source format */}
               <div className="flex items-center gap-2">
                 <Disc3 className="w-4 h-4 text-signal-green" />
-                <span className="font-mono text-signal-green font-medium">{detailed.sourceFormat}</span>
+                <span className="font-mono text-signal-green font-medium">{sourceStep?.format || 'PCM'} {formatSampleRate(sourceStep?.sampleRate || 44100)} {sourceStep?.bitDepth || 16}-bit</span>
               </div>
 
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
@@ -296,9 +306,9 @@ export function SignalPathView() {
               <div className="flex items-center gap-1.5">
                 <Activity className="w-4 h-4 text-signal-amber" />
                 <span className="text-xs text-muted-foreground">
-                  {detailed.dspChainCount === 0
+                  {steps.length <= 2
                     ? 'No DSP'
-                    : `${detailed.dspChainCount} DSP stage${detailed.dspChainCount > 1 ? 's' : ''}`}
+                    : `${steps.length - 2} DSP stage${steps.length - 2 > 1 ? 's' : ''}`}
                 </span>
               </div>
 
@@ -307,7 +317,7 @@ export function SignalPathView() {
               {/* Output format */}
               <div className="flex items-center gap-2">
                 <MonitorSpeaker className="w-4 h-4 text-primary" />
-                <span className="font-mono text-primary font-medium">{detailed.outputFormat}</span>
+                <span className="font-mono text-primary font-medium">{outputStep?.format || 'PCM'} {formatSampleRate(outputStep?.sampleRate || 44100)} {outputStep?.bitDepth || 32}-bit</span>
               </div>
 
               {/* Spacer */}
@@ -316,7 +326,7 @@ export function SignalPathView() {
               {/* Total latency */}
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Clock className="w-3.5 h-3.5" />
-                <span className="font-mono">{detailed.totalLatencyMs.toFixed(1)} ms total latency</span>
+                <span className="font-mono">{totalLatency.toFixed(1)} ms total latency</span>
               </div>
             </div>
           </CardContent>

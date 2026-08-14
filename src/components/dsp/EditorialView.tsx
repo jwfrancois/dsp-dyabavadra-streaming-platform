@@ -43,13 +43,15 @@ export function EditorialView() {
     []
   );
 
-  const activeCollection = null;
+  const activeCollection = selectedCollection
+    ? filteredCollections.find(c => c.id === selectedCollection) ?? null
+    : null;
 
-  const collectionTracks = useMemo(() => {
+  const collectionTracks = useMemo((): import('@/lib/data').Track[] => {
     return [];
   }, []);
 
-  const collectionAlbums = useMemo(() => {
+  const collectionAlbums = useMemo((): { id: string; title: string; artistName: string; year: number }[] => {
     return [];
   }, []);
 
@@ -309,7 +311,8 @@ export function EditorialView() {
         {filteredCollections.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <Newspaper className="w-12 h-12 mb-3" />
-            <p className="text-sm">No collections found for this filter</p>
+            <p className="text-sm font-medium">Editorial content coming soon</p>
+            <p className="text-xs mt-1">Curated collections, guides, and staff recommendations will appear here</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -23,6 +23,9 @@ export interface LocalTrack {
   genre: string;
   composer: string;
   coverArt: string | null;
+  isLocal?: boolean;    // true for browser-imported tracks (persisted to localStorage)
+  cached?: boolean;     // whether audio blob is stored in IndexedDB
+  blobUrl?: string;    // ephemeral blob URL restored from IndexedDB on rehydrate
 }
 
 interface LocalLibraryState {
@@ -62,11 +65,10 @@ interface LocalLibraryState {
 
 const STORAGE_KEY = 'dsp-local-library-store';
 
-/** Strip coverArt and ephemeral fields (blobUrl/isLocal/cached) from tracks before persisting to localStorage */
+/** Strip heavy/ephemeral fields from tracks before persisting to localStorage.
+ *  Keep isLocal because the UI uses it to identify imported tracks. */
 function stripForStorage(tracks: LocalTrack[]): LocalTrack[] {
-  return tracks.map(({ coverArt: _ca, ...rest }: any) => {
-    // Also strip ephemeral fields that may have been added during import
-    const { blobUrl: _bu, isLocal: _il, cached: _ch, ...clean } = rest;
+  return tracks.map(({ coverArt: _ca, blobUrl: _bu, cached: _ch, ...clean }: any) => {
     return { ...clean, coverArt: null } as LocalTrack;
   });
 }

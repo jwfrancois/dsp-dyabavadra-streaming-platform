@@ -3,14 +3,24 @@
 import React, { useEffect, useRef } from 'react';
 import { usePlayerStore } from '@/store/player';
 import { usePodcastStore } from '@/store/podcast';
+import { useDSPEngineStore } from '@/store/dsp-engine';
+import {
+  getAudioContext,
+  connectMediaElement,
+  rebuildChain,
+  setDSPVolume,
+  isDSPActive,
+} from '@/lib/dsp/audio-engine';
 
 // Singleton audio element — created lazily on client only
 let _audio: HTMLAudioElement | null = null;
+let _dspConnected = false;
 
 function getAudio(): HTMLAudioElement {
   if (!_audio) {
     _audio = new Audio();
     _audio.preload = 'auto';
+    _audio.crossOrigin = 'anonymous';
   }
   return _audio;
 }
@@ -100,6 +110,16 @@ export function AudioEngineProvider({ children }: { children: React.ReactNode })
 
     const onPlay = () => {
       startTimeTracking();
+      // Connect DSP on first play (user gesture required for AudioContext)
+      if (!_dspConnected) {
+        try {
+          connectMediaElement(a);
+          _dspConnected = true;
+        } catch (err) {
+          console.warn('[AudioEngine] Could not connect DSP (may already be connected):', err);
+          _dspConnected = true; // don't retry
+        }
+      }
     };
 
     const onPause = () => {
@@ -127,93 +147,97 @@ export function AudioEngineProvider({ children }: { children: React.ReactNode })
     };
   }, []);
 
-  // ── SINGLE combined subscription for audioUrl + isPlaying ──
-  // This eliminates the race condition between two separate subscriptions.
-  // When both change in the same setState(), this handler fires once and
-  // can coordinate the load + play in the correct order.
+  // ── DSP Config subscription: rebuild chain when DSP settings change ──
+  useEffect(() => {
+    const dspStore = useDSPEngineStore.getState();
+    const initialConfig = dspStore.getZoneConfig(dspStore.selectedZoneId);
+    rebuildChain(initialConfig);
+
+    const unsub = useDSPEngineStore.subscribe(
+      (state) => {
+        const cfg = state.getZoneConfig(state.selectedZoneId);
+        rebuildChain(cfg);
+      }
+    );
+
+    return unsub;
+  }, []);
+
+  // ── Main audio state subscription ──
   useEffect(() => {
     const a = getAudio();
-    a.volume = 0.72;
+    // Don't set HTML volume if DSP is managing it
+    if (!isDSPActive()) {
+      a.volume = 0.72;
+    }
 
-    // Generic subscribe: fires on every setState, receives (newState, prevState)
+    // Generic subscribe: fires on every setState
     const unsub = usePlayerStore.subscribe(
-      (state, prevState) => {
-        const urlChanged = state.audioUrl !== prevState.audioUrl;
-        const playingChanged = state.isPlaying !== prevState.isPlaying;
-        const modeChanged = state.playbackMode !== prevState.playbackMode;
+      (state) => {
+        // Process audio URL and play state changes
+        const url = state.audioUrl;
+        const isPlaying = state.isPlaying;
+        const mode = state.playbackMode;
 
-        if (modeChanged) {
-          modeRef.current = state.playbackMode;
-        }
+        modeRef.current = mode;
 
-        // ── URL changed: load new source ──
-        if (urlChanged) {
-          const url = state.audioUrl;
+        // Use a ref-based approach for URL comparison
+        const normalizedNew = url ? normalizeUrl(url) : '';
+        const normalizedExisting = normalizeUrl(a.src || '');
+
+        if (normalizedNew !== normalizedExisting) {
+          // URL changed: load new source
           if (url) {
-            const normalizedNew = normalizeUrl(url);
-            const normalizedExisting = normalizeUrl(a.src || '');
+            console.log('[AudioEngine] Loading:', url.substring(0, 120));
+            a.pause();
+            stopTimeTracking();
+            a.src = url;
 
-            if (normalizedNew === normalizedExisting) {
-              // Same URL — just ensure playback state matches
-              if (state.isPlaying && a.paused) {
-                // If at the end, restart from beginning
-                if (a.ended || (a.duration > 0 && a.currentTime >= a.duration - 1)) {
-                  a.currentTime = 0;
-                }
-                a.play().catch((e) => console.warn('[AudioEngine] resume same URL failed:', e));
-              } else if (!state.isPlaying && !a.paused) {
-                a.pause();
-              }
-            } else {
-              console.log('[AudioEngine] Loading:', url.substring(0, 120));
-              // Stop anything currently playing
-              a.pause();
-              stopTimeTracking();
-
-              // Load new source
-              a.src = url;
-              // Don't call load() explicitly — setting src implicitly loads.
-              // Calling load() can reset the readyState and prevent play() from working.
-
-              if (state.isPlaying) {
-                a.play().catch((e) => console.warn('[AudioEngine] play() after src change failed:', e));
-              }
+            if (isPlaying) {
+              a.play().catch((e) => console.warn('[AudioEngine] play() after src change failed:', e));
             }
           } else {
-            // URL cleared — stop everything
             a.pause();
             a.removeAttribute('src');
             a.load();
             stopTimeTracking();
           }
-          return; // Don't also process the isPlaying change below
-        }
-
-        // ── Only isPlaying changed (no URL change): toggle play/pause on current source ──
-        if (playingChanged) {
-          if (state.isPlaying) {
-            a.play().catch((e) => console.warn('[AudioEngine] play() toggle failed:', e));
-          } else {
+        } else if (url && normalizedNew === normalizedExisting) {
+          // Same URL — just handle play/pause state
+          if (isPlaying && a.paused) {
+            if (a.ended || (a.duration > 0 && a.currentTime >= a.duration - 1)) {
+              a.currentTime = 0;
+            }
+            a.play().catch((e) => console.warn('[AudioEngine] resume failed:', e));
+          } else if (!isPlaying && !a.paused) {
             a.pause();
           }
         }
       }
     );
 
-    // Volume and mute are independent — simple selector subscriptions are fine
+    // Volume subscription — route through DSP master gain
     const unsubVolume = usePlayerStore.subscribe(
       (state) => state.volume,
       (volume) => {
         volumeRef.current = volume;
         const isMuted = usePlayerStore.getState().isMuted;
-        getAudio().volume = isMuted ? 0 : volume / 100;
+        if (isDSPActive()) {
+          setDSPVolume(volume, isMuted);
+        } else {
+          getAudio().volume = isMuted ? 0 : volume / 100;
+        }
       }
     );
 
     const unsubMute = usePlayerStore.subscribe(
       (state) => state.isMuted,
       (isMuted) => {
-        getAudio().volume = isMuted ? 0 : volumeRef.current / 100;
+        if (isDSPActive()) {
+          setDSPVolume(volumeRef.current, isMuted);
+        } else {
+          getAudio().volume = isMuted ? 0 : volumeRef.current / 100;
+        }
       }
     );
 
