@@ -1,0 +1,65 @@
+[
+  {
+    "url": "https://community.element14.com/products/raspberry-pi/b/blog/posts/external-antenna-for-raspberry-pi-4",
+    "name": "External Antenna for Raspberry Pi 4",
+    "snippet": "Sep 22, 2024 — The entire Raspberry Pi 4 needs to be placed inside a metal box. So external antenna . Bluetooth and WiFi to work. UFL /IPEX Connector to the PCB ...",
+    "host_name": "community.element14.com",
+    "rank": 0,
+    "date": "Sep 22, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.jeffgeerling.com/blog/2022/enable-external-antenna-connector-on-raspberry-pi-compute-module-45",
+    "name": "Enable the external antenna connector on the Raspberry",
+    "snippet": "Feb 4, 2022 — Module 4 external U.FL antenna The internal WiFi module on the Compute Module 4 ・ routes its antenna signal via software. The built-in PCB ...",
+    "host_name": "www.jeffgeerling.com",
+    "rank": 1,
+    "date": "Feb 4, 2022",
+    "favicon": ""
+  },
+  {
+    "url": "https://forums.raspberrypi.com/viewtopic.php?t=383113",
+    "name": "External Antenna connector type on CM4",
+    "snippet": "Jan 26, 2025 — Hi I'm trying to buy an external PCB antenna for the CM4 in Digikey, but can't figure out what's the antenna connector that cm4 uses. Read more",
+    "host_name": "forums.raspberrypi.com",
+    "rank": 2,
+    "date": "Jan 26, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://shop.hatlabs.fi/products/cm4-antenna?srsltid=AfmBOopa_gTtwN-t2Zg5haD42DZoLJubZJ3zinPgasHDgFDWUTTFApaW",
+    "name": "CM4 Antenna",
+    "snippet": "The Compute Module 4 Antenna is an external antenna for the Raspberry Pi CM4 modules . It can significantly increase the WiFi and Bluetooth signal range. ...",
+    "host_name": "shop.hatlabs.fi",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.amazon.com/Internal-Antenna-2-4GHz-Laptop-Wireless/dp/B0BHS59RYF",
+    "name": "Amazon.com: Internal Laptop WiFi Antenna 8dBi Dual-",
+    "snippet": "Internal Laptop WiFi Antenna 8dBi Dual-Band Mini PCIe U.FL MHF1 Cable 50cm. PCB design , UFL Connector. Range 15 meters Frequency: 2.4 GHz. GHz Gain 3 dBi ...",
+    "host_name": "www.amazon.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.pishop.us/product/2-4ghz-5-8ghz-antenna-kit-for-cm4/?srsltid=AfmBOopVV_k_eUXR3Gdf4uU82JSXO-Y044iQ2B74KSlnqB-cWbsJFFbj",
+    "name": "2.4 GHz/5.8 GHz Antenna kit for Compute Module SC0480",
+    "snippet": "CM4 variants that include the onboard wireless module (CM41xxxxx) provide an onboard PCB antenna , and a U.FL connector which allows an optional external antenna ... Read more",
+    "host_name": "www.pishop.us",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://forum.clockworkpi.com/t/cm4-uconsole-defaults-to-pcb-antenna-resulting-in-poor-wifi-reception/10477",
+    "name": "CM4 uConsole defaults to PCB antenna resulting in poor",
+    "snippet": "Jul 19, 2023 — Digging deeper it turns out that the external antenna header on the CM4 board is disabled by default, and it prefers to use the onboard antenna ... Read more",
+    "host_name": "forum.clockworkpi.com",
+    "rank": 6,
+    "date": "Jul 19, 2023",
+    "favicon": ""
+  }
+]

@@ -1,0 +1,83 @@
+[
+  {
+    "url": "https://forums.raspberrypi.com/viewtopic.php?t=8496&start=25",
+    "name": "STICKY: The I2S sound thread. [I2S works] - Page 2",
+    "snippet": "Nov 11, 2021 — MCLK - This is the DAC master clock , this is an input in the Pi implementation, and can be used to generate the other clocks when the Pi is a clock master.",
+    "host_name": "forums.raspberrypi.com",
+    "rank": 0,
+    "date": "Nov 11, 2021",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.diyaudio.com/community/threads/raspberry-pi-external-i2s-master-clock-pcm_mclk.266295",
+    "name": "Raspberry Pi: external I2S master clock (PCM_MCLK)",
+    "snippet": "Dec 13, 2014 — the output jitter will mostly depend upon the jitter induced by the clock oscillators, -flops do the reclocking . , but to generate the original ...",
+    "host_name": "www.diyaudio.com",
+    "rank": 1,
+    "date": "Dec 13, 2014",
+    "favicon": ""
+  },
+  {
+    "url": "https://community.volumio.com/t/sound-quality-limitations-of-raspberry-pi-i2s-dacs/2228",
+    "name": "Sound quality limitations of Raspberry Pi + I2S DACs",
+    "snippet": "Jan 7, 2015 — Another issue mentioned is that these I2S dacs are tied to the internal clock and therefore have a lot of jitter , especially at 44.1khz (which ... Read more",
+    "host_name": "community.volumio.com",
+    "rank": 2,
+    "date": "Jan 7, 2015",
+    "favicon": ""
+  },
+  {
+    "url": "https://superbestaudiofriends.org/index.php?threads/raspberry-pi-i2s-to-spdif-hat.1990/page-60",
+    "name": "Raspberry Pi I2S to SPDIF Hat | Page 60",
+    "snippet": "Jun 30, 2017 — there is no added jitter to the external clock . The driver sets the clock mode to PLL Bypass. direct to MCLK out. BCLK and LRCLK are clocked ...",
+    "host_name": "superbestaudiofriends.org",
+    "rank": 3,
+    "date": "Jun 30, 2017",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.cirrus.com/products/cs2100",
+    "name": "CS2100",
+    "snippet": "Clock multiplier/jitter reduction. Generates a low-jitter 6 – 75 MHz output clock from a jittery or intermittent 50 Hz to 30 MHz clock source ; Clock generation/ ... Read more",
+    "host_name": "www.cirrus.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://electronics.stackexchange.com/questions/321166/generating-i2s-clock-signals",
+    "name": "Generating i2s Clock Signals",
+    "snippet": "Jul 29, 2017 — I am trying to design a Pi Hat to integrate my Raspberry Pi 3 for use as an automotive head unit. I have a Texas Instruments TAS6424 and some supporting ...",
+    "host_name": "electronics.stackexchange.com",
+    "rank": 5,
+    "date": "Jul 29, 2017",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.mouser.com/applications/ethernet-avb-networks/?srsltid=AfmBOoryQ3sTmGGLah3kjb5NyfaJKCF55nkEB9lCHAzZxPKivlzPYO5a",
+    "name": "The CS2100 for Ethernet AVB Networks",
+    "snippet": "The CS2100 multiplies the PTP clock to the required MCLK frequency and reduces the jitter as shown in Figure 4-3.",
+    "host_name": "www.mouser.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://community.roonlabs.com/t/what-is-the-best-way-to-get-i2s-output-from-streaming/150804?page=2",
+    "name": "What is the best way to get I2S output from streaming?",
+    "snippet": "Mar 17, 2021 — I2S is a clocked protocol … some of them may use additional circuitry to reduce jitter by reconstructing the I2S signal with their internal  ...",
+    "host_name": "community.roonlabs.com",
+    "rank": 7,
+    "date": "Mar 17, 2021",
+    "favicon": ""
+  },
+  {
+    "url": "https://community.st.com/analog-and-audio-50/usb-audio-and-i2s-mclk-independent-word-clocks-74159",
+    "name": "USB Audio and I2S MCLK? Independent Word Clocks!",
+    "snippet": "Oct 30, 2017 — Posted on October 30, 2017 at 23:15I work (again) on USB Audio on STM boards. It works, I get the audio from PC to board (or vice versa), so far OK. FW ...",
+    "host_name": "community.st.com",
+    "rank": 8,
+    "date": "Oct 30, 2017",
+    "favicon": ""
+  }
+]

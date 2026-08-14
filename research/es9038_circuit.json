@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://www.diyaudio.com/community/threads/es9038q2m-board.314935/page-189",
+    "name": "ES9038Q2M Board | Page 189",
+    "snippet": "Nov 17, 2017 — OPA1612 could be used for AVCC. filtered differential amp. We use opamps as transimpedance amplifiers … a differential summing amplifier/ ...",
+    "host_name": "www.diyaudio.com",
+    "rank": 0,
+    "date": "Nov 17, 2017",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.ti.com/lit/gpn/OPA1642",
+    "name": "OPA164x SoundPlus™ High-Performance, JFET-Input",
+    "snippet": "The operational amplifier is configured in a unity-gain buffer topology with the output connected to a low - pass filter ( LPF ) and a digital multimeter (DMM). Read more",
+    "host_name": "www.ti.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://users.fmf.uni-lj.si/ponikvar/PDFji/A%20Differential%20Op-Amp%20Circuit%20Collection%20-%20sloa064a.pdf",
+    "name": "A Differential Op-Amp Circuit Collection - sloa064a",
+    "snippet": "A low pass filter can be formed by placing a capacitor in the feedback loop of a gain stage, in a manner similar to single-ended op-amps: 17 pages",
+    "host_name": "users.fmf.uni-lj.si",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://theslowdiyer.wordpress.com/tag/opa1642",
+    "name": "opa1642 | theslowdiyer",
+    "snippet": "Apr 5, 2021 — The OPA1642 is “one step down” but still very highly rated, and it is JFET-input which should give a low enough DC-offset to be used directly in ... Read more",
+    "host_name": "theslowdiyer.wordpress.com",
+    "rank": 3,
+    "date": "Apr 5, 2021",
+    "favicon": ""
+  },
+  {
+    "url": "https://123.physics.ucdavis.edu/week_1_files/opamps.pdf",
+    "name": "Op Amps for Everyone Design Guide (Rev. B)",
+    "snippet": "by R Mancini · 2002 · Cited by 567 — The low pass filter circuit shown in Figure 3–10 has a capacitor in parallel with the feed- back resistor. The gain for the low pass filter is given in ... 464 pages",
+    "host_name": "123.physics.ucdavis.edu",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.audiosciencereview.com/forum/index.php?threads/leaf-dac-dual-9038q2m-vs-gustard-x16-pictures-inside.22264/page-6",
+    "name": "LEAF Dac Dual 9038Q2M VS Gustard X16 ! Pictures inside )",
+    "snippet": "Apr 8, 2021 — From what I see on the circuitry , the two first on the base are I/V (I currently use OPA1612 but will try ADA4896), the middle ones are LPF (I ... Read more",
+    "host_name": "www.audiosciencereview.com",
+    "rank": 5,
+    "date": "Apr 8, 2021",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/AskElectronics/comments/ztnmqv/help_seeking_the_band_width_of_a_bandpass_filter",
+    "name": "Help seeking the band width of a band-pass filter using",
+    "snippet": "Hello. I am being asked to implement this circuit:   From what I analysed, this is bandpass filter. (Please correct me if I am wrong). I am having ...",
+    "host_name": "www.reddit.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://datasheet.octopart.com/OPA1642AID-Texas-Instruments-datasheet-11537749.pdf",
+    "name": "High-Performance, JFET-Input Audio OpAmps (Rev. B)",
+    "snippet": "The OPA1641 (single), OPA1642 (dual), and. OPA1644 (quad) series are JFET-input, ultralow. • TRUE JFET INPUT OP AMP distortion, low -noise operational ... Read more 28 pages",
+    "host_name": "datasheet.octopart.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  }
+]

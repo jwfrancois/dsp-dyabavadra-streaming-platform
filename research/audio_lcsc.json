@@ -1,0 +1,83 @@
+[
+  {
+    "url": "https://www.lcsc.com/product-detail/C94590.html",
+    "name": "OPA1612AIDR | Instrumentation, Op Amps, Buffer Amps | TI",
+    "snippet": "OPA1612AIDR Instrumentation , From $0.8505, in stock. Datasheet available. 1612AIDR LCSC Part. High-Performance, Bipolar-Input Audio Operational Amplifiers",
+    "host_name": "www.lcsc.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://e2e.ti.com/support/amplifiers-group/amplifiers/f/amplifiers-forum/672533/opa1612-soundplus-opa1612-in-replacement-of-opa2134",
+    "name": "SoundPlus OPA1612 in replacement of OPA2134 - TI E2E",
+    "snippet": "the OPA1612 has a very low input voltage noise but at the same time a very high input current noise. So, this chip will only produce low noise in combination",
+    "host_name": "e2e.ti.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://jlcpcb.com/partdetail/TexasInstruments-OPA1642AQDGKRQ1/C2058124",
+    "name": "OPA1642AQDGKRQ1 | Texas Instruments | Audio Amplifiers",
+    "snippet": "Audio Amplifiers is available for J LCPCB assembly , check the stock, pricing and datasheet, Channel VSSOP-8 Audio Amplifiers. Instruments $19.3396",
+    "host_name": "jlcpcb.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://forums.phxaudiotape.com/threads/opa1611-vs-opa134-or-opa1612-vs-opa2134.6854",
+    "name": "OPA1611 vs OPA134 or OPA1612 vs OPA2134",
+    "snippet": "Jan 10, 2016 — It appears that the OPA1611/2 have a lower noise voltage, wider bandwidth and higher slew rate than the OPA134 and OPA2134's . Has anybody had a ... Read more",
+    "host_name": "forums.phxaudiotape.com",
+    "rank": 3,
+    "date": "Jan 10, 2016",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.diyaudio.com/community/threads/replacing-opa1642-with-opa1612-in-this-circuit.437647",
+    "name": "Replacing OPA1642 with OPA1612 in this circuit",
+    "snippet": "Feb 20, 2026 — The BOM calls for an OPA1642, basically a high performance two channel opamp . OPA2134, single channel for single channel and double channel for ...",
+    "host_name": "www.diyaudio.com",
+    "rank": 4,
+    "date": "Feb 20, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/diypedals/comments/1sp6ckv/opa1642_opamp_giving_me_grief_are_these",
+    "name": "OPA1642 opamp giving me grief! Are these compatible",
+    "snippet": "So I painstakingly desoldered a handful of OPA1642’s from a broken apogee interface recently, and installed them on Taydas SMD breakout board.\n\nI plugged ...",
+    "host_name": "www.reddit.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://jlcpcb.com/parts/2nd/Amplifiers_Comparators/Operational_Amplifier_3029",
+    "name": "Operational Amplifier | JLCPCB Parts Library for PCB",
+    "snippet": "Operational Amplifier are in stock for PCB assembly at JLCPCB . Source Operational Amplifier fast with real-time inventory, reduced lead times, pricing, ...",
+    "host_name": "jlcpcb.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.amazon.com/Juried-Engineering-OPA2134PA-Operational-Breadboard-Friendly/dp/B08D6Z9WRB",
+    "name": "OPA2134PA OPA2134 SoundPlus™ Audio Operational",
+    "snippet": "The OPA2134 series are ultra-low distortion, low-noise operational amplifiers fully specified for audio applications Superior Sound Quality,",
+    "host_name": "www.amazon.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://theslowdiyer.wordpress.com/tag/opa1642",
+    "name": "opa1642 | theslowdiyer",
+    "snippet": "Apr 5, 2021 — The OPA1642 is “one step down” but still very highly rated, and it is JFET-input which should give a low enough DC-offset to be used directly in ... Read more",
+    "host_name": "theslowdiyer.wordpress.com",
+    "rank": 8,
+    "date": "Apr 5, 2021",
+    "favicon": ""
+  }
+]

@@ -1,0 +1,83 @@
+[
+  {
+    "url": "https://jlcpcb.com/parts/basic_parts",
+    "name": "Basic Electronic Components for Fast PCB Assembly",
+    "snippet": "Browse basic electronic components preloaded on SMT pick and place machines . No feeder loading fees, lower costs, faster PCB assembly, and stable supply ...",
+    "host_name": "jlcpcb.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://jlcpcb.com/parts",
+    "name": "Electronic Components for PCB Assembly | JLCPCB Parts",
+    "snippet": "In-Stock Electronic Parts, Ready for PCB Assembly. Choose from + genuine, in-stock electronic components with real-time inventory and transparent pricing.",
+    "host_name": "jlcpcb.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/PrintedCircuitBoard/comments/1pdvx2c/questions_about_assembly_at_j_lcpcb",
+    "name": "Questions about assembly at J LCPCB : r/PrintedCircuitBoard",
+    "snippet": "You need to design with their basic parts , and only use extended parts where necessary. Basic parts are always loaded on their pick and place ...",
+    "host_name": "www.reddit.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://forum.pedalpcb.com/threads/recommended-components-for-jlcpcb-assembly-process.24453",
+    "name": "Recommended components for JLCPCB assembly process",
+    "snippet": "Dec 15, 2024 — I have separate libraries for each component types and also for basic / extended , i.e. basic caps, basic ICs, extended ICs, extended caps, etc.",
+    "host_name": "forum.pedalpcb.com",
+    "rank": 3,
+    "date": "Dec 15, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://jlcpcb.com/parts/in-stock-parts",
+    "name": "In-Stock Electronic Components for Fast Sourcing",
+    "snippet": "Find 720000+ in-stock electronic components for PCB assembly . Real-time inventory, fast sourcing, reduced lead times, no supply shortages, and faster PCBA.",
+    "host_name": "jlcpcb.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://jlc3dp.com/help/answers/detail/578-How-to-identify-basic-and-extended-parts-in-JLCPCB-parts-library",
+    "name": "How to identify basic and extended parts in JLCPCB",
+    "snippet": "Dec 16, 2024 — In JLCPCB parts library, customer can tick Basic parts option to filter out the basic parts . An image below to show how to use it.",
+    "host_name": "jlc3dp.com",
+    "rank": 5,
+    "date": "Dec 16, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://jlcpcb.com/parts/2nd/Inductors_Coils_Chokes/Accessories_Inductors_Transformers_2300",
+    "name": "Accessories - Inductors/Transformers",
+    "snippet": "Inductors / Transformers are in stock for PCB assembly at JLCPCB . Components Inductors , Coils, Chokes. Use the Parts Calculator to determine the quantities you ...",
+    "host_name": "jlcpcb.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.petertanner.dev/posts/Useful-JLCPCB-basic-parts",
+    "name": "Useful JLCPCB basic parts - Peter Tanner",
+    "snippet": "Sep 3, 2023 — Here's a list of useful parts I've found on JLCPCB which are in their “basic” category for their PCB assembly service.",
+    "host_name": "www.petertanner.dev",
+    "rank": 7,
+    "date": "Sep 3, 2023",
+    "favicon": ""
+  },
+  {
+    "url": "https://forum.kicad.info/t/jlcpcb-parts-inventory-and-selection-process/55303",
+    "name": "JLCPCB Parts Inventory and Selection Process",
+    "snippet": "Oct 9, 2024 — This is the explanation of Basic , Extended , etc parts from JLCPCB itself: PCB Assembly FAQs You can also get them to source parts for you but of ...",
+    "host_name": "forum.kicad.info",
+    "rank": 8,
+    "date": "Oct 9, 2024",
+    "favicon": ""
+  }
+]

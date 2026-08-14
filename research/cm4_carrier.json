@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://www.digikey.com/en/maker/projects/creating-a-raspberry-pi-compute-module-4-cm4-carrier-board-in-kicad/7812da347e5e409aa28d59ea2aaea490",
+    "name": "Creating a Raspberry Pi Compute Module 4 (CM4) Carrier",
+    "snippet": "Dec 7, 2020 — schematic is divided up into 2 hierarchical sheets. The first sheet contains a USB-C connector … a simple 10- pin GPIO header. The GPIO header ...",
+    "host_name": "www.digikey.com",
+    "rank": 0,
+    "date": "Dec 7, 2020",
+    "favicon": ""
+  },
+  {
+    "url": "https://pip-assets.raspberrypi.com/categories/756-raspberry-pi-compute-module-4-io-board/documents/RP-008172-DS-1-cm4io-datasheet.pdf",
+    "name": "Raspberry Pi Compute Module 4 IO Board",
+    "snippet": "The Raspberry Pi Compute Module 4 IO Board has an on- board USB 2.0 hub. This connects to the CM4 USB 2.0 port. Two ports from the hub are connected to a ... Read more 15 pages",
+    "host_name": "pip-assets.raspberrypi.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://219design.com/custom-rpi-cm4-carrier-board",
+    "name": "Custom RPi CM4 Carrier Board",
+    "snippet": "Dec 3, 2024 — Stackable design with headers for GPIO , UART, SPI, I2C, and other low-level signals and configuration Small form factor (53 x 67 x 16.4 mm) ...",
+    "host_name": "219design.com",
+    "rank": 2,
+    "date": "Dec 3, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.pi4j.com/1.3/pins/rpi-cm4.html",
+    "name": "Pin Numbering - Raspberry Pi Compute Module 4 (CM4)",
+    "snippet": "The diagram below illustrates the GPIO pinout using the Pi4J/WiringPi GPIO numbering scheme. (click here for hi-resolution image)",
+    "host_name": "www.pi4j.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://pcbsync.com/raspberry-pi-compute-module-4",
+    "name": "Raspberry Pi Compute Module 4: The Complete Guide for",
+    "snippet": "The official CM4 IO board includes a standard 40- pin GPIO header that accepts most HATs designed for the Pi 4B.",
+    "host_name": "pcbsync.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://forums.raspberrypi.com/viewtopic.php?t=334422",
+    "name": "Finding Rpi-CM4 connector schematics",
+    "snippet": "The schematics for the CM4 module itself are not available. Both info is available from linked documents. Use the pinout and the ECAD software of your choice ...",
+    "host_name": "forums.raspberrypi.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.diva-portal.org/smash/get/diva2:1902047/FULLTEXT02.pdf",
+    "name": "Design of a Raspberry Pi-based Industrial Gateway",
+    "snippet": "by H Klint · Cited by 1 — This project designs a carrier PCB for the Raspberry Pi Compute Module 4 to create a more powerful industrial gateway with features like remote unbricking and ...",
+    "host_name": "www.diva-portal.org",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.waveshare.com/wiki/CM4-IO-BASE-C?srsltid=AfmBOoorG3ustvgWegrVHwQSlsAl0dLObsKOnpVY2r5YxtsN3_-mu4tp",
+    "name": "CM4-IO-BASE-C - Waveshare Wiki",
+    "snippet": "As the mini IO board of the Raspberry Pi Compute Module 4 , CM4 -IO-BASE-C is a baseboard that can be used with the Raspberry Pi Compute Module 4 . It supports ... Read more",
+    "host_name": "www.waveshare.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  }
+]

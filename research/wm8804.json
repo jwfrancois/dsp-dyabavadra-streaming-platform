@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://store.sure-electronics.com/product/744",
+    "name": "AA-AB41133 WM8804 S/PDIF and IIS/I2S Audio Signal",
+    "snippet": "This is a product that can convert S/PDIF and I2S signal to each other. F and I2S signal to each other. just need to plug in the connector and input I2S signal.",
+    "host_name": "store.sure-electronics.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.diyaudio.com/community/threads/i2s-to-s-pdif.219879",
+    "name": "I2S to S/PDIF",
+    "snippet": "Sep 17, 2012 — I'm trying to use a twisted pear audio WM8804 board add digital output by converting I2S to S/PDIF . I believe I need to configure the WM8804 for ... Read more",
+    "host_name": "www.diyaudio.com",
+    "rank": 1,
+    "date": "Sep 17, 2012",
+    "favicon": ""
+  },
+  {
+    "url": "https://electronics.stackexchange.com/questions/455451/splitting-coaxial-s-pdif",
+    "name": "Splitting Coaxial S/PDIF",
+    "snippet": "Aug 30, 2019 — I'm looking to output a single S/PDIF output from a BC127 to a coaxial output as well as a WM8804 S/PDIF transceiver at the same time. So far, it doesn't ...",
+    "host_name": "electronics.stackexchange.com",
+    "rank": 2,
+    "date": "Aug 30, 2019",
+    "favicon": ""
+  },
+  {
+    "url": "https://longview.be/using-the-wm8804-spdif-transceiver.html",
+    "name": "Using the WM8804 S/PDIF Transceiver in Full-Duplex Mode",
+    "snippet": "Aug 18, 2024 — The WM8804 is a now obsolete but still available S/PDIF transceiver that is kind of mid but can be made to work ok for some use cases. Read more",
+    "host_name": "longview.be",
+    "rank": 3,
+    "date": "Aug 18, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/opiopan/sonopi-digi",
+    "name": "opiopan/sonopi-digi: Raspberry Pi Hat which export S/PDIF",
+    "snippet": "WM8804 is installed on Sonopi Digi as a S/PDIF transmitter . only optical output is installed on this product. An coaxial output which need analog driver  ...",
+    "host_name": "github.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.mouser.com/datasheet/2/76/WM8804_v4.5-1141948.pdf?srsltid=AfmBOoqy54Qq5SxFfF_Ef-3NL04miTAq-3WG73PdADLLqg0pT7x0WRwC",
+    "name": "WM8804",
+    "snippet": "The WM8804 is an IEC-60958 compatible S/PDIF transceiver with support for one received S/PDIF data stream and one transmitted S/PDIF data stream. 24 bit I2S ... 67 pages",
+    "host_name": "www.mouser.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.pi2design.com/uploads/4/8/5/3/48531975/pi2aes-lite_hw_ref_manual_p2.2.pdf",
+    "name": "Pi 2 Design – PI2AES-LITE Hardware Reference Manual",
+    "snippet": "Feb 4, 2024 — AES TRANSMITTER – The industry standard WM8804 converts the PI. I2S stream to AES3/ SPDIF 24-Bit Data up to 192Khz. • AES COAX OUTPUT – A 1: ... Read more",
+    "host_name": "www.pi2design.com",
+    "rank": 6,
+    "date": "Feb 4, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://nihtila.com/2020/02/03/spdif-tx-i2s-to-s-pdif-converter",
+    "name": "SPDIF TX – I2S to S/PDIF converter",
+    "snippet": "Feb 3, 2020 — See schematics below or schematics walkthrough in the video above. I2S input can be a single header for stereo use or dual header for mono use. Read more",
+    "host_name": "nihtila.com",
+    "rank": 7,
+    "date": "Feb 3, 2020",
+    "favicon": ""
+  }
+]

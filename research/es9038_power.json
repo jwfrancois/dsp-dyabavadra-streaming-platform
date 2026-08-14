@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://www.facebook.com/groups/DIYLoudspeakerProjecPad/posts/1283166735372494",
+    "name": "Anyone have experience with powering these ES9038Q2M",
+    "snippet": "It's an entire analog stage: current output built. It was designed for 1.06 version but worked on 1.07 as well. costs $31 at the moment. DC  ...",
+    "host_name": "www.facebook.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.diyaudio.com/community/threads/es9038q2m-board.314935/page-346",
+    "name": "ES9038Q2M Board | Page 346",
+    "snippet": "Nov 17, 2017 — The ES9038Q2M is equipped with a regulated DVDD supply powered from DVCC. The recommended capacitor for decoupling DVDD is a 4.7uF ±20%, X5R 6. ...",
+    "host_name": "www.diyaudio.com",
+    "rank": 1,
+    "date": "Nov 17, 2017",
+    "favicon": ""
+  },
+  {
+    "url": "https://biakom.com/pdf/ES9038Q2M.pdf",
+    "name": "ES9038Q2M 32-Bit Stereo Low Power Audio DAC",
+    "snippet": "Jul 17, 2019 — Positive Supply Voltage (VCCA, AVCC_L, AVCC_R, DVCC) +4.7V with respect to GND. Positive Supply Voltage (DVDD). +1.8V with respect to GND. Read more 66 pages",
+    "host_name": "biakom.com",
+    "rank": 2,
+    "date": "Jul 17, 2019",
+    "favicon": ""
+  },
+  {
+    "url": "https://device.report/manual/10297141",
+    "name": "Audiophonics ES9038Q2M Dual Mono II DAC HAT",
+    "snippet": "Oct 29, 2023 — Direct 3.3V power inputs , DVCC and VCCA voltage rails . 10 AVCC ( ES9038Q2M AVCC 3.3V voltage rail ) 40 pin GPIO connectors … 1,17 3.3V from ...",
+    "host_name": "device.report",
+    "rank": 3,
+    "date": "Oct 29, 2023",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.audiophonics.fr/en/dac-and-interfaces-for-raspberry-pi/audiophonics-dac-i-sabre-es9038q2m-raspberry-pi-i2s-spdif-pcm-dsd-micro-usb-power-supply-p-14011.html?srsltid=AfmBOoqIUCZxSbYSIrvVVRhHCYljouAINvjbJCUisgjJbWT4TIYAe3jl",
+    "name": "AUDIOPHONICS DAC I-Sabre ES9038Q2M Raspberry Pi /",
+    "snippet": "The DVCC voltage is generated from an LP5907 (regulation <6.5μV), Vref 1.2V of the. The AVCC voltage is generated from a dedicated ADP150 regulator (regulation ...",
+    "host_name": "www.audiophonics.fr",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://community.volumio.com/t/dac-s-pdif-raspberry/68929",
+    "name": "DAC / S/pdif Raspberry",
+    "snippet": "Sep 23, 2024 — Hello I have the following Dac card Saber ES9038Q2M which is from Audiophonics, wondering if anyone here knows how to do it or what is ...",
+    "host_name": "community.volumio.com",
+    "rank": 5,
+    "date": "Sep 23, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.ovaga.com/products/detail/es9038q2m",
+    "name": "ES9038Q2M | Original stock,Price",
+    "snippet": "operating supply voltage of 1.8 V or 3.3 V , power consumption of just 40 mW. Operating supply voltage: 1.8 V or 3.3 V Compact. Resolution 32 bit Supply Voltage ...",
+    "host_name": "www.ovaga.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.audiosciencereview.com/forum/index.php?threads/review-and-measurements-of-audiophonics-dac-i-sabre-es9038q2m.8640",
+    "name": "Review and Measurements of AUDIOPHONICS DAC I",
+    "snippet": "Aug 21, 2019 — This is a review and detailed measurements of the AUDIOPHONICS DAC I-Sabre ES9038Q2M Raspberry Pi DAC. This was kindly sent to me near a ...",
+    "host_name": "www.audiosciencereview.com",
+    "rank": 7,
+    "date": "Aug 21, 2019",
+    "favicon": ""
+  }
+]

@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://www.diyaudio.com/community/threads/modern-ultra-low-noise-ldo-adm7150.247643/page-2",
+    "name": "Modern ultra low noise LDO - ADM7150 | Page 2 - diyAudio",
+    "snippet": "Dec 16, 2013 · I did a rough layout of the ADM7150 using a 2 layer PCB ・ bottom copper layer as a ground plane/thermal plane. Very low noise ・ device ... Yet another ultra low noise high PSRR LDO - LT3042 Modern ultra low noise LDO - ADM7150 | Page 3 More results from www.diyaudio.com",
+    "host_name": "www.diyaudio.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=xLjGT3L2-yc&vl=en",
+    "name": "How to Design a Low-Noise Dual Rail Voltage Supply - YouTube",
+    "snippet": "Aug 26, 2022 · Multidisciplinary product creation powered by your unconstrained network. Work concurrently across design, sourcing, and manufacturing with ...",
+    "host_name": "www.youtube.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://ez.analog.com/power/f/q-a/113294/designing-modern-power-supply-challenge",
+    "name": "Designing modern power supply challenge - EngineerZone",
+    "snippet": "Jun 30, 2019 · The LT3042 is a high performance low dropout linear regulator featuring LTCâ€™s ultralow noise and ultrahigh PSRR architecture for powering ... LT3094 confusing ground path for Output Cap (DC2624, etc) LT3045 and LT3094 on one PCB - EngineerZone - Analog Devices More results from ez.analog.com",
+    "host_name": "ez.analog.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.eevblog.com/forum/eda/roast-my-design-low-noise-dc-supply",
+    "name": "Roast my design Low noise DC supply - EEVblog",
+    "snippet": "Dec 13, 2020 · The goal is to get the lowest Vrms noise, I was planing to handle the Common mode outside of the design, but added a small CMC (L1). Mainly ...",
+    "host_name": "www.eevblog.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=_CHY8Z-fSa0",
+    "name": "LDO Regulator Hardware Design - Phil's Lab #105 - YouTube",
+    "snippet": "Apr 30, 2023 · How low-dropout (LDO) regulators work, when they should(n't) be used, LDO datasheets, key parameters to choose, power dissipation and ...",
+    "host_name": "www.youtube.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.mouser.com/pdfdocs/ADI_LDO_General_Presentation_2018Apr1.pdf?srsltid=AfmBOorXjo5jR7GOLROXO-xMFGL_iT8MNcDPqhTnNred0y_MiYOhBDpF",
+    "name": "[PDF] ADI Linear Regulators",
+    "snippet": "“Low Noise LDO?” 0.2A (LT3042) and … ► Low Noise VCOs, PLLs, etc. ► High Performance, Low Noise Signal Chain Power Supply (ADCs, Amplifiers, ADM7150 / ADM7154. ...",
+    "host_name": "www.mouser.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://forum.pjrc.com/index.php?threads/why-is-no-ground-plane-used-on-the-audio-boards.73156",
+    "name": "Why is no ground plane used on the audio boards? - Teensy Forum",
+    "snippet": "Jul 5, 2023 · The reason is basically because an unbroken ground plane is not feasible in 2 layer PCB design. Opinions vary about audio grounds. But if ...",
+    "host_name": "forum.pjrc.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/PrintedCircuitBoard/comments/1qizl7u/review_request_ultralow_noise_variable_output",
+    "name": "[Review Request] Ultra-low Noise Variable Output Bipolar Power",
+    "snippet": "Jan 21, 2026 · : I have designed this modular low-noise power supply. It uses the VIOC feature. LT3094 LDOs to regulate the switcher to 1.2V above/below their ...",
+    "host_name": "www.reddit.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.pcbway.com/blog/PCB_Design_Layout/LDO_Power_PCB_Layout_Design_Guidelines_From_Basics_to_Best_Practices_8f3387c6.html",
+    "name": "LDO Power PCB Layout Design Guidelines: From Basics to Best",
+    "snippet": "Mar 26, 2026 · In this article, the PCBWay design team will walk you through the key considerations of LDO power PCB layout, covering fundamental concepts, ...",
+    "host_name": "www.pcbway.com",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.allpcb.com/blog/pcb-knowledge/designing-a-low-noise-audio-amplifier-pcb-minimizing-ground-loops-and-interference.html",
+    "name": "Designing a Low-Noise Audio Amplifier PCB: Minimizing Ground",
+    "snippet": "Aug 20, 2025 · Learn how to design a low-noise audio amplifier PCB with tips on grounding, ground loop prevention, and noise reduction techniques.",
+    "host_name": "www.allpcb.com",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]

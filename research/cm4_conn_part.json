@@ -1,0 +1,83 @@
+[
+  {
+    "url": "https://www.raspberrypi.com/documentation/computers/compute-module.html",
+    "name": "Compute Module hardware - Raspberry Pi Documentation",
+    "snippet": "CM4 moved away from the DDR2 SODIMM form factor to a dual 100-pin high-density connector layout, which results in a smaller physical footprint.",
+    "host_name": "www.raspberrypi.com",
+    "rank": 0,
+    "date": "Oct 16, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.farnell.com/datasheets/3688382.pdf",
+    "name": "Raspberry Pi Compute Module 4",
+    "snippet": "The Raspberry Pi Compute Module 4 (CM4) is a System on Module (SoM) The electrical interface of the CM4 is via two 100-pin high density connectors,",
+    "host_name": "www.farnell.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://pappp.net/?p=32383",
+    "name": "New Raspberry Pi 4 Compute Module: So long SO-DIMM",
+    "snippet": "The CM4 changes that, opting for two high-speed, high-density 100-pin mezzanine connectors. , USB 3.0, and Gigabit Ethernet. you may be limited ...",
+    "host_name": "pappp.net",
+    "rank": 2,
+    "date": "Oct 19, 2020",
+    "favicon": ""
+  },
+  {
+    "url": "https://chicagodist.com/pages/compute-module-4",
+    "name": "Compute Module 4",
+    "snippet": "DDR2 SODIMM mechanical standard, support 28 GPIO pins, with up to 6 × UART, 6 × I2C and 5 × SPI 1GB, 2GB, 4GB or 8GB LPDDR4-3200 … 32GB eMMC Flash storage ...",
+    "host_name": "chicagodist.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://aichiplink.com/blog/Raspberry-Pi-Compute-Module-Pinout-Specs-Datasheet-Projects_542",
+    "name": "Raspberry Pi Compute Module Pinout: Specs, Datasheet &",
+    "snippet": "The compute module 4 (CM4) uses two 100-pin Hirose connectors. This change makes the board smaller and easier to fit in custom projects.",
+    "host_name": "aichiplink.com",
+    "rank": 4,
+    "date": "Aug 25, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://raspberrypi.stackexchange.com/questions/144955/what-is-the-board-to-board-connector-of-cm4-to-io-board",
+    "name": "What is the board to board connector of CM4 to IO board?",
+    "snippet": "The connectors are made by HiRose. There are two types for the IO board, varying in height: 1.5 mm and 3.0 mm. has the \"male\" DP variant,",
+    "host_name": "raspberrypi.stackexchange.com",
+    "rank": 5,
+    "date": "Nov 12, 2023",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.mouser.com/en/new/raspberry-pi/raspberry-pi-cm4-compute-modules/?srsltid=AfmBOor7tQsTKEcrgDuadXEOGByBcB6fEcKEwXy_DCtjtneoavUARXj-",
+    "name": "Raspberry Pi Compute Modules 4 (CM4)",
+    "snippet": "(CM4) feature a. The electrical interface is via two 100-pin, high-density connectors. up to 8GB of RAM, Gigabit Ethernet, USB 2.0, and dual camera interfaces. ...",
+    "host_name": "www.mouser.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.leocom.kr/datasheets/cm4s-datasheet.pdf?srsltid=AfmBOopfVJ4HfulQStxVSz-sEZHAbZ7H8u0MWIA5N0v1O5HpxYj8tZ1N",
+    "name": "Raspberry Pi Compute Module 4 SODIMM",
+    "snippet": "The CM4S modules conform to JEDEC MO-224 mechanical specification for 200-pin DDR2 (1.8V) SODIMM modules, so should work with the many DDR2 ...",
+    "host_name": "www.leocom.kr",
+    "rank": 7,
+    "date": "Apr 26, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://liliputing.com/raspberry-pi-compute-module-4s-is-a-sodimm-with-the-same-processor-as-the-raspberry-pi-4-and-cm4",
+    "name": "Raspberry Pi Compute Module 4S is a SODIMM with the",
+    "snippet": "Raspberry Pi Compute Module 4S is a SODIMM with the same processor as the Raspberry Pi 4 and CM4.",
+    "host_name": "liliputing.com",
+    "rank": 8,
+    "date": "Apr 5, 2022",
+    "favicon": ""
+  }
+]

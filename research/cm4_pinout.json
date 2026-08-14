@@ -1,0 +1,83 @@
+[
+  {
+    "url": "https://forums.raspberrypi.com/viewtopic.php?t=289302",
+    "name": "PCM & TXD/RXD Pins on CM4",
+    "snippet": "The pinout is different because of the different form factor, but all 28 GPIOs on the Pi 4 40- pin header are available on the pinout of the CM4 .",
+    "host_name": "forums.raspberrypi.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://forums.raspberrypi.com/viewtopic.php?t=321344",
+    "name": "[SOLVED] CM4 pinouts",
+    "snippet": "Oct 10, 2021 — Essentially, I am trying to figure out which pins in the connector match up to the pins from the CM4 . For instance, is pin 1 in the connector ... Read more",
+    "host_name": "forums.raspberrypi.com",
+    "rank": 1,
+    "date": "Oct 10, 2021",
+    "favicon": ""
+  },
+  {
+    "url": "https://forums.raspberrypi.com/viewtopic.php?t=355177",
+    "name": "Cm4 module dual100 pin connectors?",
+    "snippet": "Aug 19, 2023 — I'm having a hard time trying to figuring out the pinout for the dual 100 pins connectors . a place I can go to see a list of pins are which? ...",
+    "host_name": "forums.raspberrypi.com",
+    "rank": 2,
+    "date": "Aug 19, 2023",
+    "favicon": ""
+  },
+  {
+    "url": "https://download.kamami.pl/p1179264-cm4-datasheet.pdf",
+    "name": "Raspberry Pi Compute Module 4",
+    "snippet": "The electrical interface of the CM4 is via two 100-pin high density connectors , and the new physical form factor has a smaller footprint overall 33 pages",
+    "host_name": "download.kamami.pl",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.pi4j.com/1.3/pins/rpi-cm4.html",
+    "name": "Pin Numbering - Raspberry Pi Compute Module 4 (CM4)",
+    "snippet": "The diagram below illustrates the GPIO pinout using the Pi4J/WiringPi GPIO numbering scheme.",
+    "host_name": "www.pi4j.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.digikey.com/en/maker/projects/creating-a-raspberry-pi-compute-module-4-cm4-carrier-board-in-kicad/7812da347e5e409aa28d59ea2aaea490",
+    "name": "Creating a Raspberry Pi Compute Module 4 (CM4) Carrier",
+    "snippet": "Dec 7, 2020 — The first sheet contains a USB-C connector … and a simple 10- pin GPIO header. The GPIO header breaks out a UART and SPI bus for connecting to ...",
+    "host_name": "www.digikey.com",
+    "rank": 5,
+    "date": "Dec 7, 2020",
+    "favicon": ""
+  },
+  {
+    "url": "https://pinout.xyz",
+    "name": "Raspberry Pi GPIO Pinout",
+    "snippet": "This GPIO Pinout is an interactive reference to the Raspberry Pi GPIO pins , and a guide to the Raspberry Pi's GPIO interfaces. hundreds of pinouts . HATs and ...",
+    "host_name": "pinout.xyz",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://pip.raspberrypi.com/documents/RP-008180-DS-cm5-datasheet.pdf",
+    "name": "Raspberry Pi Compute Module 5",
+    "snippet": "Nov 27, 2024 — The top connector on CM5 contains pins 1 to 100 ; the bottom connector of CM5 contains pins 101 to 200. For information about each pin's ... Read more 37 pages",
+    "host_name": "pip.raspberrypi.com",
+    "rank": 7,
+    "date": "Nov 27, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.scribd.com/document/602998379/CM4-Pin-Out-200pin",
+    "name": "Raspberry Pi CM4 Pinout Overview | PDF",
+    "snippet": "The pins include GPIO pins , Ethernet pins , I2C pins , and power input pins . The document notes that some GPIO pins can output either 3.3V or 1.8V signals ... Read more",
+    "host_name": "www.scribd.com",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  }
+]

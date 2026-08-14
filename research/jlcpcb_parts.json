@@ -1,0 +1,83 @@
+[
+  {
+    "url": "https://jlcpcb.com/parts",
+    "name": "Electronic Components for PCB Assembly | JLCPCB Parts",
+    "snippet": "In-Stock Electronic Parts, Ready for PCB Assembly. Choose from + genuine, in-stock electronic components with real-time inventory and transparent pricing. Read more",
+    "host_name": "jlcpcb.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://jlcpcb.com/parts/basic_parts",
+    "name": "Basic Electronic Components for Fast PCB Assembly",
+    "snippet": "Browse basic electronic components preloaded on SMT pick and place machines . No feeder loading fees, lower costs, faster PCB assembly, and stable supply ...",
+    "host_name": "jlcpcb.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://jlcpcb.com/help/article/pcb-assembly-faqs",
+    "name": "PCB Assembly FAQs",
+    "snippet": "Nov 23, 2025 — Currently, about 40k+ kinds of components are available , including 698 kinds of basic components and 300k+ extended components . You can explore ... Read more",
+    "host_name": "jlcpcb.com",
+    "rank": 2,
+    "date": "Nov 23, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.eevblog.com/forum/manufacture/jlcpcb-smt-assembly-service-208764",
+    "name": "JLCPCB SMT Assembly Service",
+    "snippet": "Sep 6, 2019 — - Unlimited number of basic components can be placed, but a maximum of 10 different types of \" Extended \" parts can be placed. Basic components ... Read more",
+    "host_name": "www.eevblog.com",
+    "rank": 3,
+    "date": "Sep 6, 2019",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.schemalyzer.com/en/blog/manufacturing/jlcpcb/jlcpcb-assembly-guide",
+    "name": "Complete Guide to PCB Assembly Service (2025)",
+    "snippet": "Nov 26, 2025 — Master JLCPCB SMT assembly with this comprehensive guide. Learn BOM/CPL file preparation, basic vs extended parts , cost optimization, and ... Read more",
+    "host_name": "www.schemalyzer.com",
+    "rank": 4,
+    "date": "Nov 26, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/AskElectronics/comments/1erp44i/how_to_find_common_basic_parts_on_jlcpcb",
+    "name": "How to find common (Basic) parts on JLCPCB?",
+    "snippet": "Suppose I need a simple 3.3V LDO, like an AMS1117. If I go to the normal category I can filter for 3.3V output voltage. But those are all unusual \"Extended\" ...",
+    "host_name": "www.reddit.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://forum.kicad.info/t/jlcpcb-parts-inventory-and-selection-process/55303",
+    "name": "JLCPCB Parts Inventory and Selection Process",
+    "snippet": "Oct 9, 2024 — Better parametric search for components available for JLC PCB assembly . This is the explanation of Basic , Extended , etc parts from JLCPCB ...",
+    "host_name": "forum.kicad.info",
+    "rank": 6,
+    "date": "Oct 9, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/yaqwsx/jlcparts",
+    "name": "yaqwsx/jlcparts: Better parametric search for components",
+    "snippet": "JLC PCB SMD Assembly Component Catalogue . A better tool to browse the components offered by the JLC PCB SMT Assembly Service. How To Use It? Read more",
+    "host_name": "github.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://easyeda.com/forum/topic/PCB-order-LCSC-Parts-SMT-378406c2467a4a6aad0bacf2418d1831",
+    "name": "[PCB order] LCSC Parts SMT - EasyEDA",
+    "snippet": "Aug 3, 2021 — If a part has zero stock at JLCPCB stock but it is available at LCSC doesn't mean that we can immediately order it for SMT assembly because our ... Read more",
+    "host_name": "easyeda.com",
+    "rank": 8,
+    "date": "Aug 3, 2021",
+    "favicon": ""
+  }
+]

@@ -1,0 +1,83 @@
+[
+  {
+    "url": "https://www.reddit.com/r/AskElectronics/comments/zegpi0/help_understanding_rotary_encoder_debouncing",
+    "name": "Help understanding rotary encoder debouncing schematic",
+    "snippet": "I've been tinkering with Rpis / micro electronics for a little while now, as is tradition I started by building a Pi powered arcade and went from there. ...",
+    "host_name": "www.reddit.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://geekhack.org/index.php?topic=102207.0",
+    "name": "Adding a Rotary Encoder",
+    "snippet": "Aug 28, 2019 — However, like other switches, input needs to be debounced . Most encoders for user input have three pins and produces a 2-bit Gray code. Keebio ... Read more",
+    "host_name": "geekhack.org",
+    "rank": 1,
+    "date": "Aug 28, 2019",
+    "favicon": ""
+  },
+  {
+    "url": "https://forum.arduino.cc/t/ec11-rotary-encoder-switch-in-keypad/1241471",
+    "name": "EC11 rotary encoder switch in keypad - General Guidance",
+    "snippet": "Mar 29, 2024 — I was wondering if I could use an EC11 rotary encoder swith as a normal switch in a keypad connected to arduino to save pins for other ...",
+    "host_name": "forum.arduino.cc",
+    "rank": 2,
+    "date": "Mar 29, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.keebtalk.com/t/how-to-wire-a-rotary-encoder-fit-in-a-matrix/6330",
+    "name": "How to wire a rotary encoder fit in a matrix? - Makerspace",
+    "snippet": "Jun 22, 2019 — You will need 2 pins for reading the encoder , the “ button ” can be wired as other switch. this includes hardware debouncer) it works flawlessly. ...",
+    "host_name": "www.keebtalk.com",
+    "rank": 3,
+    "date": "Jun 22, 2019",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.eevblog.com/forum/beginners/issues-with-hw-debouncing-a-rotary-encoder-or-sw-issue",
+    "name": "Issues with HW debouncing a rotary encoder or SW issue",
+    "snippet": "Jul 22, 2023 — The button debounce needs near symmetric press and release time constants and to transition within a few tens of ms of actuation, certainly in ...",
+    "host_name": "www.eevblog.com",
+    "rank": 4,
+    "date": "Jul 22, 2023",
+    "favicon": ""
+  },
+  {
+    "url": "http://high-na.blogspot.com/2017/12/rotaryEncoder.html",
+    "name": "How to connect a rotary encoder to Arduino and make your",
+    "snippet": "Dec 24, 2017 — The hardware debouncing consists of a simple (RC) circuit , essentially a resistor and a capacitor, which works as a low-pass filter. or to  ...",
+    "host_name": "high-na.blogspot.com",
+    "rank": 5,
+    "date": "Dec 24, 2017",
+    "favicon": ""
+  },
+  {
+    "url": "https://electronics.stackexchange.com/questions/232505/switch-debounce-topology-for-rotary-encoder",
+    "name": "Switch Debounce Topology for Rotary Encoder [duplicate]",
+    "snippet": "May 5, 2016 — This question already has answers here:      A question about a debouncing circuit  (4 answers)   Closed 9 years ago.    I'm looking to debounce the output ...",
+    "host_name": "electronics.stackexchange.com",
+    "rank": 6,
+    "date": "May 5, 2016",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/Ayilay/EncoderDebouncer",
+    "name": "A simple PCB that takes a rotary encoder, debounces",
+    "snippet": "The Rotary Encoder has 2 signal pins. One of those pins is fed into an RC circuit that absorbs the bounce, but turns the digital signal into a slow-rising curve ... Read more",
+    "host_name": "github.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=9j-y6XlaE80",
+    "name": "How to use rotary encoders",
+    "snippet": "Electronic knobs are everywhere, and today we will learn how they work and how you can use them with a microcontroller.",
+    "host_name": "www.youtube.com",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  }
+]

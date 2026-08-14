@@ -1,0 +1,83 @@
+[
+  {
+    "url": "https://forums.raspberrypi.com/viewtopic.php?t=295410",
+    "name": "IR remote power on",
+    "snippet": "Nov 17, 2021 — TSOP38238 is not a phototransistor . It's an IR receiver IC which may or may not have one inside in addition to decoders, filters, demodulators etc. The easy way ... Read more",
+    "host_name": "forums.raspberrypi.com",
+    "rank": 0,
+    "date": "Nov 17, 2021",
+    "favicon": ""
+  },
+  {
+    "url": "https://blog.gordonturner.com/2020/05/31/raspberry-pi-ir-receiver",
+    "name": "Raspberry Pi IR Receiver - Gordon Turner",
+    "snippet": "May 31, 2020 — All Raspberry Pis have a row of GPIO pins, 26 or 40 pins. Receiver Wiring Diagram … a TSOP38238 infra red receiver , prototyping bread board and ...",
+    "host_name": "blog.gordonturner.com",
+    "rank": 1,
+    "date": "May 31, 2020",
+    "favicon": ""
+  },
+  {
+    "url": "https://cdn-learn.adafruit.com/downloads/pdf/using-an-ir-remote-with-a-raspberry-pi-media-center.pdf",
+    "name": "Using an IR Remote with a Raspberry Pi Media Center",
+    "snippet": "Jun 3, 2024 — In this tutorial, you will learn how to use an Infrared remote. The IR receiver is attached to the GPIO connector on the Raspberry Pi . IR ... 11 pages",
+    "host_name": "cdn-learn.adafruit.com",
+    "rank": 2,
+    "date": "Jun 3, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/raspberry_pi/comments/305rhb/infrared_receiver_for_an_openelec_rpi_a_cheaper",
+    "name": "Infrared Receiver for an OpenELEC RPi (a cheaper",
+    "snippet": "Pick up a 38khz Infrared Receiver (I got the TSOP38238 ・ connect them to the GPIO pins as per this image ・ and enable LIRC support in ...",
+    "host_name": "www.reddit.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://smarthome.exposed/infrared-remote-for-hifiberry",
+    "name": "Infrared remote for HiFiBerry",
+    "snippet": "Mar 15, 2019 — TSOP38238 , an IR receiver module for remote control systems … will go to GPIO digital input of the Pi . connect the module to 3.3V , GND and GPIO ...",
+    "host_name": "smarthome.exposed",
+    "rank": 4,
+    "date": "Mar 15, 2019",
+    "favicon": ""
+  },
+  {
+    "url": "https://raspberrypi.stackexchange.com/questions/99823/rpi-uart-control-ir-remote-hdmi-switch-problem",
+    "name": "Rpi UART control IR Remote HDMI switch problem",
+    "snippet": "Jun 22, 2019 — I've been reading about how to use the GPIO to toggle a button on a thing I've taken apart.  It's like this: Amazon I watched a video of a guy ...",
+    "host_name": "raspberrypi.stackexchange.com",
+    "rank": 5,
+    "date": "Jun 22, 2019",
+    "favicon": ""
+  },
+  {
+    "url": "http://mjrnet.org/pinscape/BuildGuideV2/BuildGuide.php?sid=irRemote",
+    "name": "112. IR Remote Control",
+    "snippet": "The recommended IR receiver device, TSOP38238 , contains both the optical sensor and the demodulation circuitry. Here's the connection diagram : Connect IR_IN to ...",
+    "host_name": "mjrnet.org",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://discourse.osmc.tv/t/infrared-remote-controller-32t4/8699",
+    "name": "Infrared remote controller 32T4 - Raspberry Pi",
+    "snippet": "The GPIO IO pins are designed to work with 3.3v signalling not 5v, if you power your IR receiver from 5v the output signal from this receiver sent into the GPIO ...",
+    "host_name": "discourse.osmc.tv",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://thepihut.com/blogs/raspberry-pi-tutorials/raspberry-pis-remotes-ir-receivers?srsltid=AfmBOoonivOJG-bqFc-u0yUq1UQYZ5mlsE6JdkwkBblx8n0PQB_DTH2i",
+    "name": "Raspberry Pis, Remotes & IR Receivers!",
+    "snippet": "Jul 19, 2017 — In this tutorial we're going to test an IR sensor and then hook it up to our Raspberry Pi and programme a remote to interact with it! sensor ...",
+    "host_name": "thepihut.com",
+    "rank": 8,
+    "date": "Jul 19, 2017",
+    "favicon": ""
+  }
+]

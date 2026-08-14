@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://jlcpcb.com/capabilities/pcb-capabilities",
+    "name": "PCB Manufacturing & Assembly Capabilities",
+    "snippet": "① Via diameter should be 0.1mm(0.15mm preferred) larger than Via hole size . ② Preferred Min . Via hole size : 0.2mm. ③ 0.15mm hole size with any size via ...",
+    "host_name": "jlcpcb.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://jlcpcb.com/blog/pcb-via-design-best-practices",
+    "name": "Guide to PCB Via Design: Best Practices, Tips, and Key",
+    "snippet": "Dec 24, 2024 — JLC can achieve a minimum hole diameter of 0.15 mm , a minimum trace/space of 0.0762 mm, and support hundreds of lamination structures.",
+    "host_name": "jlcpcb.com",
+    "rank": 1,
+    "date": "Dec 24, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://jlcpcb.com/blog/pcb-design-rules-best-practices",
+    "name": "PCB Design Rules and Guidelines: A Complete Best",
+    "snippet": "Oct 28, 2025 — JLCPCB capabilities (e.g., ≥ 3.5 mil trace/space, ≥ 0.15 mm vias). Pad for dense boards—free on JLCPCB 6 to 20-layer stackups. Keep traces ...",
+    "host_name": "jlcpcb.com",
+    "rank": 2,
+    "date": "Oct 28, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://forum.kicad.info/t/jlcpcb-design-rules/22591",
+    "name": "JLCPCB Design Rules - Layout",
+    "snippet": "May 1, 2020 — JLCPCBs minimum is 0.5mm . JLCPCB also has minimum clearances for via to via, pad to pad, via to track, pad to track etc. minimum clearance via ...",
+    "host_name": "forum.kicad.info",
+    "rank": 3,
+    "date": "May 1, 2020",
+    "favicon": ""
+  },
+  {
+    "url": "https://jlcpcb.com/capabilities/pcb-assembly-capabilities",
+    "name": "PCB Manufacturing & Assembly Capabilities",
+    "snippet": "design rules for guide of PCB design and production . Single PCB Assembly Standard PCBA: 70 × 70 mm to 460 × 500 mm Economic PCBA: 10 × 10 mm to 470 × 500 mm ...",
+    "host_name": "jlcpcb.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.schemalyzer.com/en/blog/manufacturing/jlcpcb/jlcpcb-design-rules",
+    "name": "JLCPCB Design Rules and Capabilities",
+    "snippet": "Dec 5, 2025 — Complete guide to trace width, spacing, via sizes, layer. Min Trace/Space: Size:5x5mm to 400x500mm Layers:1-20 layers supported Thickness:0.4mm ...",
+    "host_name": "www.schemalyzer.com",
+    "rank": 5,
+    "date": "Dec 5, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://jlcpcb.com/blog/pcb-traces-design",
+    "name": "Unveiling PCB Traces & Enhancing Electronics through",
+    "snippet": "Dec 2, 2024 — JLCPCB's standard minimum trace-to-trace spacing is 0.10 mm (4 mil) for 1 oz copper . For sensitive high-speed designs, increasing spacing to 3–5 ...",
+    "host_name": "jlcpcb.com",
+    "rank": 6,
+    "date": "Dec 2, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/PCB/comments/1nt3krc/jlcpcb_minimum_via_size",
+    "name": "r/PCB - JLCPCB minimum via size?",
+    "snippet": "Can JLCPCB really do 0.3/0.45mm vias, or do I need to make it a little bigger? what is the smallest i can go?",
+    "host_name": "www.reddit.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  }
+]

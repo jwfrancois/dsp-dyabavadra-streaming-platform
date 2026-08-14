@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://www.digikey.com/en/maker/projects/creating-a-raspberry-pi-compute-module-4-cm4-carrier-board-in-kicad/7812da347e5e409aa28d59ea2aaea490",
+    "name": "Creating a Raspberry Pi Compute Module 4 (CM4) Carrier",
+    "snippet": "Dec 7, 2020 — Key Parts and Components 3 Items Mfr Part # SC0326 RASPBERRY PI CM4IO BOARD. DigiKey's online community and technical resource.",
+    "host_name": "www.digikey.com",
+    "rank": 0,
+    "date": "Dec 7, 2020",
+    "favicon": ""
+  },
+  {
+    "url": "https://forum.kicad.info/t/cant-find-digi-key-components/19612",
+    "name": "Can't find digi-key components - Layout",
+    "snippet": "Oct 28, 2019 — It only has four connected pins and the symbol need only be a box with 4 connections. manufacture part number and digikey # with the Digikey ...",
+    "host_name": "forum.kicad.info",
+    "rank": 1,
+    "date": "Oct 28, 2019",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.makerforge.tech/posts/cm5-carrier-basics",
+    "name": "Designing a CM5 Carrier Board - A Practical Guide for",
+    "snippet": "Apr 6, 2025 — Digi-Key/Mouser Part Number ). CM4 Design Video (Part 1) Connector: Use a Hirose connector (the same one used in the CM5 IO board) for CM5 ...",
+    "host_name": "www.makerforge.tech",
+    "rank": 2,
+    "date": "Apr 6, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.digikey.com/en/maker/blogs/2020/raspberry-pi-compute-module-4-loaded-with-options",
+    "name": "Raspberry Pi Compute Module 4 Loaded with Options",
+    "snippet": "Oct 19, 2020 — Creating a Raspberry Pi Compute Module 4 (CM4) Carrier Board in KiCad · By ShawnHymel · How to Flash the Raspberry Pi Compute Module 4 (CM4) ... Read more",
+    "host_name": "www.digikey.com",
+    "rank": 3,
+    "date": "Oct 19, 2020",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/RASPBERRY_PI_PROJECTS/comments/p2uwh3/what_is_the_connector_on_cm4_called",
+    "name": "what is the connector on CM4 called?",
+    "snippet": "I'm trying to create a raspberry pi board to be like the framework laptop (yes i know similar product exist but my idea is basically a mix of everything ...",
+    "host_name": "www.reddit.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/EricYufengWu/SPIKExCM4",
+    "name": "PCB design (KiCAD) files of a Raspberry Pi CM4 carrier",
+    "snippet": "A 3.7V Lithium Polymer (LiPoly) battery with JST-PH connector in the correct polarity. ... Digikey Link; A short microB male to microB male USB cable ... Read more",
+    "host_name": "github.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  }
+]

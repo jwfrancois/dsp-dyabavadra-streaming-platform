@@ -1,0 +1,65 @@
+[
+  {
+    "url": "https://pcbsync.com/emmc-vs-lite-wifi-vs-no-wifi",
+    "name": "How to Choose Between CM4 Variants: eMMC vs Lite",
+    "snippet": "Wireless CM4 modules include both an onboard PCB trace antenna and a U.FL connector for external antennas . Software configuration switches between them.",
+    "host_name": "pcbsync.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.raspberrypi.com/documentation/computers/compute-module.html",
+    "name": "Compute Module hardware - Raspberry Pi Documentation",
+    "snippet": "Oct 16, 2025 — The antenna supports dual-band Wi-Fi and attaches to the U.FL connector on your CM4 or CM5. configure the required drivers. or SD card appears ...",
+    "host_name": "www.raspberrypi.com",
+    "rank": 1,
+    "date": "Oct 16, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://pappp.net/?p=32383",
+    "name": "New Raspberry Pi 4 Compute Module: So long SO-DIMM",
+    "snippet": "Oct 19, 2020 — The SD card , to accomodate the no- eMMC “ Lite ” version of the CM4 , has a high-side switch so that it can be turned off by the CM4 to save power ... Read more",
+    "host_name": "pappp.net",
+    "rank": 2,
+    "date": "Oct 19, 2020",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.jeffgeerling.com/blog/2022/enable-external-antenna-connector-on-raspberry-pi-compute-module-45",
+    "name": "Enable the external antenna connector on the Raspberry",
+    "snippet": "Feb 4, 2022 — external U.FL antenna ・ antenna signal via software . To switch the signal to the U.FL connector ・ you need to edit the boot config file.  ...",
+    "host_name": "www.jeffgeerling.com",
+    "rank": 3,
+    "date": "Feb 4, 2022",
+    "favicon": ""
+  },
+  {
+    "url": "https://picockpit.com/raspberry-pi/what-is-the-raspberry-pi-compute-module-4-cm4",
+    "name": "What is the Raspberry Pi Compute Module 4 (CM4)?",
+    "snippet": "Jun 27, 2022 — In other words, the UFL ( external wireless antenna ) port should be closer to the PCIe. ... CM4's eMMC over the Pi 4's SD card for greater ... Read more",
+    "host_name": "picockpit.com",
+    "rank": 4,
+    "date": "Jun 27, 2022",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.inelcohunter.co.uk/wp-content/uploads/2021/09/cm4-datasheet-compressed.pdf",
+    "name": "Colophon",
+    "snippet": "The Raspberry Pi Compute Module 4 ( CM4 ) is a System on Module (SoM) containing processor, memory , eMMC Flash and supporting power circuitry. These modules allow ... Read more 33 pages",
+    "host_name": "www.inelcohunter.co.uk",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://forum.clockworkpi.com/t/cm4-with-emmc-sd-card-not-detected/22839",
+    "name": "CM4 (with eMMC) - SD: card not detected - uConsole",
+    "snippet": "Jun 30, 2026 — This is what I am getting when I attach a HDMI cable. So at least the system starts and tries to boot up. But I will not detect the sd card . Read more",
+    "host_name": "forum.clockworkpi.com",
+    "rank": 6,
+    "date": "Jun 30, 2026",
+    "favicon": ""
+  }
+]

@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://www.raspberrypi.com/documentation/computers/compute-module.html",
+    "name": "Compute Module hardware - Raspberry Pi Documentation",
+    "snippet": "Oct 16, 2025 — A Compute Module contains the core components of a Raspberry Pi but without the standard connectors like HDMI , USB , or Ethernet . A Raspberry Pi ...",
+    "host_name": "www.raspberrypi.com",
+    "rank": 0,
+    "date": "Oct 16, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://wiki.seeedstudio.com/Dual-Gigabit-Ethernet-Carrier-Board-for-Raspberry-Pi-CM4",
+    "name": "reRouter carrier board | Seeed Studio Wiki",
+    "snippet": "Jan 10, 2022 — This carrier board features 2 x Gigabit Ethernet Ports (RJ45). One Ethernet Port is connected to the Gigabit Ethernet PHY of the CM4 module ...",
+    "host_name": "wiki.seeedstudio.com",
+    "rank": 1,
+    "date": "Jan 10, 2022",
+    "favicon": ""
+  },
+  {
+    "url": "https://zbotic.in/raspberry-pi-cm4-carrier-board-how-to-choose-set-up/?srsltid=AfmBOopzW9JsfQfFXh1LLZcnCvleYoAcPN8zYJhlBj86l60tlDNGIKMU",
+    "name": "Raspberry Pi CM4 Carrier Board: How to Choose & Set Up",
+    "snippet": "Connect the carrier board to your PC via its USB-C or micro-USB port (the data port, not just the power port); Power on the carrier board; Install the rpiboot ...",
+    "host_name": "zbotic.in",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/raspberry_pi/comments/1o2e6fr/need_help_identifying_this_carrier_and_getting_sd",
+    "name": "Need help identifying this carrier and getting SD working if",
+    "snippet": "It seems to have two HDMI two USBA 3, two Ethernet , two camera connectors , sdcard , sim card, and a USB c for power . There's also a fan header ...",
+    "host_name": "www.reddit.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://pcbsync.com/best-cm4-carrier-boards",
+    "name": "Best CM4 Carrier Boards in 2026: From Budget to",
+    "snippet": "It includes two USB 2.0, two USB 3.0, and two USB-C ports (power and programming). ... For eMMC-equipped CM4 modules, you'll need to boot the module in ...",
+    "host_name": "pcbsync.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.amazon.com/CM4-IO-BASE-Adapter-Raspberry-Compute-Connectors/dp/B09BRD7PTD",
+    "name": "CM4-IO-BASE-A + USB HDMI Adapter, Mini Base Board for",
+    "snippet": "Mini Base Board for Raspberry Pi Compute Module 4 with More USB and HDMI Connectors . Suitable For Compute Module 4 Lite/ EMMC Series Module Onboard Multiple  ...",
+    "host_name": "www.amazon.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.cytron.io/p-dual-gigabit-ethernet-carrier-board-for-raspberry-pi-cm4-and-kits?srsltid=AfmBOoq1uKbd9CD1pyb1jp-lBnje3DefMbg4BhzGfoR7uEqzJ6Vdl_xn",
+    "name": "Raspberry Pi Compute Module 4 Dual Gigabit Ethernet",
+    "snippet": "CM4 Dual Gigabit Ethernet Carrier Board kit ・ and no eMMC (Lite). it will need an external microSD card . External fan support with fan power connector Power ...",
+    "host_name": "www.cytron.io",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.farnell.com/datasheets/3688382.pdf",
+    "name": "Raspberry Pi Compute Module 4",
+    "snippet": "If the CM4Lite is used, which does not have on- board eMMC , then the eMMC signals are available on the connector so that an external eMMC or SDCARD can be used. 33 pages",
+    "host_name": "www.farnell.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  }
+]

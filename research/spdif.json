@@ -1,0 +1,83 @@
+[
+  {
+    "url": "http://www.pavouk.org/hw/audiosystem20/en_dir9001spdifi2s.html",
+    "name": "DIR9001 S/PDIF to I2S",
+    "snippet": "This module works like S/PDIF decoder with I2S output . It uses DIR9001 circuit which works up to 96kHz sample frequency. Module has optical and electrically ...",
+    "host_name": "www.pavouk.org",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.facebook.com/groups/altrafedelta/posts/3563958250291778",
+    "name": "I2S input to SPDIF coax or opt output interface. Thanks to",
+    "snippet": "I2S , or Inter-IC Sound , is a serial communication protocol for transferring digital audio data between integrated circuits , or chips, within ...",
+    "host_name": "www.facebook.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.aliexpress.com/i/1005012321361742.html",
+    "name": "DLHiFi DIR9001 Fiber Coaxial Receiver Module SPDIF to I2S",
+    "snippet": "Sample rate: 24Bit---96kHz System clock frequency: 256 fs Supply voltage: 5V Input interface: coaxial RCA, optical fiber Output interface: standard IIS, ...",
+    "host_name": "www.aliexpress.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "http://circuit-zone.com/index.php?cat=audio_dac",
+    "name": "Audio DAC",
+    "snippet": "Jun 19, 2018 — It features both S/PDIF and optical inputs connected to DIR9001 low jitter digital receiver. PCM5102 uses a next generation architecture based ... Read more",
+    "host_name": "circuit-zone.com",
+    "rank": 3,
+    "date": "Jun 19, 2018",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.ebay.com/itm/205768467593",
+    "name": "DIR9001 Coaxial Optical Fiber Receiver SPDIF to I2S",
+    "snippet": "DIR9001 Coaxial Optical Fiber Receiver SPDIF to I2S Output 24bit 96khz for DAC ; Condition. New ; Time left. 29d 1h29 days 1 hours ; Quantity. 1 available ; Item ... Read more",
+    "host_name": "www.ebay.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "http://electronics-diy.com/electronic_schematic.php?id=830",
+    "name": "DIR9001 SPDIF Decoder",
+    "snippet": "S/PDIF decoder module is used for converting of this interface to I2S interface , which is usually used on audio DACs. For conversion we can use for example ... Read more",
+    "host_name": "electronics-diy.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://d1.amobbs.com/bbs_upload782111/files_17/ourdev_476472.pdf",
+    "name": "ePanorama.net - Audio Documents SPDIF",
+    "snippet": "Coaxial S/PDIF to optical: Select any S/PDIF coaxial input circuit and connect it's TTL output to one optical S/PDIF (Toslink) output circuit. This circuit is ... 19 pages",
+    "host_name": "d1.amobbs.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://nihtila.com/2020/02/03/spdif-tx-i2s-to-s-pdif-converter",
+    "name": "SPDIF TX – I2S to S/PDIF converter",
+    "snippet": "Feb 3, 2020 — PCM I2S to S/PDIF digital audio converter to convert I2S serial audio data to S/PDIF with coaxial , Toslink , or AES/EBU connection. Read more",
+    "host_name": "nihtila.com",
+    "rank": 7,
+    "date": "Feb 3, 2020",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.diyaudio.com/community/threads/toslink-to-s-pdif.137695",
+    "name": "Toslink to S/PDIF",
+    "snippet": "Jan 31, 2009 — Voltage is limited to 3.6v on DIR9001 according to the manual, so 5V torx part as you've said will not suit then... What could be the solution ... Read more",
+    "host_name": "www.diyaudio.com",
+    "rank": 8,
+    "date": "Jan 31, 2009",
+    "favicon": ""
+  }
+]

@@ -1,0 +1,83 @@
+[
+  {
+    "url": "https://www.esstech.com/products-overview/digital-to-analog-converters/sabre-audiophile-dacs",
+    "name": "SABRE Audiophile DACs",
+    "snippet": "SABRE Two-Channel DACs are designed specifically for low-power applications that still demand audiophile performance. They are recognized for providing ... Read more",
+    "host_name": "www.esstech.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.facebook.com/groups/169663867067754/posts/1338167873550675",
+    "name": "My homemade dac..ESS SABRE32 ES9038Q2M Dual",
+    "snippet": "... IV current-to-voltage conversion circuit . Finally, the entire system is powered by separate, isolated supplies to prevent power supply noise ... Read more",
+    "host_name": "www.facebook.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.diyaudio.com/community/threads/es9038q2m-board.314935/page-93",
+    "name": "ES9038Q2M Board | Page 93",
+    "snippet": "Nov 17, 2017 — The power supply circuit shown in Figure 4 ( opamp AVCC supply) is necessary to provide a clean 3.3V to the analog section of the Sabre DAC .",
+    "host_name": "www.diyaudio.com",
+    "rank": 2,
+    "date": "Nov 17, 2017",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.scribd.com/document/907386236/ES9038Q2M-Datasheet-v1-4",
+    "name": "ES9038Q2M DAC Technical Overview | PDF",
+    "snippet": "The ES9038Q2M is a high-performance 32-bit stereo audio DAC designed for audiophile-grade applications , offering features like a dynamic range of up to 128dB ...",
+    "host_name": "www.scribd.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.analog.com/media/en/technical-documentation/application-notes/80635169an17.pdf",
+    "name": "application note",
+    "snippet": "Fixed internal references are included in many DACs , but they limit the user to non-multiplying, single-polarity reference applications 12 pages",
+    "host_name": "www.analog.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://forum.vegalab.ru/attachment.php?attachmentid=411678&d=1639376662",
+    "name": "Application Note",
+    "snippet": "The opamp used for this circuit is the most critical for optimizing the THD and SNR performance. Use of a poorly designed opamp will degrade both the THD and ...",
+    "host_name": "forum.vegalab.ru",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://6moons.com/audioreviews/wyred4/sabre.pdf",
+    "name": "Technical Details of the Sabre Audio DAC",
+    "snippet": "Dec 19, 2007 — Abstract—The Sabre DAC is an octal audio digital to analog converter each individual channel of which performs with a DNR of >127dB. Read more 5 pages",
+    "host_name": "6moons.com",
+    "rank": 6,
+    "date": "Dec 19, 2007",
+    "favicon": ""
+  },
+  {
+    "url": "https://audioxpress.com/news/ess-technology-introduces-es9069q-es9039q2m-2-channel-digital-to-analog-converters",
+    "name": "ESS Technology Introduces ES9069Q & ES9039Q2M 2-",
+    "snippet": "Mar 21, 2023 — ES9039Q2M SABRE DACs continue to set the benchmark in ultra-low noise digital conversion . Evaluation boards, reference designs , and samples are ...",
+    "host_name": "audioxpress.com",
+    "rank": 7,
+    "date": "Mar 21, 2023",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/BudgetAudiophile/comments/1egoxts/ess_sabre_es9038q2m_vs_es9038k2m_audiolab_vs_arcam",
+    "name": "ESS Sabre ES9038Q2M vs ES9038K2M - Audiolab vs Arcam",
+    "snippet": "Hi Guys - Does anyone know the difference between the 2? I am in market for integrated amplifier and Arcam SA20 and Audiolab 7000A as 2 ...",
+    "host_name": "www.reddit.com",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  }
+]

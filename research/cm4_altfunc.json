@@ -1,0 +1,83 @@
+[
+  {
+    "url": "https://forums.raspberrypi.com/viewtopic.php?t=333213",
+    "name": "GPIO alternate functions documentation",
+    "snippet": "Apr 18, 2022 — Listings of the Alternative Function Assignments are in the SoC datasheets . is used in the Pi 4 , Pi 400 and CM4 .",
+    "host_name": "forums.raspberrypi.com",
+    "rank": 0,
+    "date": "Apr 18, 2022",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.farnell.com/datasheets/3688382.pdf",
+    "name": "Raspberry Pi Compute Module 4",
+    "snippet": "The table below gives a quick overview. Table 1. GPIO Pins. Alternative Function . Assignment. GPIO . Pull. ALT0 . ALT1. ALT2. ALT3. ALT4. ALT5 . GPIO0. High. SDA0. Read more 33 pages",
+    "host_name": "www.farnell.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.pi4j.com/1.3/pins/rpi-cm4.html",
+    "name": "Pin Numbering - Raspberry Pi Compute Module 4 (CM4)",
+    "snippet": "GPIO Pinout (40-pin J8 Header). The diagram below illustrates the GPIO pinout using the Pi4J/WiringPi GPIO numbering scheme. (click here for hi-resolution ... Read more",
+    "host_name": "www.pi4j.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://cdn-shop.adafruit.com/product-files/4787/4787_cm4io-datasheet.pdf",
+    "name": "Raspberry Pi Compute Module 4 IO Board",
+    "snippet": "Oct 17, 2020 — The Raspberry Pi Compute Module 4 IO Board has an onboard USB 2.0 hub. This connects to the CM4 USB 2.0 port. Two ports from the hub are ... Read more 14 pages",
+    "host_name": "cdn-shop.adafruit.com",
+    "rank": 3,
+    "date": "Oct 17, 2020",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.atlantikelektronik.com/datenblatt/raspberry_cm4s-datasheet.pdf",
+    "name": "Raspberry Pi Compute Module 4 SODIMM",
+    "snippet": "May 27, 2022 — The table below gives a quick overview. Table 1. G PIO pins alternative function assignment . GPIO. Pull. ALT0. ALT1. Read more 27 pages",
+    "host_name": "www.atlantikelektronik.com",
+    "rank": 4,
+    "date": "May 27, 2022",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.inelcohunter.co.uk/wp-content/uploads/2021/09/cm4io-datasheet-1-compressed.pdf",
+    "name": "Colophon",
+    "snippet": "The Raspberry Pi Compute Module 4 IO Board has an onboard USB 2.0 hub. This connects to the CM4 USB 2.0 port. Two ports from the hub are connected to a ... Read more",
+    "host_name": "www.inelcohunter.co.uk",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.wevolver.com/article/raspberry-pi-4-pinout-a-comprehensive-guide-for-engineers",
+    "name": "Raspberry Pi 4 Pinout: A Comprehensive Guide for",
+    "snippet": "Dec 5, 2025 — Explore the Raspberry Pi 4 pinout with detailed explanations of GPIO theory, power and ground distribution, communication interfaces (I²C, ...",
+    "host_name": "www.wevolver.com",
+    "rank": 6,
+    "date": "Dec 5, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/raspberry_pi/comments/jl16fp/interfacing_with_computer_module_4",
+    "name": "Interfacing with Computer Module 4 : r/raspberry_pi",
+    "snippet": "The new Compute Module 4 uses two board-to-board connectors that allows for higher speeds.",
+    "host_name": "www.reddit.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://pinout.xyz/pinout/pin40_gpio21",
+    "name": "GPIO 21 (PCM Data-Out)",
+    "snippet": "Physical/Board pin 40; GPIO/BCM pin 21; Wiring Pi pin 29. GPIO 21 is used by PCM to provide a data output signal to an external audio device such as a DAC ... Read more",
+    "host_name": "pinout.xyz",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  }
+]

@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://www.facebook.com/groups/pipico/posts/938207206583822",
+    "name": "Messing with some spare parts and got this ssd1306 oled",
+    "snippet": "Additionally, using pull-up resistors on the I2C lines can help improve signal quality . Some users also found success by switching libraries, ... Read more",
+    "host_name": "www.facebook.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://forum.arduino.cc/t/oled-1-3-sh1106-i2c-display-issue/1232577",
+    "name": "Oled 1.3\" SH1106 I2C display issue",
+    "snippet": "Mar 7, 2024 — Yes I have those 4.7kOhm pullup resistors . I have RESET pin of atmega pulled up to Vcc through 7.5kOhm resistor. The wires from atmega to ... Read more",
+    "host_name": "forum.arduino.cc",
+    "rank": 1,
+    "date": "Mar 7, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://vivonomicon.com/2018/04/20/diy-oled-display-boards-ssd1306-and-ssd1331",
+    "name": "DIY OLED Display Boards: SSD1306 and SSD1331",
+    "snippet": "Apr 20, 2018 — In this post, we will walk through the circuitry (although not the code) required to control these displays using a microcontroller, including ... Read more",
+    "host_name": "vivonomicon.com",
+    "rank": 2,
+    "date": "Apr 20, 2018",
+    "favicon": ""
+  },
+  {
+    "url": "https://controllerstech.com/arduino-sh1106-oled-display-tutorial",
+    "name": "Arduino SH1106 OLED Tutorial: I2C Wiring, Text, Bitmaps",
+    "snippet": "May 4, 2026 — The SH1106 OLED offers a slightly larger display area ( 1.3 ″) compared to the 0.96″ SSD1306 , making it easier to read data and display graphics. Read more",
+    "host_name": "controllerstech.com",
+    "rank": 3,
+    "date": "May 4, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/crkbd/comments/szw12v/are_the_pullup_resistors_required_for_i2c_wires",
+    "name": "Are the pull-up resistors required for I2C wires to OLED?",
+    "snippet": "They're typically on the OLEDs themselves . For OLEDs, you can just use them out of the box and they should work.",
+    "host_name": "www.reddit.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://golemparts.wordpress.com/2017/07/24/ssd1306-1-3-oled-spi-breakout-board",
+    "name": "SSD1306 1.3″ OLED SPI breakout board",
+    "snippet": "Jul 25, 2017 — There's not much to the design , other than a few capacitors and resistors (including a pull - up resistor for the SPI chip select). The top ... Read more",
+    "host_name": "golemparts.wordpress.com",
+    "rank": 5,
+    "date": "Jul 25, 2017",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.amazon.com/DIYmall-Serial-128X64-Display-Arduino/dp/B06XXTHLNW",
+    "name": "DIYmall 1.3\" OLED Module I2C IIC Serial 128X64 White",
+    "snippet": "SH1106 LCD Display Board … 1.3\" White OLED display module . Resolution: 128X64. Supported platforms: for arduino, 51 series, MSP430 series, STIM32 / 2, SCR chips",
+    "host_name": "www.amazon.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.aliexpress.com/item/1005008732523947.html",
+    "name": "‌1.3 Inch I2C OLED Display Module 128x64 SSD1306",
+    "snippet": "Universal 3.3V/5V Compatibility Designed for flexibility, this SSD1306 / SH1106 display supports both 3.3V and 5V systems, making it compatible with a wide range ... Read more",
+    "host_name": "www.aliexpress.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  }
+]

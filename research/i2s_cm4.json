@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://www.eevblog.com/forum/embedded-computing/audio-i2s-and-raspberry",
+    "name": "Audio I2S and Raspberry",
+    "snippet": "May 15, 2021 — Raspberry Pi I2S interface have no MCLK , instead the external chips are supposed to source MCLK from a separate oscillator. s I2S ports can be ...",
+    "host_name": "www.eevblog.com",
+    "rank": 0,
+    "date": "May 15, 2021",
+    "favicon": ""
+  },
+  {
+    "url": "https://forums.raspberrypi.com/viewtopic.php?t=8496&start=1025",
+    "name": "STICKY: The I2S sound thread. [I2S works] - Page 42",
+    "snippet": "Oct 27, 2021 — The BCLK and LRCLK signals provided by Raspberry pi I2S interface . Only MCLK is fed by the crystal clock.",
+    "host_name": "forums.raspberrypi.com",
+    "rank": 1,
+    "date": "Oct 27, 2021",
+    "favicon": ""
+  },
+  {
+    "url": "https://diyelectromusic.com/2021/11/21/raspberry-pi-i2s-audio-interface",
+    "name": "Raspberry Pi I2S Audio Interface",
+    "snippet": "Nov 21, 2021 — The I2S interface is often listed in the various Raspberry Pi datasheets as the PCM pins : PCM_CLK, PCM_FS, PCM_DIN, PCM_DOUT. These need to be ... Read more",
+    "host_name": "diyelectromusic.com",
+    "rank": 2,
+    "date": "Nov 21, 2021",
+    "favicon": ""
+  },
+  {
+    "url": "https://ez.analog.com/dsp/sigmadsp/f/q-a/65427/connect-raspberry-pi-to-adau1701-via-i2s-bus",
+    "name": "Connect Raspberry Pi to ADAU1701 via I2S bus - EngineerZone",
+    "snippet": "Sep 17, 2015 — the pin out connection for the Raspberry Pi is the following: SDATA - pin 40 -> DATA OUT LRCLK - pin 35 -> LRCLK IN/ OUT SCLK - pin 12 -> BCLK ...",
+    "host_name": "ez.analog.com",
+    "rank": 3,
+    "date": "Sep 17, 2015",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/raspberrypi/linux/issues/2212",
+    "name": "I2S audio output driver issues since removal of Pulse Audio",
+    "snippet": "Sep 26, 2017 — Do not remove LRCLK while BCLK is present. Removing LRCLK while BCLK is present can cause unexpected output behavior including a large DC output ... Read more",
+    "host_name": "github.com",
+    "rank": 4,
+    "date": "Sep 26, 2017",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.dimdim.gr/2014/12/the-rasberry-pi-audio-out-through-i2s",
+    "name": "The Raspberry Pi: Audio out through I2S | Dimdim's Blog",
+    "snippet": "Dec 8, 2014 — Use the GPIO pins of the RPi to get direct I2S output . this is the pin out: Raspberry_Pi_B_Plus_I2S_out the RPi does not support MCLK output.",
+    "host_name": "www.dimdim.gr",
+    "rank": 5,
+    "date": "Dec 8, 2014",
+    "favicon": ""
+  },
+  {
+    "url": "https://yedianyang.medium.com/running-uda1334a-i2s-audio-interface-on-raspberry-pi-cf3aed300d6f",
+    "name": "Running UDA1334A I2S Audio Interface on Raspberry Pi",
+    "snippet": "Solve the GPIO problem on Raspberry Pi 4B I. Wiring of the I2S Decoder UDA1334A to. Raspberry Pi #21 Amp BCLK to Raspberry Pi #18 Amp LRCLK to  ...",
+    "host_name": "yedianyang.medium.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://community.volumio.com/t/hifiberry-and-rpi-dac-pinout/65",
+    "name": "HifiBerry and Rpi DAC Pinout",
+    "snippet": "Dec 16, 2013 — Most standard DAC have 4 signals: BCLK , LRCK , DATA, MCLK . Raspberry Pi have only 3 signals, and don't have MCLK which is very big trouble to ... Read more",
+    "host_name": "community.volumio.com",
+    "rank": 7,
+    "date": "Dec 16, 2013",
+    "favicon": ""
+  }
+]

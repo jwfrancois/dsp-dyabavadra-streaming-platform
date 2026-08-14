@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://forums.raspberrypi.com/viewtopic.php?t=397023",
+    "name": "CM4 USB custom board no multiplxer or USB hub",
+    "snippet": "Mar 23, 2026 — Hello Everyone, I've designed a custom board using the Raspberry Pi Compute Module 4. On the official CM4 IO board , the micro USB interface goes through a ...",
+    "host_name": "forums.raspberrypi.com",
+    "rank": 0,
+    "date": "Mar 23, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://219design.com/custom-rpi-cm4-carrier-board",
+    "name": "Custom RPi CM4 Carrier Board",
+    "snippet": "Dec 3, 2024 — To address the challenges of the CM4 IO board's size we've developed a compact, full-featured custom RPi CM4 carrier board .",
+    "host_name": "219design.com",
+    "rank": 1,
+    "date": "Dec 3, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://pcbsync.com/best-cm4-carrier-boards",
+    "name": "Best CM4 Carrier Boards in 2026: From Budget to",
+    "snippet": "Version 2.0 added improved voltage regulation and a microSD slot for Lite modules. It includes two USB 2.0 , two USB 3.0, and two USB -C ports ( power and ...",
+    "host_name": "pcbsync.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://cdn-shop.adafruit.com/product-files/4787/4787_cm4io-datasheet.pdf",
+    "name": "Raspberry Pi Compute Module 4 IO Board",
+    "snippet": "Oct 17, 2020 — The Raspberry Pi Compute Module 4 IO Board has an onboard USB 2.0 hub. This connects to the CM4 USB 2.0 port . to provide VBUS to the USB ... 14 pages",
+    "host_name": "cdn-shop.adafruit.com",
+    "rank": 3,
+    "date": "Oct 17, 2020",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.amazon.com/Raspberry-IO-CM4-Color-Coded-Connectors/dp/B0BJTFYPNS",
+    "name": "for Raspberry Pi Compute Module 4 IO Board,Mini Base",
+    "snippet": "【Mini Base Board For Compute Module 4(Advanced Version)】Suitable For Evaluating The Raspberry Pi CM4 Or Being Integrated Into End Products. · 【Dedicated 40PIN ...",
+    "host_name": "www.amazon.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.pishop.us/product/mini-base-board-c-designed-for-raspberry-pi-compute-module-4/?srsltid=AfmBOorwUzP-tB8JshmTmVnD-U_rDqXxqFQV7GAaWF4opMYmNrdWPIfz",
+    "name": "Mini Base Board (C) Designed for Raspberry Pi Compute",
+    "snippet": "What's On Board · CM4 socket suitable for all variants of Compute Module 4 · Power input/Programming 5V/2.5A power supply, or used for eMMC burning · LCD Port",
+    "host_name": "www.pishop.us",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://store.rakwireless.com/products/rak-compute-module-4-cm4-carrier-board-rakr314?srsltid=AfmBOopZufBD4Co1_TZeConwZv_IYpwUphfI09foNHA1cETPpKVdv2gV",
+    "name": "RAK Compute Module 4 (CM4) Carrier Board RAKR314",
+    "snippet": "The RAKR314 carrier board is designed specifically for Raspberry Pi Compute Module 4 (CM4) With two USB 2.0 ports , two USB 3.0 ports, and two USB-type C ports",
+    "host_name": "store.rakwireless.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://edatec.cn/storage/file/20240529/992b848213e4d80378b42f5006e2f1ce.pdf",
+    "name": "CM4 IO Case For Raspberry Pi Compute Module 4",
+    "snippet": "Sep 19, 2022 — The Raspberry Pi Compute Module 4 IO Board has an on- board USB 2.0 hub. This connects to the CM4 USB 2.0 port . Two ports from the hub are ... 20 pages",
+    "host_name": "edatec.cn",
+    "rank": 7,
+    "date": "Sep 19, 2022",
+    "favicon": ""
+  }
+]

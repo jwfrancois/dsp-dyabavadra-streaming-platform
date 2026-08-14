@@ -1,0 +1,83 @@
+[
+  {
+    "url": "https://store.sure-electronics.com/product/744",
+    "name": "AA-AB41133 WM8804 S/PDIF and IIS/I2S Audio Signal",
+    "snippet": "This is a product that can convert S/PDIF and I2S signal to each other. $12.91 for new customer 30 in stock Buy Add To Cart",
+    "host_name": "store.sure-electronics.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.diyaudio.com/community/threads/i2s-to-s-pdif.219879",
+    "name": "I2S to S/PDIF",
+    "snippet": "Sep 17, 2012 — I'm not having luck getting the WM8804 to sync up and haven't found any examples of folks using a W8804 to do I2S to S/PDIF conversion. What am ... Read more",
+    "host_name": "www.diyaudio.com",
+    "rank": 1,
+    "date": "Sep 17, 2012",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.cirrus.com/products/wm8804",
+    "name": "WM8804",
+    "snippet": "The WM8804 is a high performance consumer mode S/PDIF transceiver with support for 1 received channel and 1 transmitted channel. modes: I2S , Left, Right",
+    "host_name": "www.cirrus.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://longview.be/using-the-wm8804-spdif-transceiver.html",
+    "name": "Using the WM8804 S/PDIF Transceiver in Full-Duplex Mode",
+    "snippet": "Aug 18, 2024 — The WM8804 is a now obsolete but still available S/PDIF transceiver that is kind of mid but can be made to work ok for some use cases.",
+    "host_name": "longview.be",
+    "rank": 3,
+    "date": "Aug 18, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "http://www.twistedpearaudio.com/forum/posts/t1172-Can-the-WM8804-on-this-board-be-used-for-I2S---SPDIF-instead-of-the-other-way-around",
+    "name": "Can the WM8804 on this board be used for I2S -> SPDIF",
+    "snippet": "May 27, 2010 — on this board be used for I2S -> SPDIF ・ $200.00 WM8804 evaluation board ・ $76.00 just for the chip ) Check out the user manual for details:",
+    "host_name": "www.twistedpearaudio.com",
+    "rank": 4,
+    "date": "May 27, 2010",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.ebay.com/itm/172956359909",
+    "name": "HIFI PIFI Sound Card I2S SPDIF Optical Fiber Module",
+    "snippet": "Optical Fiber Module WM8804G for Raspberry pi … 10+ available Buy 1$14.21/ea$14.21 each. With it you can get rid of PC power, turn off slow, power noise and so ...",
+    "host_name": "www.ebay.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.mouser.com/datasheet/2/76/WM8804_v4.5-1141948.pdf?srsltid=AfmBOoq2CcJgtCp0o61ChMgoeWUN7NRNuVnK7jr3InyvE86NpuaUZ1cu",
+    "name": "WM8804",
+    "snippet": "The transmitter generates S/PDIF frames where audio data may be sourced from the S/PDIF receiver or the digital audio interface. Timing for the S/PDIF ... Read more 67 pages",
+    "host_name": "www.mouser.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://forums.raspberrypi.com/viewtopic.php?t=313568",
+    "name": "CM4 I2S: use DAC (WM8741) and S/PDIF (WM8804)",
+    "snippet": "Jun 11, 2021 — I am currently planning to build a small \"music terminal\" with the CM4. The terminal itself will have small stereo speakers and an S/PDIF output ... Read more",
+    "host_name": "forums.raspberrypi.com",
+    "rank": 7,
+    "date": "Jun 11, 2021",
+    "favicon": ""
+  },
+  {
+    "url": "https://community.volumio.com/t/how-important-is-the-quality-of-a-digital-sound-card-in-a-i2s-coaxial-configuration/55104",
+    "name": "How important is the quality of a digital sound card in a i2s /",
+    "snippet": "Mar 28, 2022 — I have a Raspberry Pi 3b+ with a Kuman SC07 digi card. The card is a sort of HiFiBerry DAC+ clone, equipped with a Wolfson WM8804G chip.",
+    "host_name": "community.volumio.com",
+    "rank": 8,
+    "date": "Mar 28, 2022",
+    "favicon": ""
+  }
+]

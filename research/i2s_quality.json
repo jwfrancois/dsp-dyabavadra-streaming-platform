@@ -1,0 +1,83 @@
+[
+  {
+    "url": "https://www.dimdim.gr/2014/12/the-rasberry-pi-audio-out-through-i2s",
+    "name": "The Raspberry Pi: Audio out through I2S | Dimdim's Blog",
+    "snippet": "Dec 8, 2014 — The Raspberry Pi can work a a clock slave completely eliminating the clock jitter issue . The easiest way to do this is using an HiFiBerry DAC+ ...",
+    "host_name": "www.dimdim.gr",
+    "rank": 0,
+    "date": "Dec 8, 2014",
+    "favicon": ""
+  },
+  {
+    "url": "https://community.volumio.com/t/sound-quality-limitations-of-raspberry-pi-i2s-dacs/2228",
+    "name": "Sound quality limitations of Raspberry Pi + I2S DACs",
+    "snippet": "Jan 7, 2015 — Another issue mentioned is that these I2S dacs are tied to the internal clock and therefore have a lot of jitter , especially at 44.1khz (which ... Read more",
+    "host_name": "community.volumio.com",
+    "rank": 1,
+    "date": "Jan 7, 2015",
+    "favicon": ""
+  },
+  {
+    "url": "https://forums.raspberrypi.com/viewtopic.php?t=83768",
+    "name": "FIFO to solve I2S jitter. Any solution?",
+    "snippet": "Aug 5, 2014 — I2S output on the RPi lacks timing and that is a huge problem to even think of HIFI quality with a I2S DAC. USB cards sounds terrible with RPi ...",
+    "host_name": "forums.raspberrypi.com",
+    "rank": 2,
+    "date": "Aug 5, 2014",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.diyaudio.com/community/threads/raspberry-pi-4-sound-issues.373129/page-2",
+    "name": "raspberry pi 4 sound issues ! | Page 2",
+    "snippet": "Jun 3, 2021 — Most sound problems with Hat's come from jitter due to a bad clock circuit. The Pi itself has a terrible clock circuit, that and the fact that ...",
+    "host_name": "www.diyaudio.com",
+    "rank": 3,
+    "date": "Jun 3, 2021",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/raspberrypi/linux/issues/1321",
+    "name": "Possible I2S master/slave bug in RPi3 · Issue #1321",
+    "snippet": "Mar 3, 2016 — Sometimes the music can be heard with distortion, other times there is too much distortion to hear any music . try to send an I2S clock signal. ...",
+    "host_name": "github.com",
+    "rank": 4,
+    "date": "Mar 3, 2016",
+    "favicon": ""
+  },
+  {
+    "url": "http://dangerousprototypes.com/forum/index.php?topic=6089.0",
+    "name": "I2S DAC board for raspberry pi and beaglebone black",
+    "snippet": "Jan 3, 2014 — I looked extracting audio data from HDMI, while 3rd party boxes do this they generally create SPDIF streams which have worse jitter problems ... Read more",
+    "host_name": "dangerousprototypes.com",
+    "rank": 5,
+    "date": "Jan 3, 2014",
+    "favicon": ""
+  },
+  {
+    "url": "https://e2e.ti.com/support/audio-group/audio/f/audio-forum/1328087/pcm1865-raspberry-pi-cm4",
+    "name": "PCM1865: Raspberry Pi CM4 - Audio forum - TI E2E",
+    "snippet": "Feb 22, 2024 — Also double check all I2S clocks including the data output to see if the problem is in software or hardware.",
+    "host_name": "e2e.ti.com",
+    "rank": 6,
+    "date": "Feb 22, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.facebook.com/groups/666904327315858/posts/1419905845349032",
+    "name": "Can replacing Raspberry Pi with Red improve audio quality?",
+    "snippet": "Currently running Roon with a Raspberry Pi endpoint into my Spring 3 DAC via USB. Thinking of switching out the Pi for a Red. Have any of you done this? ...",
+    "host_name": "www.facebook.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.himmelbauer-it.at/comparing-the-i2s-capabilities-of-the-rpi-and-odroid-c1",
+    "name": "Comparing the I2S Capabilities of the RPi and Odroid C1+",
+    "snippet": "Dec 5, 2021 — One can see that the signal alternates to create the needed clock speed which unfortunately leads to a fixed jitter of 2.5ns. A look at the ... Read more",
+    "host_name": "www.himmelbauer-it.at",
+    "rank": 8,
+    "date": "Dec 5, 2021",
+    "favicon": ""
+  }
+]

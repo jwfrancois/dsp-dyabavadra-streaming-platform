@@ -1,0 +1,83 @@
+[
+  {
+    "url": "https://forums.raspberrypi.com/viewtopic.php?t=343007",
+    "name": "PCM_CLK, PCM_FS on GPIO 18,19 of RPi4 B",
+    "snippet": "Nov 16, 2022 — Hi, I am using Raspberry Pi 4 Model B to get I2S signals from GPIO pins - 18,19,20,21. I have configured /boot/config.txt by enabling the below options:",
+    "host_name": "forums.raspberrypi.com",
+    "rank": 0,
+    "date": "Nov 16, 2022",
+    "favicon": ""
+  },
+  {
+    "url": "https://pinout.xyz/pinout/pin38_gpio20",
+    "name": "GPIO 20 (PCM Data-In)",
+    "snippet": "GPIO 18 (PCM. GPIO 20 is used by PCM to input data from an I2S audio device, such as a microphone.",
+    "host_name": "pinout.xyz",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://raspberrypi.stackexchange.com/questions/47799/i%C2%B2s-pins-on-raspberry-pi-3",
+    "name": "gpio - I²S Pins on Raspberry Pi 3",
+    "snippet": "May 23, 2016 — I looked at the schematics of the Raspberry Pi 3 here but couldn't figure out which Pins are what, to use the I²S Interface. Which Pin-Numbers are for: ...",
+    "host_name": "raspberrypi.stackexchange.com",
+    "rank": 2,
+    "date": "May 23, 2016",
+    "favicon": ""
+  },
+  {
+    "url": "https://doc.embedfire.com/linux/imx6/pinout/en/pin12_gpio18.html",
+    "name": "GPIO 18 (PCM Clock) at Raspberry Pi GPIO Pinout",
+    "snippet": "Mar 29, 2021 — GPIO 18 is used by PCM to provide a clock signal to an external audio device such as a DAC chip. The PWM0 output of GPIO 18 is particularly ...",
+    "host_name": "doc.embedfire.com",
+    "rank": 3,
+    "date": "Mar 29, 2021",
+    "favicon": ""
+  },
+  {
+    "url": "https://randomnerdtutorials.com/raspberry-pi-pinout-gpios",
+    "name": "Raspberry Pi Pinout Guide: How to use the",
+    "snippet": "Apr 14, 2023 — The Raspberry Pi 4 Model B has a double row of 40 GPIOs. GPIO 18 corresponds to pin 12. GPIO 20 PCM DIN ( I2S ) has 4 hardware PWM pins : GPIO 18 , ...",
+    "host_name": "randomnerdtutorials.com",
+    "rank": 4,
+    "date": "Apr 14, 2023",
+    "favicon": ""
+  },
+  {
+    "url": "https://opensystools.com/cheat-sheets/raspberry-pi-gpio",
+    "name": "Raspberry Pi GPIO Pinout - Open Sys Tools",
+    "snippet": "Raspberry Pi GPIO pinout diagram with pin numbers, functions, I2C, SPI, UART, and PWM references. for Raspberry Pi 1 Model B+ and all later models. GPIO18 1 ...",
+    "host_name": "opensystools.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.qnx.com/developers/docs/BSP8.0/com.qnx.doc.bsp_raspberrypi.bcm2711.rpi4_8.0/topic/gpio-bcm2711.html",
+    "name": "gpio-bcm2711",
+    "snippet": "GPIO utility for BCM2711 SOC . GPIO is a comma-separated list of pin numbers or ranges (without spaces), e.g. 4 or 18-21 or 7,9-11.",
+    "host_name": "www.qnx.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.wevolver.com/article/raspberry-pi-4-pinout-a-comprehensive-guide-for-engineers",
+    "name": "Raspberry Pi 4 Pinout: A Comprehensive Guide for",
+    "snippet": "Dec 5, 2025 — The Raspberry Pi 4 makes twenty‐eight BCM2711 GPIOs available via a 40‐pin header, including 26 configurable I/O pins plus dedicated power and ...",
+    "host_name": "www.wevolver.com",
+    "rank": 7,
+    "date": "Dec 5, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/raspberry_pi/comments/1etl3e0/share_gpio_18_pcm_clk_with_two_devices",
+    "name": "Share GPIO 18 PCM CLK with two devices? : r/raspberry_pi",
+    "snippet": "Hey Gang, I'm building a cyberdeck and looking at using an Adafruit MAX98357 audio amp & a UPS. The issue I'm concerned with is they BOTH want to use ...",
+    "host_name": "www.reddit.com",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  }
+]
