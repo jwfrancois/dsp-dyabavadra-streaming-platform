@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { internetRadioStations, searchRadioStations, getRadioGenres, getRadioCountries, getFavoriteRadioStations, toggleRadioFavorite } from '@/lib/radio-stations';
-import type { RadioStation } from '@/lib/radio-stations';
+import { internetRadioStations, searchRadioStations, getRadioGenres, getRadioCountries, getRadioSources, getFavoriteRadioStations, toggleRadioFavorite } from '@/lib/radio-stations';
+import type { RadioStation, RadioSource } from '@/lib/radio-stations';
 import { usePlayerStore } from '@/store/player';
 import { useUIStore } from '@/store/ui';
 import { cn } from '@/lib/utils';
@@ -303,6 +303,20 @@ function StationListItem({
             <Signal className="w-2.5 h-2.5" />
             {station.codec} {station.bitrate}kbps
           </span>
+          {station.source && (
+            <Badge
+              variant="outline"
+              className={cn(
+                'text-[9px] px-1.5 py-0',
+                station.source === 'iHeartRadio' && 'border-rose-500/40 text-rose-400',
+                station.source === 'Local FM' && 'border-sky-500/40 text-sky-400',
+                station.source === 'SomaFM' && 'border-orange-500/40 text-orange-400',
+                station.source === 'Public Radio' && 'border-emerald-500/40 text-emerald-400',
+              )}
+            >
+              {station.source}
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -356,6 +370,7 @@ export function RadioView() {
   const [localSearch, setLocalSearch] = useState('');
   const [genreFilter, setGenreFilter] = useState('all');
   const [countryFilter, setCountryFilter] = useState('all');
+  const [sourceFilter, setSourceFilter] = useState('all');
   const [sortOption, setSortOption] = useState<SortOption>('az');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -371,11 +386,12 @@ export function RadioView() {
   const allGenres = useMemo(() => getRadioGenres(), []);
   const topGenres = useMemo(() => allGenres.slice(0, 20), [allGenres]);
   const allCountries = useMemo(() => getRadioCountries(), []);
+  const allSources = useMemo(() => getRadioSources(), []);
   const totalStationCount = internetRadioStations.length;
 
-  // SomaFM stations
+  // SomaFM stations — show only the original 24 authentic SomaFM channels
   const somaFMStations = useMemo(
-    () => internetRadioStations.filter(s => s.id.startsWith('sfm-')),
+    () => internetRadioStations.filter(s => s.source === 'SomaFM' && parseInt(s.id.replace('radio-', '')) <= 24),
     []
   );
 
@@ -403,6 +419,11 @@ export function RadioView() {
       result = result.filter(s => s.countryCode === countryFilter);
     }
 
+    // Source filter
+    if (sourceFilter !== 'all') {
+      result = result.filter(s => s.source === sourceFilter);
+    }
+
     // Favorites filter
     if (showFavoritesOnly) {
       const favStations = getFavoriteRadioStations();
@@ -414,7 +435,7 @@ export function RadioView() {
     result = sortStations(result, sortOption);
 
     return result;
-  }, [activeSearch, genreFilter, countryFilter, sortOption, showFavoritesOnly, favoritesVersion]);
+  }, [activeSearch, genreFilter, countryFilter, sourceFilter, sortOption, showFavoritesOnly, favoritesVersion]);
 
   // Paginated visible stations
   const visibleStations = useMemo(
@@ -467,6 +488,11 @@ export function RadioView() {
     setVisibleCount(PAGE_SIZE);
   }, []);
 
+  const handleSourceFilterChange = useCallback((val: string) => {
+    setSourceFilter(val);
+    setVisibleCount(PAGE_SIZE);
+  }, []);
+
 
 
   // Currently playing station info
@@ -490,7 +516,7 @@ export function RadioView() {
                 {totalStationCount} stations
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground">1000+ stations from around the world</p>
+            <p className="text-sm text-muted-foreground">Stations from SomaFM, iHeartRadio, Local FM and more</p>
           </div>
           {/* Currently playing indicator in header */}
           {currentlyPlayingStation && isPlaying && (
@@ -588,6 +614,19 @@ export function RadioView() {
             </SelectContent>
           </Select>
 
+          {/* Source Dropdown */}
+          <Select value={sourceFilter} onValueChange={handleSourceFilterChange}>
+            <SelectTrigger className="w-[170px] h-9">
+              <SelectValue placeholder="All Sources" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sources</SelectItem>
+              {allSources.map((src) => (
+                <SelectItem key={src} value={src}>{src}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           {/* Sort Dropdown */}
           <Select value={sortOption} onValueChange={handleSortChange}>
             <SelectTrigger className="w-[150px] h-9">
@@ -638,7 +677,7 @@ export function RadioView() {
         </div>
 
         {/* ═══ SOMAFM FEATURED SECTION ═══ */}
-        {!showFavoritesOnly && !activeSearch.trim() && genreFilter === 'all' && countryFilter === 'all' && (
+        {!showFavoritesOnly && !activeSearch.trim() && genreFilter === 'all' && countryFilter === 'all' && sourceFilter === 'all' && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Waves className="w-4 h-4 text-orange-400" />
