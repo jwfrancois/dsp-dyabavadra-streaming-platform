@@ -245,6 +245,56 @@ export function SignalPathView() {
   const outputStep = steps[steps.length - 1];
   const totalLatency = steps.reduce((sum, s) => sum + (s.latencyMs || 0), 0);
 
+  // Derive active zone & endpoint from DSP store zone config
+  const zoneConfig = dspStore.getZoneConfig(activeZoneId_actual);
+  const activeZone = useMemo(() => ({
+    id: activeZoneId_actual,
+    name: activeZoneId_actual === 'zone-1' ? 'Main Listening Room' :
+           activeZoneId_actual === 'zone-2' ? 'Study' :
+           activeZoneId_actual === 'zone-3' ? 'Kitchen' :
+           `Zone ${activeZoneId_actual}`,
+    outputFormat: outputStep?.format || 'PCM',
+    sampleRate: outputStep?.sampleRate || 44100,
+    bitDepth: outputStep?.bitDepth || 32,
+    dspEnabled: !!(zoneConfig.eq?.some(b => b.enabled) || zoneConfig.roomCorrection?.enabled || zoneConfig.upsampling?.enabled || zoneConfig.loudness?.enabled),
+    dspChain: [
+      ...(zoneConfig.eq?.some(b => b.enabled) ? ['Parametric EQ'] : []),
+      ...(zoneConfig.roomCorrection?.enabled ? ['Room Correction'] : []),
+      ...(zoneConfig.upsampling?.enabled ? ['Upsampling'] : []),
+      ...(zoneConfig.loudness?.enabled ? ['Loudness'] : []),
+      ...(zoneConfig.dither?.enabled ? ['Dither'] : []),
+    ],
+    volume: 75,
+    volumeMode: zoneConfig.volumeLimit ? 'dsp' as const : 'hardware' as const,
+    endpoints: [],
+    isGroup: false,
+    isPlaying: false,
+    isMuted: false,
+    isOnline: true,
+  }), [activeZoneId_actual, zoneConfig, outputStep]);
+
+  const endpoint = useMemo(() => ({
+    id: `${activeZoneId_actual}-ep-1`,
+    name: activeZoneId_actual === 'zone-1' ? 'USB DAC (Main)' :
+           activeZoneId_actual === 'zone-2' ? 'Integrated DAC' : 'Default Output',
+    type: 'dedicated-hardware' as const,
+    status: 'online' as const,
+    dac: activeZoneId_actual === 'zone-1' ? 'ESS Sabre ES9038Q2M' :
+          activeZoneId_actual === 'zone-2' ? 'AKM AK4493' : 'Built-in DAC',
+    maxSampleRate: 384000,
+    maxBitDepth: 32,
+    supportsDSD: true,
+    supportsMQA: activeZoneId_actual === 'zone-1',
+    supportsDSD256: true,
+    supportsDoP: true,
+    firmware: 'v2.1.4',
+    ipAddress: activeZoneId_actual === 'zone-1' ? '192.168.1.42' : undefined,
+    latencyMs: 2.5,
+    clockSource: 'usb' as const,
+    hasMasterClock: activeZoneId_actual === 'zone-1',
+    protocol: 'dsp-native' as const,
+  }), [activeZoneId_actual]);
+
   if (!currentTrack || steps.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
