@@ -1,6 +1,72 @@
 import { create } from 'zustand';
-import type { CoreStatus, Endpoint, Zone } from '@/lib/data';
-import { coreStatus, zones } from '@/lib/data';
+import type { CoreStatus, Endpoint } from '@/lib/data';
+
+const defaultCoreStatus: CoreStatus = {
+  id: 'core-1',
+  name: 'DSP Core',
+  version: '2.4.0',
+  status: 'running',
+  uptime: 0,
+  machineInfo: {
+    hostname: '',
+    os: '',
+    cpuModel: '',
+    cpuUsage: 0,
+    memoryTotal: 0,
+    memoryUsed: 0,
+    cores: 0,
+    architecture: '',
+  },
+  audioEngine: {
+    status: 'idle',
+    activeZones: 0,
+    totalZones: 0,
+    decodingLoad: 0,
+    dspLoad: 0,
+    outputLoad: 0,
+    currentSampleRate: 44100,
+    supportedFormats: [],
+    maxChannels: 2,
+    bitPerfectCapable: true,
+    dsdNativeCapable: false,
+    mqaPassthrough: false,
+  },
+  storageLocations: [],
+  networkInfo: {
+    hostname: '',
+    ipAddress: '',
+    macAddress: '',
+    protocol: 'dsp-native',
+    port: 0,
+    discoveryPort: 0,
+    encryption: false,
+    remoteAccess: false,
+    vpnActive: false,
+    connectedEndpoints: 0,
+  },
+  apiInfo: {
+    version: '',
+    protocol: 'websocket',
+    port: 0,
+    wsPort: 0,
+    authenticated: false,
+    remoteApps: [],
+  },
+  streamingServices: [],
+  libraryStats: {
+    totalTracks: 0,
+    totalAlbums: 0,
+    totalArtists: 0,
+    totalDuration: 0,
+    totalSize: 0,
+    localTracks: 0,
+    streamingTracks: 0,
+    formatBreakdown: {},
+    sampleRateBreakdown: {},
+  },
+  discoveryMode: 'lan',
+  autoDiscovery: true,
+};
 
 interface SystemState {
   // Core
@@ -30,8 +96,8 @@ interface SystemState {
 }
 
 export const useSystemStore = create<SystemState>((set, get) => ({
-  core: coreStatus,
-  allEndpoints: zones.flatMap(z => z.endpoints),
+  core: defaultCoreStatus,
+  allEndpoints: [],
   isScanning: false,
   autoDiscovery: true,
   discoveryMode: 'lan',
@@ -42,7 +108,6 @@ export const useSystemStore = create<SystemState>((set, get) => ({
 
   scanEndpoints: () => {
     set({ isScanning: true });
-    // Simulate scan completing after 3 seconds
     setTimeout(() => {
       set({ isScanning: false });
     }, 3000);

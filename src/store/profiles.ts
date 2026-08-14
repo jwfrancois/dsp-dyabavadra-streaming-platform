@@ -1,21 +1,20 @@
 import { create } from 'zustand';
 import type { UserProfile } from '@/lib/data';
-import { userProfiles } from '@/lib/data';
 
 interface ProfilesState {
   profiles: UserProfile[];
   activeProfileId: string;
 
   switchProfile: (profileId: string) => void;
-  getActiveProfile: () => UserProfile;
+  getActiveProfile: () => UserProfile | undefined;
   toggleLoveTrack: (trackId: string) => void;
   addRecentlyPlayed: (trackId: string) => void;
   isTrackLoved: (trackId: string) => boolean;
 }
 
 export const useProfilesStore = create<ProfilesState>((set, get) => ({
-  profiles: userProfiles,
-  activeProfileId: 'profile-1',
+  profiles: [],
+  activeProfileId: '',
 
   switchProfile: (profileId) => set({ activeProfileId: profileId }),
 
@@ -45,6 +44,6 @@ export const useProfilesStore = create<ProfilesState>((set, get) => ({
 
   isTrackLoved: (trackId) => {
     const profile = get().getActiveProfile();
-    return profile.lovedTrackIds.includes(trackId);
+    return profile?.lovedTrackIds.includes(trackId) || false;
   },
 }));

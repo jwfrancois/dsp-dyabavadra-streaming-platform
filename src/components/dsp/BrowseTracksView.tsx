@@ -4,7 +4,7 @@ import React from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
 import { useLocalLibraryStore, type LocalTrack } from '@/store/local-library';
-import { tracks, formatDuration, formatSampleRate, formatFileSize, getCoverGradient, type Track } from '@/lib/data';
+import { formatDuration, formatSampleRate, formatFileSize, getCoverGradient, type Track } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

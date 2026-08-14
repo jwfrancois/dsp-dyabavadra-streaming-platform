@@ -9,7 +9,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { zones } from '@/lib/data';
 import {
   Home, Library, Search, Speaker, Play, Pause, SkipForward, SkipBack,
   Shuffle, Repeat, Repeat1, Volume2, VolumeX, Volume1, ChevronLeft,
@@ -62,7 +61,7 @@ const libraryItems = [
 export function Sidebar() {
   const { currentView, navigate, sidebarOpen, setSidebarOpen } = useUIStore();
   const { isPlaying, currentTrack, activeZoneId, togglePlay } = usePlayerStore();
-  const activeZone = zones.find(z => z.id === activeZoneId);
+  const activeZone = undefined as any;
   const { getTotalNewEpisodes } = usePodcastStore();
   const newEpisodes = getTotalNewEpisodes();
 
@@ -270,19 +269,7 @@ export function Sidebar() {
                 </Button>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {zones.filter(z => z.isPlaying).map(zone => (
-                  <Badge
-                    key={zone.id}
-                    variant={zone.id === activeZoneId ? 'default' : 'secondary'}
-                    className={`text-[10px] cursor-pointer ${
-                      zone.id === activeZoneId ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                    }`}
-                    onClick={() => usePlayerStore.getState().setActiveZone(zone.id)}
-                  >
-                    <Speaker className="w-2.5 h-2.5 mr-1" />
-                    {zone.name}
-                  </Badge>
-                ))}
+                {/* No zones configured */}
               </div>
             </div>
           </>

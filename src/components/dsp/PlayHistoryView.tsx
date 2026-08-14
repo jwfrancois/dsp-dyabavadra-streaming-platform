@@ -5,7 +5,7 @@ import { useHistoryStore } from '@/store/history';
 import { usePlayerStore } from '@/store/player';
 import { useUIStore } from '@/store/ui';
 import { useProfilesStore } from '@/store/profiles';
-import { getTrackById, formatDuration, getCoverGradient, zones, playHistory } from '@/lib/data';
+import { formatDuration, getCoverGradient } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -88,7 +88,7 @@ function getSourceBadge(source: 'local' | 'tidal' | 'qobuz' | 'radio') {
 }
 
 function getZoneById(zoneId: string) {
-  return zones.find((z) => z.id === zoneId);
+  return undefined;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -133,7 +133,7 @@ export function PlayHistoryView() {
     const genrePlayCount: Record<string, number> = {};
 
     for (const entry of filteredEntries) {
-      const track = getTrackById(entry.trackId);
+      const track = undefined as any;
       if (track) {
         totalListeningTime += entry.completed ? track.duration : track.duration / 2;
         artistPlayCount[track.artistName] = (artistPlayCount[track.artistName] || 0) + 1;
@@ -160,7 +160,7 @@ export function PlayHistoryView() {
   };
 
   const handleReplayTrack = (trackId: string) => {
-    const track = getTrackById(trackId);
+    const track = undefined as any;
     if (track) play(track);
   };
 
@@ -355,7 +355,7 @@ export function PlayHistoryView() {
                   {/* Entries */}
                   <div className="space-y-1">
                     {group.entries.map((entry) => {
-                      const track = getTrackById(entry.trackId);
+                      const track = undefined as any;
                       if (!track) return null;
 
                       const zone = getZoneById(entry.zoneId);

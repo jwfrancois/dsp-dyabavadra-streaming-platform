@@ -4,12 +4,8 @@ import React from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
 import {
-  genres, artists, albums, tracks,
-  getArtistById, getAlbumById, getCoverGradient, formatDuration,
+  getCoverGradient, formatDuration,
 } from '@/lib/data';
-import {
-  getGenreDetailByName, editorialCollections,
-} from '@/lib/metadata';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { usePlayerStore } from '@/store/player';
 import { useUIStore } from '@/store/ui';
-import { zones, getTrackById, formatDuration, getCoverGradient } from '@/lib/data';
+import { formatDuration, getCoverGradient } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,25 +33,14 @@ export function ZonePicker() {
   const { activeZoneId, setActiveZone, play, pause, isPlaying } = usePlayerStore();
   const { discoveryMode, remoteAccessEnabled } = useSystemStore();
 
-  const [zoneVolumes, setZoneVolumes] = useState<Record<string, number>>(() => {
-    const vols: Record<string, number> = {};
-    zones.forEach(z => { vols[z.id] = z.volume; });
-    return vols;
-  });
-  const [zoneMuted, setZoneMuted] = useState<Record<string, boolean>>(() => {
-    const mutes: Record<string, boolean> = {};
-    zones.forEach(z => { mutes[z.id] = z.isMuted; });
-    return mutes;
-  });
-  const [zonePlaying, setZonePlaying] = useState<Record<string, boolean>>(() => {
-    const playing: Record<string, boolean> = {};
-    zones.forEach(z => { playing[z.id] = z.isPlaying; });
-    return playing;
-  });
+  const [zoneVolumes, setZoneVolumes] = useState<Record<string, number>>({});
+  const [zoneMuted, setZoneMuted] = useState<Record<string, boolean>>({});
+  const [zonePlaying, setZonePlaying] = useState<Record<string, boolean>>({});
   const [isLinked, setIsLinked] = useState(false);
 
   if (!zonePickerOpen) return null;
 
+  const zonesList: any[] = [];
   const isOffline = discoveryMode === 'lan' && !remoteAccessEnabled;
 
   const getVolumeIcon = (zoneId: string) => {
@@ -122,9 +111,13 @@ export function ZonePicker() {
 
       {/* Zone List */}
       <div className="max-h-80 overflow-y-auto">
-        {zones.map((zone, idx) => {
+        {zonesList.length === 0 ? (
+          <div className="p-6 text-center text-muted-foreground text-sm">
+            No zones configured
+          </div>
+        ) : zonesList.map((zone: any, idx: number) => {
           const isActive = zone.id === activeZoneId;
-          const track = zone.currentTrackId ? getTrackById(zone.currentTrackId) : null;
+          const track = undefined as any;
           const isZoning = zonePlaying[zone.id];
           const vol = zoneVolumes[zone.id] ?? 0;
           const muted = zoneMuted[zone.id];

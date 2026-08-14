@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { usePlayerStore } from '@/store/player';
-import { zones, getTrackById, formatSampleRate, getCoverGradient } from '@/lib/data';
+import { formatSampleRate, getCoverGradient } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,20 +17,29 @@ import {
 export function ZonesView() {
   const { activeZoneId, setActiveZone, isPlaying } = usePlayerStore();
 
+  const zonesList: any[] = [];
+
   return (
     <ScrollArea className="h-full">
       <div className="p-6 max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Zones</h1>
           <Badge variant="secondary" className="text-xs">
-            {zones.filter(z => z.isPlaying).length} active
+            {zonesList.filter((z: any) => z.isPlaying).length} active
           </Badge>
         </div>
 
+        {zonesList.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+            <Speaker className="w-16 h-16 mb-4 opacity-30" />
+            <p className="text-lg font-medium">No zones configured</p>
+            <p className="text-sm">Add output endpoints to create playback zones.</p>
+          </div>
+        ) : (
         <div className="grid md:grid-cols-2 gap-4">
-          {zones.map(zone => {
+          {zonesList.map((zone: any) => {
             const isActive = zone.id === activeZoneId;
-            const currentTrack = zone.currentTrackId ? getTrackById(zone.currentTrackId) : null;
+            const currentTrack = zone.currentTrackId ? undefined : null;
 
             return (
               <Card
@@ -155,6 +164,7 @@ export function ZonesView() {
             );
           })}
         </div>
+        )}
       </div>
     </ScrollArea>
   );

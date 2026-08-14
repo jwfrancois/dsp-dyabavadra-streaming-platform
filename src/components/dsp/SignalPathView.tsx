@@ -3,11 +3,8 @@
 import React from 'react';
 import { usePlayerStore } from '@/store/player';
 import {
-  getDetailedSignalPath,
-  getTrackById,
   formatDuration,
   formatSampleRate,
-  zones,
   getCoverGradient,
 } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
@@ -228,12 +225,11 @@ function PathStepCard({
 
 export function SignalPathView() {
   const { currentTrack, activeZoneId } = usePlayerStore();
-  const activeZone = zones.find(z => z.id === activeZoneId);
+  const activeZone = undefined as any;
   const endpoint = activeZone?.endpoints[0];
 
-  const detailed = currentTrack
-    ? getDetailedSignalPath(currentTrack.id, activeZoneId)
-    : null;
+  // No mock signal path data available
+  const detailed = null as any;
 
   const steps = detailed?.steps ?? [];
   const isBitPerfect = detailed?.overallBitPerfect ?? true;

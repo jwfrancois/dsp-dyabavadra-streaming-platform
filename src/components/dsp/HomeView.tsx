@@ -3,42 +3,57 @@
 import React from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
-import { artists, albums, tracks, playlists, genres } from '@/lib/data';
 import { formatDuration, getCoverGradient } from '@/lib/data';
-import { editorialCollections, radioStations, genreDetails } from '@/lib/metadata';
+import { radioStations } from '@/lib/radio-stations';
 import { useDiscoveryStore } from '@/store/discovery';
+import { useLocalLibraryStore } from '@/store/local-library';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CoverArt } from '@/components/dsp/CoverArt';
 import {
-  Play, ArrowRight, Clock, TrendingUp, Star, Sparkles,
-  Headphones, Calendar, Music2, Radio, Newspaper, BookOpen, LivePulse,
+  Play, ArrowRight, Clock, Star, Sparkles,
+  Headphones, Calendar, Music2, Radio,
 } from 'lucide-react';
 
 export function HomeView() {
   const { navigate } = useUIStore();
   const { play, setQueue } = usePlayerStore();
 
-  const recentlyPlayed = [...tracks]
-    .filter(t => t.lastPlayed)
-    .sort((a, b) => new Date(b.lastPlayed!).getTime() - new Date(a.lastPlayed!).getTime())
-    .slice(0, 8);
+  const { tracks: localTracks, getAlbums, getArtists, getTotalSize } = useLocalLibraryStore();
+  const localAlbums = getAlbums();
+  const localArtists = getArtists();
 
-  const topTracks = [...tracks].sort((a, b) => b.playCount - a.playCount).slice(0, 6);
-  const lovedTracks = tracks.filter(t => t.loved);
-  const newestAlbums = [...albums].sort((a, b) => b.year - a.year).slice(0, 6);
-  const recentArtists = artists.slice(0, 6);
+  const recentTracks = localTracks.slice(0, 8);
+  const newestAlbums = [...localAlbums].sort((a, b) => b.year - a.year).slice(0, 6);
+  const recentArtists = localArtists.slice(0, 6);
 
-  const playAlbum = (albumId: string) => {
-    const albumTracks = tracks.filter(t => t.albumId === albumId).sort((a, b) => a.trackNumber - b.trackNumber);
-    if (albumTracks.length > 0) setQueue(albumTracks, 0);
+  const playAlbum = (albumName: string, artistName: string) => {
+    const albumTracks = localTracks.filter(t => t.album === albumName && t.artist === artistName).sort((a, b) => a.trackNumber - b.trackNumber);
+    if (albumTracks.length > 0) {
+      const trackObjs = albumTracks.map(t => ({
+        id: t.id, title: t.title, albumId: t.album, albumName: t.album, artistId: t.artist, artistName: t.artist,
+        trackNumber: t.trackNumber, discNumber: t.discNumber, duration: t.duration, format: t.format,
+        bitDepth: t.bitDepth, sampleRate: t.sampleRate, channels: t.channels, bitrate: t.bitrate,
+        filePath: t.filePath, fileSize: t.fileSize, composers: [t.composer], performers: [],
+        genre: t.genre, loved: false, playCount: 0, source: 'local' as const, isAvailable: true,
+      }));
+      setQueue(trackObjs, 0);
+    }
   };
 
   const playTrack = (trackId: string) => {
-    const track = tracks.find(t => t.id === trackId);
-    if (track) play(track);
+    const t = localTracks.find(tr => tr.id === trackId);
+    if (t) {
+      play({
+        id: t.id, title: t.title, albumId: t.album, albumName: t.album, artistId: t.artist, artistName: t.artist,
+        trackNumber: t.trackNumber, discNumber: t.discNumber, duration: t.duration, format: t.format,
+        bitDepth: t.bitDepth, sampleRate: t.sampleRate, channels: t.channels, bitrate: t.bitrate,
+        filePath: t.filePath, fileSize: t.fileSize, composers: [t.composer], performers: [],
+        genre: t.genre, loved: false, playCount: 0, source: 'local' as const, isAvailable: true,
+      });
+    }
   };
 
   return (
@@ -52,11 +67,11 @@ export function HomeView() {
               <h1 className="text-2xl font-bold">Welcome Back</h1>
             </div>
             <p className="text-muted-foreground max-w-lg">
-              Your library has {tracks.length} tracks across {albums.length} albums by {artists.length} artists.
+              Your library has {localTracks.length} tracks across {localAlbums.length} albums by {localArtists.length} artists.
               Pick up where you left off or discover something new.
             </p>
             <div className="flex gap-3 mt-4">
-              <Button size="sm" onClick={() => playTrack(recentlyPlayed[0]?.id)}>
+              <Button size="sm" onClick={() => playTrack(recentTracks[0]?.id)}>
                 <Play className="w-4 h-4 mr-2" /> Resume Playing
               </Button>
               <Button size="sm" variant="outline" onClick={() => navigate('browse-genres')}>
@@ -81,7 +96,7 @@ export function HomeView() {
             </Button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {recentlyPlayed.map(track => (
+            {recentTracks.length > 0 ? recentTracks.map(track => (
               <Card
                 key={track.id}
                 className="bg-card border-border hover:bg-accent/30 cursor-pointer transition-colors group"
@@ -92,7 +107,7 @@ export function HomeView() {
                     <div className={`w-12 h-12 rounded-md bg-gradient-to-br ${getCoverGradient(track.id)} flex-shrink-0`} />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{track.title}</p>
-                      <p className="text-xs text-muted-foreground truncate">{track.artistName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
                       <p className="text-[11px] text-muted-foreground mt-0.5">{formatDuration(track.duration)}</p>
                     </div>
                     <Button
@@ -106,7 +121,9 @@ export function HomeView() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            )) : (
+              <p className="text-sm text-muted-foreground col-span-full">No tracks imported yet. Scan your music library to get started.</p>
+            )}
           </div>
         </section>
 
@@ -114,10 +131,10 @@ export function HomeView() {
         <section>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: 'Tracks', value: tracks.length.toString(), icon: Music2, color: 'text-primary' },
-              { label: 'Albums', value: albums.length.toString(), icon: Headphones, color: 'text-signal-green' },
-              { label: 'Artists', value: artists.length.toString(), icon: Star, color: 'text-gold' },
-              { label: 'Playlists', value: playlists.length.toString(), icon: Calendar, color: 'text-signal-amber' },
+              { label: 'Tracks', value: localTracks.length.toString(), icon: Music2, color: 'text-primary' },
+              { label: 'Albums', value: localAlbums.length.toString(), icon: Headphones, color: 'text-signal-green' },
+              { label: 'Artists', value: localArtists.length.toString(), icon: Star, color: 'text-gold' },
+              { label: 'Radio', value: radioStations.length.toString(), icon: Calendar, color: 'text-signal-amber' },
             ].map(stat => (
               <Card key={stat.label} className="bg-card border-border">
                 <CardContent className="p-4 flex items-center gap-3">
@@ -148,67 +165,21 @@ export function HomeView() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {newestAlbums.map(album => (
               <div
-                key={album.id}
+                key={`${album.name}-${album.artist}`}
                 className="group cursor-pointer"
-                onClick={() => navigate('album-detail', { albumId: album.id })}
+                onClick={() => navigate('browse-albums')}
               >
                 <div className="relative mb-2">
-                  <div className={`w-full aspect-square rounded-lg bg-gradient-to-br ${getCoverGradient(album.id)} cover-art-hover shadow-lg`} />
-                  <Button
-                    variant="default"
-                    size="icon"
-                    className="absolute bottom-2 right-2 h-9 w-9 rounded-full opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 shadow-lg"
-                    onClick={(e) => { e.stopPropagation(); playAlbum(album.id); }}
-                  >
-                    <Play className="w-4 h-4 ml-0.5" />
-                  </Button>
-                  {album.rating >= 9 && (
-                    <Badge className="absolute top-2 left-2 text-[10px] bg-primary text-primary-foreground">
-                      <Star className="w-2.5 h-2.5 mr-0.5" /> {album.rating}
-                    </Badge>
-                  )}
+                  <div className={`w-full aspect-square rounded-lg bg-gradient-to-br ${getCoverGradient(album.name)} cover-art-hover shadow-lg`} />
                 </div>
-                <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{album.title}</p>
-                <p className="text-xs text-muted-foreground truncate">{album.artistName} · {album.year}</p>
+                <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{album.name}</p>
+                <p className="text-xs text-muted-foreground truncate">{album.artist} · {album.year || ''}</p>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Top Played */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-signal-green" />
-              Most Played
-            </h2>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {topTracks.map((track, index) => (
-              <Card
-                key={track.id}
-                className="bg-card border-border hover:bg-accent/30 cursor-pointer transition-colors"
-                onClick={() => playTrack(track.id)}
-              >
-                <CardContent className="p-3">
-                  <div className="flex gap-3">
-                    <div className="relative">
-                      <div className={`w-12 h-12 rounded-md bg-gradient-to-br ${getCoverGradient(track.id)}`} />
-                      <span className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
-                        {index + 1}
-                      </span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{track.title}</p>
-                      <p className="text-xs text-muted-foreground truncate">{track.artistName}</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{track.playCount} plays</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
+
 
         {/* Browse Artists */}
         <section>
@@ -221,88 +192,21 @@ export function HomeView() {
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
             {recentArtists.map(artist => (
               <div
-                key={artist.id}
+                key={artist}
                 className="group text-center cursor-pointer"
-                onClick={() => navigate('artist-detail', { artistId: artist.id })}
+                onClick={() => navigate('browse-artists')}
               >
-                <div className={`w-full aspect-square rounded-full bg-gradient-to-br ${getCoverGradient(artist.id)} mx-auto mb-2 cover-art-hover shadow-lg`} />
-                <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{artist.name}</p>
-                <p className="text-[11px] text-muted-foreground">{artist.albumCount} albums</p>
+                <div className={`w-full aspect-square rounded-full bg-gradient-to-br ${getCoverGradient(artist)} mx-auto mb-2 cover-art-hover shadow-lg`} />
+                <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{artist}</p>
+                <p className="text-[11px] text-muted-foreground">Artist</p>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Loved Tracks */}
-        {lovedTracks.length > 0 && (
-          <section>
-            <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-              <Star className="w-5 h-5 text-red-500" />
-              Loved Tracks
-            </h2>
-            <div className="space-y-1">
-              {lovedTracks.slice(0, 5).map(track => (
-                <div
-                  key={track.id}
-                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors"
-                  onClick={() => playTrack(track.id)}
-                >
-                  <div className={`w-10 h-10 rounded bg-gradient-to-br ${getCoverGradient(track.id)} flex-shrink-0`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{track.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">{track.artistName}</p>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{formatDuration(track.duration)}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
 
-        {/* Editorial - Featured Collections */}
-        {editorialCollections.filter(c => c.featured).length > 0 && (
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Newspaper className="w-5 h-5 text-primary" />
-                Editorial
-              </h2>
-              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('editorial')}>
-                View All <ArrowRight className="w-3 h-3 ml-1" />
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {editorialCollections.filter(c => c.featured).slice(0, 3).map(collection => {
-                const typeColors: Record<string, string> = {
-                  'new-releases': 'bg-primary',
-                  'genre-primer': 'bg-blue-600',
-                  'best-of': 'bg-gold text-black',
-                  'curated': 'bg-purple-600',
-                  'staff-picks': 'bg-green-600',
-                  'on-this-day': 'bg-amber-600',
-                };
-                return (
-                  <Card
-                    key={collection.id}
-                    className="bg-card border-border hover:bg-accent/30 cursor-pointer transition-colors group"
-                    onClick={() => navigate('editorial')}
-                  >
-                    <CardContent className="p-4">
-                      <div className={`w-full aspect-[2/1] rounded-lg bg-gradient-to-br ${getCoverGradient(collection.id)} mb-3 relative overflow-hidden`}>
-                        <Badge className={`absolute top-2 left-2 text-[9px] ${typeColors[collection.type] || 'bg-muted'}`}>
-                          {collection.type.replace(/-/g, ' ')}
-                        </Badge>
-                      </div>
-                      <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{collection.title}</p>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">{collection.subtitle}</p>
-                      <p className="text-[10px] text-muted-foreground mt-1">{collection.curator}</p>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </section>
-        )}
+
+
 
         {/* Radio Quick Access */}
         <section>

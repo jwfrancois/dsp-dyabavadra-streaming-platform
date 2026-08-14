@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useProfilesStore } from '@/store/profiles';
-import { tracks, getTrackById, getCoverGradient, formatDuration } from '@/lib/data';
+import { getCoverGradient, formatDuration } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

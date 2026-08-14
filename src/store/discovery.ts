@@ -1,11 +1,10 @@
 import { create } from 'zustand';
-import type { RadioStation, RadioSeed, RadioStationGenerated } from '@/lib/metadata';
-import { radioStations, generateRadio } from '@/lib/metadata';
+import type { RadioStationGenerated } from '@/lib/metadata';
 
 interface DiscoveryState {
   // Radio
   isRadioPlaying: boolean;
-  currentRadioStation: RadioStation | null;
+  currentRadioStation: RadioStationGenerated | null;
   currentGeneratedRadio: RadioStationGenerated | null;
   favoriteStationIds: string[];
 
@@ -13,9 +12,9 @@ interface DiscoveryState {
   browseBy: 'artist-album' | 'composer-work' | 'performer';
 
   // Actions
-  playRadioStation: (station: RadioStation) => void;
+  playRadioStation: (station: RadioStationGenerated) => void;
   stopRadio: () => void;
-  startRadioFrom: (seed: RadioSeed) => void;
+  startRadioFrom: (seed: { type: 'track' | 'artist' | 'genre' | 'playlist'; id: string; name: string }) => RadioStationGenerated | null;
   toggleStationFavorite: (stationId: string) => void;
   setBrowseBy: (mode: 'artist-album' | 'composer-work' | 'performer') => void;
 }
@@ -24,7 +23,7 @@ export const useDiscoveryStore = create<DiscoveryState>((set, get) => ({
   isRadioPlaying: false,
   currentRadioStation: null,
   currentGeneratedRadio: null,
-  favoriteStationIds: radioStations.filter(s => s.isFavorite).map(s => s.id),
+  favoriteStationIds: [],
   browseBy: 'artist-album',
 
   playRadioStation: (station) => set({
@@ -40,7 +39,14 @@ export const useDiscoveryStore = create<DiscoveryState>((set, get) => ({
   }),
 
   startRadioFrom: (seed) => {
-    const radio = generateRadio(seed, 25);
+    // No mock data available to generate radio from; return empty radio
+    const radio: RadioStationGenerated = {
+      id: `radio-gen-${Date.now()}`,
+      name: seed.name,
+      seed,
+      trackIds: [],
+      description: `Radio seeded from ${seed.name}.`,
+    };
     set({
       isRadioPlaying: true,
       currentGeneratedRadio: radio,

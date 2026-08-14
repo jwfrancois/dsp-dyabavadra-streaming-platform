@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { PodcastEpisode, PodcastShow } from '@/lib/podcast-data';
-import { podcastEpisodes, podcastShows } from '@/lib/podcast-data';
 import { usePlayerStore } from './player';
 
 interface EpisodeState {
@@ -55,21 +54,6 @@ interface PodcastState {
   getTotalNewEpisodes: () => number;
 }
 
-// Initialize episode states from mock data (used only when no persisted state exists)
-function buildInitialEpisodeStates(): Record<string, EpisodeState> {
-  const initialStates: Record<string, EpisodeState> = {};
-  for (const ep of podcastEpisodes) {
-    initialStates[ep.id] = {
-      isPlayed: ep.isPlayed,
-      completed: ep.completed,
-      resumePosition: ep.resumePosition,
-      isDownloaded: ep.isDownloaded,
-      favorite: ep.favorite,
-    };
-  }
-  return initialStates;
-}
-
 export const usePodcastStore = create<PodcastState>()(
   persist(
     (set, get) => {
@@ -81,8 +65,8 @@ export const usePodcastStore = create<PodcastState>()(
         sleepTimerMinutes: null,
         sleepTimerRemaining: null,
 
-        subscribedShowIds: podcastShows.filter(s => s.subscribed).map(s => s.id),
-        episodeStates: buildInitialEpisodeStates(),
+        subscribedShowIds: [],
+        episodeStates: {},
         discoveredShows: {},
         discoveredEpisodes: {},
         feedLoading: false,
@@ -248,13 +232,7 @@ export const usePodcastStore = create<PodcastState>()(
 
         markAllPlayed: (showId) => set(s => {
           const newStates = { ...s.episodeStates };
-          // Mark local episodes
-          for (const ep of podcastEpisodes.filter(ep => ep.showId === showId)) {
-            if (newStates[ep.id]) {
-              newStates[ep.id] = { ...newStates[ep.id], isPlayed: true, completed: true };
-            }
-          }
-          // Mark discovered episodes
+          // Mark discovered episodes for this show
           const discoveredEps = s.discoveredEpisodes[showId] || [];
           for (const ep of discoveredEps) {
             const existing = newStates[ep.id] || { isPlayed: false, completed: false, resumePosition: 0, isDownloaded: false, favorite: false };
@@ -289,11 +267,6 @@ export const usePodcastStore = create<PodcastState>()(
           const state = get();
           let count = 0;
           for (const showId of state.subscribedShowIds) {
-            // Count local mock episodes
-            for (const ep of podcastEpisodes.filter(e => e.showId === showId)) {
-              const epState = state.episodeStates[ep.id];
-              if (epState && !epState.isPlayed && !epState.completed) count++;
-            }
             // Count discovered episodes
             const discoveredEps = state.discoveredEpisodes[showId] || [];
             for (const ep of discoveredEps) {

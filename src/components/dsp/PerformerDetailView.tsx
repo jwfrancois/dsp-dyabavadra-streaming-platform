@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
-import { tracks, albums, formatDuration, formatSampleRate, getCoverGradient, type Track, type Credit, type Album } from '@/lib/data';
+import { formatDuration, formatSampleRate, getCoverGradient, type Track, type Credit, type Album } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

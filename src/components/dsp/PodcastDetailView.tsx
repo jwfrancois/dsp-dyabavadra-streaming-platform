@@ -5,8 +5,6 @@ import { useUIStore } from '@/store/ui';
 import { usePodcastStore } from '@/store/podcast';
 import { usePlayerStore } from '@/store/player';
 import {
-  podcastShows, podcastEpisodes,
-  getEpisodesByShow, getUnplayedEpisodes,
   formatEpisodeDuration, formatDate, formatFileSize,
 } from '@/lib/podcast-data';
 import { Card, CardContent } from '@/components/ui/card';

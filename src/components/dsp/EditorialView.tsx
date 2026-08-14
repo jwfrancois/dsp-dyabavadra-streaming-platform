@@ -3,12 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
-import {
-  tracks, albums, getTrackById, getAlbumById, getCoverGradient, formatDuration,
-} from '@/lib/data';
-import {
-  editorialCollections,
-} from '@/lib/metadata';
+import { getCoverGradient, formatDuration } from '@/lib/data';
 import type { EditorialCollection } from '@/lib/metadata';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

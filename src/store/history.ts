@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import type { PlayHistoryEntry } from '@/lib/data';
-import { playHistory } from '@/lib/data';
 
 interface HistoryState {
   entries: PlayHistoryEntry[];
@@ -13,7 +12,7 @@ interface HistoryState {
 }
 
 export const useHistoryStore = create<HistoryState>((set, get) => ({
-  entries: playHistory,
+  entries: [],
   maxEntries: 500,
 
   addEntry: (entry) => set(s => {

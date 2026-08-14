@@ -7,9 +7,8 @@ import { usePodcastStore } from '@/store/podcast';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { zones } from '@/lib/data';
 import { formatDuration, getCoverGradient, formatSampleRate } from '@/lib/data';
-import { podcastShows, formatEpisodeDuration } from '@/lib/podcast-data';
+import { formatEpisodeDuration } from '@/lib/podcast-data';
 import {
   Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Repeat1,
   Volume2, VolumeX, Volume1, ChevronUp, ListMusic, Heart,
@@ -30,7 +29,7 @@ export function PlayerBar() {
     isPodcastMode, currentEpisode, playbackSpeed,
     cyclePlaybackSpeed, skipSilence, sleepTimerMinutes,
   } = usePodcastStore();
-  const activeZone = zones.find(z => z.id === activeZoneId);
+  const activeZone = undefined as any;
 
   const playbackMode = usePlayerStore(s => s.playbackMode);
   const isBuffering = usePlayerStore(s => s.isBuffering);
@@ -101,7 +100,7 @@ export function PlayerBar() {
   // Podcast mode: derive display values from episode
   if (showingPodcast) {
     const ep = currentEpisode;
-    const show = podcastShows.find(s => s.id === ep.showId);
+    const show = undefined as any;
     const epProgress = ep.duration > 0 ? (currentTime / ep.duration) * 100 : 0;
 
     return (

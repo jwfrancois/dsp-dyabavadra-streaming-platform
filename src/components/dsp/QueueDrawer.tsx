@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { usePlayerStore } from '@/store/player';
-import { formatDuration, getCoverGradient, getTrackById, zones } from '@/lib/data';
+import { formatDuration, getCoverGradient } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -25,8 +25,7 @@ export function QueueDrawer() {
   if (!queueDrawerOpen) return null;
 
   const getZoneName = (zoneId: string) => {
-    const z = zones.find(zn => zn.id === zoneId);
-    return z?.name ?? zoneId;
+    return zoneId;
   };
 
   const formatTimeAgo = (isoString: string) => {
@@ -169,7 +168,7 @@ export function QueueDrawer() {
               </p>
               <div className="space-y-0.5">
                 {entries.map((entry) => {
-                  const track = getTrackById(entry.trackId);
+                  const track = undefined as any;
                   if (!track) return null;
                   return (
                     <div

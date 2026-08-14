@@ -4,7 +4,7 @@ import React from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
 import { useLocalLibraryStore, type LocalTrack } from '@/store/local-library';
-import { albums, getTracksByAlbum, type Track, type Album } from '@/lib/data';
+import { type Track, type Album } from '@/lib/data';
 import { formatDuration, formatSampleRate, getCoverGradient } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

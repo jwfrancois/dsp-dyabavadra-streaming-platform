@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { licensingItems } from '@/lib/data';
 import type { LicensingItem } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

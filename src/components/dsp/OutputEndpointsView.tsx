@@ -3,7 +3,7 @@
 import React from 'react';
 import { useSystemStore } from '@/store/system';
 import { usePlayerStore } from '@/store/player';
-import { zones, formatSampleRate, type Endpoint, type Zone } from '@/lib/data';
+import { formatSampleRate, type Endpoint, type Zone } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -152,7 +152,7 @@ function CapItem({ label, supported }: { label: string; supported: boolean }) {
 }
 
 function findZoneForEndpoint(endpointId: string): Zone | undefined {
-  return zones.find((z) => z.endpoints.some((ep) => ep.id === endpointId));
+  return undefined;
 }
 
 // ─── Component ───
@@ -162,8 +162,8 @@ export function OutputEndpointsView() {
     useSystemStore();
   const { activeZoneId, setActiveZone } = usePlayerStore();
 
-  const allEndpoints = zones.flatMap((z) => z.endpoints);
-  const groupedZones = zones.filter((z) => z.isGroup);
+  const allEndpoints: any[] = [];
+  const groupedZones: any[] = [];
 
   return (
     <ScrollArea className="h-full">

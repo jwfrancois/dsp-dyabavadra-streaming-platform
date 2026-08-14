@@ -5,8 +5,6 @@ import { useUIStore } from '@/store/ui';
 import { usePodcastStore } from '@/store/podcast';
 import { usePlayerStore } from '@/store/player';
 import {
-  podcastShows, podcastEpisodes,
-  getEpisodesByShow, getAllNewEpisodes,
   formatEpisodeDuration, formatDate,
 } from '@/lib/podcast-data';
 import type { PodcastEpisode, PodcastShow } from '@/lib/podcast-data';

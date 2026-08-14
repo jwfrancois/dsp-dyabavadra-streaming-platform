@@ -4,14 +4,11 @@ import React from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
 import {
-  tracks,
   getCoverGradient,
   formatDuration,
-  getAlbumById,
 } from '@/lib/data';
-import {
-  getWorkById,
-  type WorkRecording,
+import type {
+  WorkRecording,
 } from '@/lib/metadata';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,7 +32,7 @@ export function WorkDetailView() {
   const { viewParams, navigate } = useUIStore();
   const { setQueue } = usePlayerStore();
   const workId = viewParams.workId;
-  const work = getWorkById(workId);
+  const work = undefined as any;
 
   if (!work) {
     return (
@@ -49,9 +46,7 @@ export function WorkDetailView() {
 
   const handlePlayRecording = (recording: WorkRecording) => {
     // Find tracks in the library that belong to this recording's album
-    const albumTracks = tracks
-      .filter(t => t.albumId === recording.albumId)
-      .sort((a, b) => a.trackNumber - b.trackNumber);
+    const albumTracks: any[] = [];
     if (albumTracks.length > 0) {
       setQueue(albumTracks, 0);
     }
@@ -232,7 +227,7 @@ function RecordingCard({
   onPlay: () => void;
   onAlbumClick: () => void;
 }) {
-  const album = getAlbumById(recording.albumId);
+  const album = undefined as any;
   const hasLocalAlbum = !!album;
 
   return (

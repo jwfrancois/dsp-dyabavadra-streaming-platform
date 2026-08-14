@@ -6,14 +6,11 @@ import { useLibraryStore } from '@/store/library';
 import { usePlayerStore } from '@/store/player';
 import { useLocalLibraryStore } from '@/store/local-library';
 import {
-  storageLocations, streamingAccounts, libraryScan, userTags,
-  smartCollections, bookmarks, playHistory, duplicateGroups, metadataEdits,
   formatStorageSize, formatScanDuration, formatRelativeTime,
   getStorageStatusColor, getStorageStatusLabel,
-  getServiceIcon, getServiceLabel, getTotalLibraryStats,
-  getOnThisDay,
+  getServiceIcon, getServiceLabel,
 } from '@/lib/library-data';
-import { tracks, albums, artists, playlists, formatDuration, getCoverGradient, formatSampleRate, formatFileSize } from '@/lib/data';
+import { formatDuration, getCoverGradient, formatSampleRate, formatFileSize } from '@/lib/data';
 import type { Track } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

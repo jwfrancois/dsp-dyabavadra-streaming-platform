@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { plugins, type DSPPlugin } from '@/lib/data';
+import type { DSPPlugin } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

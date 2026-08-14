@@ -4,8 +4,8 @@ import React from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
 import { usePodcastStore } from '@/store/podcast';
-import { podcastShows, formatEpisodeDuration } from '@/lib/podcast-data';
-import { tracks, zones, getSignalPath, formatDuration, formatSampleRate, getCoverGradient } from '@/lib/data';
+import { formatEpisodeDuration } from '@/lib/podcast-data';
+import { formatDuration, formatSampleRate, getCoverGradient } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,13 +28,13 @@ export function NowPlayingView() {
   } = usePlayerStore();
   const { navigate } = useUIStore();
   const { isPodcastMode, currentEpisode, playbackSpeed, cyclePlaybackSpeed } = usePodcastStore();
-  const activeZone = zones.find(z => z.id === activeZoneId);
-  const signalPath = currentTrack ? getSignalPath(currentTrack.id, activeZoneId) : [];
-  const isBitPerfect = signalPath.length > 0 && signalPath.every(s => s.isBitPerfect);
+  const activeZone = undefined as any;
+  const signalPath: any[] = [];
+  const isBitPerfect = signalPath.length > 0 && signalPath.every((s: any) => s.isBitPerfect);
 
   // Podcast mode rendering
   if (isPodcastMode && currentEpisode) {
-    const show = podcastShows.find(s => s.id === currentEpisode.showId);
+    const show = undefined as any;
     const dur = duration > 0 ? duration : currentEpisode.duration;
     const prog = dur > 0 ? (currentTime / dur) * 100 : 0;
 
@@ -122,7 +122,7 @@ export function NowPlayingView() {
     );
   }
 
-  const albumTracks = tracks.filter(t => t.albumId === currentTrack.albumId && t.id !== currentTrack.id).slice(0, 5);
+  const albumTracks: any[] = [];
 
   return (
     <ScrollArea className="h-full">

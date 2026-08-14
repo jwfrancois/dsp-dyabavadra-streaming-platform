@@ -3,7 +3,6 @@
 import React from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
-import { artists, getAlbumsByArtist } from '@/lib/data';
 import { getCoverGradient } from '@/lib/data';
 import { useLocalLibraryStore } from '@/store/local-library';
 import { Input } from '@/components/ui/input';

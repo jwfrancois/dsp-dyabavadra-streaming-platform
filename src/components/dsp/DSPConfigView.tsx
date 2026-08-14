@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useDSPEngineStore } from '@/store/dsp-engine';
-import { zones, formatSampleRate, type DSPConfig, type EQBand } from '@/lib/data';
+import { formatSampleRate, type DSPConfig, type EQBand } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -60,9 +60,9 @@ const defaultDSPConfig: DSPConfig = {
 export function DSPConfigView() {
   const engine = useDSPEngineStore();
 
-  const [selectedZoneId, setSelectedZoneId] = useState(zones[0].id);
+  const [selectedZoneId, setSelectedZoneId] = useState('');
   const [dspConfig, setDspConfig] = useState<DSPConfig>(
-    zones[0].dspConfig ?? defaultDSPConfig,
+    defaultDSPConfig,
   );
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     eq: false,
@@ -71,16 +71,17 @@ export function DSPConfigView() {
     clock: true,
   });
   const [volumeMode, setVolumeMode] = useState<'hardware' | 'dsp' | 'fixed'>(
-    zones[0].volumeMode ?? 'dsp',
+    'dsp' as const,
   );
-  const [maxVolume, setMaxVolume] = useState(zones[0].maxVolume ?? 85);
-  const [startupVolume, setStartupVolume] = useState(zones[0].startupVolume ?? 40);
-  const [rampTime, setRampTime] = useState(zones[0].syncOffsetMs ? 500 : 500);
+  const [maxVolume, setMaxVolume] = useState(85);
+  const [startupVolume, setStartupVolume] = useState(40);
+  const [rampTime, setRampTime] = useState(500);
   const [clockMode, setClockMode] = useState<'auto' | 'master' | 'slave' | 'passthrough'>(
-    zones[0].clockMode ?? 'auto',
+    'auto' as const,
   );
 
-  const selectedZone = zones.find(z => z.id === selectedZoneId);
+  const selectedZone = undefined as any;
+  const zonesList: any[] = [];
 
   // ─── Helpers ───
 
@@ -290,7 +291,10 @@ export function DSPConfigView() {
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Zone</span>
             </div>
             <div className="flex gap-2 flex-wrap">
-              {zones.map(zone => (
+              {zonesList.length === 0 ? (
+                <span className="text-xs text-muted-foreground">No zones configured</span>
+              ) : (
+              zonesList.map((zone: any) => (
                 <Button
                   key={zone.id}
                   variant="ghost"
@@ -311,7 +315,8 @@ export function DSPConfigView() {
                 >
                   {zone.name}
                 </Button>
-              ))}
+              ))
+              )}
             </div>
           </CardContent>
         </Card>

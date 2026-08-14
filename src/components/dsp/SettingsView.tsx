@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { zones, tracks, formatSampleRate } from '@/lib/data';
+import { formatSampleRate } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -168,7 +168,7 @@ export function SettingsView() {
               </div>
               <div className="p-2 rounded bg-surface/50">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Active Zones</p>
-                <p className="text-sm font-medium">{zones.filter(z => z.isPlaying).length} / {zones.length}</p>
+                <p className="text-sm font-medium">0 / 0</p>
               </div>
               <div className="p-2 rounded bg-surface/50">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Sync Status</p>

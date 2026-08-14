@@ -1,18 +1,7 @@
 import { create } from 'zustand';
-import type { Track, Zone } from '@/lib/data';
-import { tracks as allTracks } from '@/lib/data';
-
-export type ViewName = 'home' | 'browse-artists' | 'browse-albums' | 'browse-tracks' | 'browse-genres' | 'browse-playlists' | 'podcasts' | 'podcast-detail' | 'library' | 'now-playing' | 'artist-detail' | 'album-detail' | 'performer-detail' | 'search' | 'zones' | 'settings' | 'radio' | 'composer-detail' | 'genre-detail' | 'editorial' | 'streaming' | 'work-detail' | 'system' | 'dsp-config' | 'signal-path' | 'endpoints' | 'play-history' | 'profiles' | 'system-health' | 'security' | 'plugins' | 'licensing';
-
-export type PlaybackMode = 'music' | 'radio' | 'podcast';
+import type { Track, Zone, ViewName, PlaybackMode } from '@/lib/data';
 
 // ── Helper: build a playable audio URL for any Track ──
-const DEMO_TRACKS = [
-  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-];
-
 function buildAudioUrl(track: Track): string {
   // Browser-imported tracks have a blob URL for direct playback
   if (track.blobUrl) return track.blobUrl;
@@ -22,9 +11,8 @@ function buildAudioUrl(track: Track): string {
     if (track.filePath.startsWith('/'))
       return `/api/library/stream?file=${encodeURIComponent(track.filePath)}`;
   }
-  // Fallback: demo audio for mock library tracks
-  const hash = track.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  return `/api/proxy/podcast?url=${encodeURIComponent(DEMO_TRACKS[hash % DEMO_TRACKS.length])}`;
+  // No playable URL available
+  return '';
 }
 
 interface PlayerState {
@@ -77,19 +65,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   currentRadioStationId: null,
   audioUrl: null,
   duration: 0,
-  currentTrack: allTracks.find(t => t.id === 'track-3-4') || null,
-  queue: [
-    allTracks.find(t => t.id === 'track-3-4')!,
-    allTracks.find(t => t.id === 'track-3-2')!,
-    allTracks.find(t => t.id === 'track-3-8')!,
-    allTracks.find(t => t.id === 'track-3-5')!,
-    allTracks.find(t => t.id === 'track-3-1')!,
-    allTracks.find(t => t.id === 'track-3-9')!,
-  ].filter(Boolean) as Track[],
+  currentTrack: null,
+  queue: [],
   queueIndex: 0,
   activeZoneId: 'zone-1',
-  progress: 34,
-  currentTime: 121,
+  progress: 0,
+  currentTime: 0,
   volume: 72,
   isShuffle: false,
   repeatMode: 'all',
@@ -269,3 +250,5 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     });
   },
 }));
+
+export type { ViewName };

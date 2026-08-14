@@ -3,7 +3,7 @@
 import React from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
-import { albums, tracks, getTracksByAlbum, getSignalPath, formatDuration, formatSampleRate, formatFileSize, getCoverGradient } from '@/lib/data';
+import { formatDuration, formatSampleRate, formatFileSize, getCoverGradient } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

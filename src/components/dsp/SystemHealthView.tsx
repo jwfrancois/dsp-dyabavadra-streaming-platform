@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { useSystemStore } from '@/store/system';
-import { coreStatus } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

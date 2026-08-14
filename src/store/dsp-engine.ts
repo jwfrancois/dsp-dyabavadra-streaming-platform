@@ -1,6 +1,5 @@
 import { create } from 'zustand';
-import type { DSPConfig, EQBand, Zone } from '@/lib/data';
-import { zones } from '@/lib/data';
+import type { DSPConfig, EQBand } from '@/lib/data';
 
 interface DSPEngineState {
   // Per-zone DSP configs (keyed by zoneId)
@@ -32,14 +31,8 @@ interface DSPEngineState {
 }
 
 export const useDSPEngineStore = create<DSPEngineState>((set, get) => {
-  // Initialize from existing zone data
-  const initialConfigs: Record<string, DSPConfig> = {};
-  for (const zone of zones) {
-    initialConfigs[zone.id] = zone.dspConfig || { dither: { enabled: false, type: 'none' } };
-  }
-
   return {
-    zoneConfigs: initialConfigs,
+    zoneConfigs: {},
     selectedZoneId: 'zone-1',
     bitPerfectDefault: true,
     gaplessPlayback: true,

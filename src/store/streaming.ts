@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import type { StreamingService, StreamingTrack } from '@/lib/metadata';
-import { streamingServices, streamingTracks } from '@/lib/metadata';
 
 interface StreamingState {
   services: StreamingService[];
@@ -17,8 +16,8 @@ interface StreamingState {
 }
 
 export const useStreamingStore = create<StreamingState>((set, get) => ({
-  services: streamingServices,
-  streamingTracks: streamingTracks,
+  services: [],
+  streamingTracks: [],
   isOfflineMode: false,
 
   linkService: (serviceId) => set(s => ({

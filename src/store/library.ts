@@ -4,10 +4,6 @@ import type {
   Bookmark, PlayHistoryEntry, DuplicateGroup, MetadataEdit,
   ScanStatus, ScanPhase,
 } from '@/lib/library-data';
-import {
-  storageLocations, libraryScan, userTags, smartCollections,
-  bookmarks, playHistory, duplicateGroups, metadataEdits,
-} from '@/lib/library-data';
 
 interface LibraryState {
   // Storage locations
@@ -47,14 +43,27 @@ interface LibraryState {
 }
 
 export const useLibraryStore = create<LibraryState>((set, get) => ({
-  locations: storageLocations,
-  scan: libraryScan,
-  tags: userTags,
-  collections: smartCollections,
-  bookmarks: bookmarks,
-  history: playHistory,
-  duplicates: duplicateGroups,
-  edits: metadataEdits,
+  locations: [],
+  scan: {
+    id: 'scan-init',
+    status: 'idle',
+    phase: 'idle',
+    progress: 0,
+    startedAt: '',
+    totalFiles: 0,
+    processedFiles: 0,
+    newFiles: 0,
+    updatedFiles: 0,
+    removedFiles: 0,
+    errorCount: 0,
+    errors: [],
+  },
+  tags: [],
+  collections: [],
+  bookmarks: [],
+  history: [],
+  duplicates: [],
+  edits: [],
 
   toggleLocation: (id) => set(s => ({
     locations: s.locations.map(l =>
@@ -67,7 +76,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   })),
 
   triggerScan: (_locationId) => {
-    // Simulate a scan starting
     set(s => ({
       scan: {
         ...s.scan,
@@ -84,39 +92,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         errors: [],
       },
     }));
-
-    // Simulate scan progress
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 8 + 2;
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(interval);
-        set(s => ({
-          scan: {
-            ...s.scan,
-            status: 'completed' as ScanStatus,
-            phase: 'idle' as ScanPhase,
-            progress: 100,
-            completedAt: new Date().toISOString(),
-            processedFiles: 42285,
-            newFiles: Math.floor(Math.random() * 20),
-            updatedFiles: Math.floor(Math.random() * 10),
-            removedFiles: Math.floor(Math.random() * 5),
-          },
-        }));
-      } else {
-        const phase: ScanPhase = progress < 20 ? 'discovering' : progress < 50 ? 'reading-tags' : progress < 75 ? 'fingerprinting' : progress < 90 ? 'deduplicating' : 'finalizing';
-        set(s => ({
-          scan: {
-            ...s.scan,
-            phase,
-            progress: Math.min(progress, 99),
-            processedFiles: Math.floor((progress / 100) * 42285),
-          },
-        }));
-      }
-    }, 300);
   },
 
   addTag: (name, color) => set(s => ({

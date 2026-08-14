@@ -6,14 +6,11 @@ import { useDiscoveryStore } from '@/store/discovery';
 import {
   getCoverGradient,
   formatDuration,
-  getAlbumById,
 } from '@/lib/data';
-import {
-  getComposerById,
-  getWorksByComposer,
-  type Composer,
-  type Work,
-  type WorkRecording,
+import type {
+  Composer,
+  Work,
+  WorkRecording,
 } from '@/lib/metadata';
 
 import { Button } from '@/components/ui/button';
@@ -36,7 +33,7 @@ export function ComposerDetailView() {
   const { viewParams, navigate } = useUIStore();
   const { browseBy, setBrowseBy } = useDiscoveryStore();
   const composerId = viewParams.composerId;
-  const composer = getComposerById(composerId);
+  const composer = undefined as any;
 
   if (!composer) {
     return (
@@ -46,13 +43,11 @@ export function ComposerDetailView() {
     );
   }
 
-  const composerWorks = getWorksByComposer(composer.id);
+  const composerWorks: any[] = [];
   const allRecordings = composerWorks.flatMap(w => w.recordings);
   const totalRecordings = allRecordings.length;
   const periods = [...new Set(composerWorks.map(w => w.genre))];
-  const similarComposers = composer.similarComposers
-    .map(id => getComposerById(id))
-    .filter(Boolean) as Composer[];
+  const similarComposers: any[] = [];
 
   return (
     <ScrollArea className="h-full">
@@ -275,7 +270,7 @@ function WorkRow({ work, onClick }: { work: Work; onClick: () => void }) {
 // ─── Recording Row (used in Recordings section) ───
 
 function RecordingRow({ recording, onAlbumClick }: { recording: WorkRecording; onAlbumClick: (albumId: string) => void }) {
-  const album = getAlbumById(recording.albumId);
+  const album = undefined as any;
   const hasLocalAlbum = !!album;
 
   return (
