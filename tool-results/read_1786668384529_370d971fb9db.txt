@@ -1,0 +1,838 @@
+     1→'use client';
+     2→
+     3→import React, { useState } from 'react';
+     4→import { useDSPEngineStore } from '@/store/dsp-engine';
+     5→import { formatSampleRate, type DSPConfig, type EQBand } from '@/lib/data';
+     6→import { Card, CardContent } from '@/components/ui/card';
+     7→import { Badge } from '@/components/ui/badge';
+     8→import { Button } from '@/components/ui/button';
+     9→import { Switch } from '@/components/ui/switch';
+    10→import { ScrollArea } from '@/components/ui/scroll-area';
+    11→import { Separator } from '@/components/ui/separator';
+    12→import { Slider } from '@/components/ui/slider';
+    13→import {
+    14→  Select,
+    15→  SelectContent,
+    16→  SelectItem,
+    17→  SelectTrigger,
+    18→  SelectValue,
+    19→} from '@/components/ui/select';
+    20→import {
+    21→  Sliders,
+    22→  Waves,
+    23→  Headphones,
+    24→  Volume2,
+    25→  VolumeX,
+    26→  Gauge,
+    27→  Zap,
+    28→  RefreshCw,
+    29→  Plus,
+    30→  Trash2,
+    31→  ChevronDown,
+    32→  ChevronUp,
+    33→  MonitorSpeaker,
+    34→  Activity,
+    35→  Clock,
+    36→  CheckCircle2,
+    37→  AlertCircle,
+    38→  Cpu,
+    39→  MoveHorizontal,
+    40→  Crosshair,
+    41→} from 'lucide-react';
+    42→
+    43→// ─── Local DSP state for the selected zone ───
+    44→
+    45→const defaultDSPConfig: DSPConfig = {
+    46→  eq: [
+    47→    { id: 'eq-1', enabled: true, type: 'parametric', frequency: 80, gain: 2.5, q: 1.2, label: 'Bass Boost' },
+    48→    { id: 'eq-2', enabled: true, type: 'parametric', frequency: 2500, gain: -1.0, q: 2.0, label: 'Presence Cut' },
+    49→    { id: 'eq-3', enabled: false, type: 'high-shelf', frequency: 12000, gain: -2.0, q: 0.7, label: 'Air' },
+    50→  ],
+    51→  roomCorrection: { enabled: false, filterName: '—', samplerate: 48000, channels: 2 },
+    52→  upsampling: { enabled: false, targetRate: 176400, targetBitDepth: 32, filterType: 'minimum-phase', maxSrcRate: 96000 },
+    53→  headphoneCorrection: { enabled: false, profileName: '—', manufacturer: '—', model: '—' },
+    54→  crossfeed: { enabled: false, preset: 'moderate' },
+    55→  loudness: { enabled: false, targetLUFS: -16, method: 'ebu-r128', fallbackGain: 0 },
+    56→  dither: { enabled: false, type: 'tpdf' },
+    57→  volumeLimit: { maxPercent: 85, startupMax: 40, rampTimeMs: 500 },
+    58→};
+    59→
+    60→export function DSPConfigView() {
+    61→  const engine = useDSPEngineStore();
+    62→
+    63→  const [selectedZoneId, setSelectedZoneId] = useState(zones[0].id);
+    64→  const [dspConfig, setDspConfig] = useState<DSPConfig>(
+    65→    zones[0].dspConfig ?? defaultDSPConfig,
+    66→  );
+    67→  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    68→    eq: false,
+    69→    upsampling: false,
+    70→    volume: true,
+    71→    clock: true,
+    72→  });
+    73→  const [volumeMode, setVolumeMode] = useState<'hardware' | 'dsp' | 'fixed'>(
+    74→    zones[0].volumeMode ?? 'dsp',
+    75→  );
+    76→  const [maxVolume, setMaxVolume] = useState(zones[0].maxVolume ?? 85);
+    77→  const [startupVolume, setStartupVolume] = useState(zones[0].startupVolume ?? 40);
+    78→  const [rampTime, setRampTime] = useState(zones[0].syncOffsetMs ? 500 : 500);
+    79→  const [clockMode, setClockMode] = useState<'auto' | 'master' | 'slave' | 'passthrough'>(
+    80→    zones[0].clockMode ?? 'auto',
+    81→  );
+    82→
+    83→  const selectedZone = zones.find(z => z.id === selectedZoneId);
+    84→
+    85→  // ─── Helpers ───
+    86→
+    87→  const toggleSection = (section: string) => {
+    88→    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+    89→  };
+    90→
+    91→  const activeEQBands = (dspConfig.eq ?? []).filter(b => b.enabled).length;
+    92→
+    93→  const updateEQBand = (bandId: string, updates: Partial<EQBand>) => {
+    94→    setDspConfig(prev => ({
+    95→      ...prev,
+    96→      eq: (prev.eq ?? []).map(b => (b.id === bandId ? { ...b, ...updates } : b)),
+    97→    }));
+    98→  };
+    99→
+   100→  const addEQBand = () => {
+   101→    const newId = `eq-new-${Date.now()}`;
+   102→    const newBand: EQBand = {
+   103→      id: newId,
+   104→      enabled: true,
+   105→      type: 'parametric',
+   106→      frequency: 1000,
+   107→      gain: 0,
+   108→      q: 1.0,
+   109→      label: `Band ${(dspConfig.eq ?? []).length + 1}`,
+   110→    };
+   111→    setDspConfig(prev => ({ ...prev, eq: [...(prev.eq ?? []), newBand] }));
+   112→  };
+   113→
+   114→  const removeEQBand = (bandId: string) => {
+   115→    setDspConfig(prev => ({
+   116→      ...prev,
+   117→      eq: (prev.eq ?? []).filter(b => b.id !== bandId),
+   118→    }));
+   119→  };
+   120→
+   121→  const toggleModule = (key: keyof DSPConfig, nestedKey?: string) => {
+   122→    setDspConfig(prev => {
+   123→      const mod = prev[key];
+   124→      if (!mod || typeof mod !== 'object' || Array.isArray(mod)) return prev;
+   125→      return {
+   126→        ...prev,
+   127→        [key]: { ...(mod as Record<string, unknown>), enabled: !(mod as Record<string, unknown>).enabled },
+   128→      };
+   129→    });
+   130→  };
+   131→
+   132→  const bandTypeColor = (type: string) => {
+   133→    switch (type) {
+   134→      case 'parametric': return 'bg-blue-500/20 text-blue-400';
+   135→      case 'low-shelf': return 'bg-emerald-500/20 text-emerald-400';
+   136→      case 'high-shelf': return 'bg-amber-500/20 text-amber-400';
+   137→      case 'low-pass': return 'bg-purple-500/20 text-purple-400';
+   138→      case 'high-pass': return 'bg-pink-500/20 text-pink-400';
+   139→      case 'notch': return 'bg-red-500/20 text-red-400';
+   140→      case 'band-pass': return 'bg-cyan-500/20 text-cyan-400';
+   141→      default: return 'bg-surface/50 text-muted-foreground';
+   142→    }
+   143→  };
+   144→
+   145→  // ─── Decorative EQ curve SVG ───
+   146→
+   147→  const EQCurveSVG = () => {
+   148→    const bands = dspConfig.eq ?? [];
+   149→    const points = 48;
+   150→    const w = 480;
+   151→    const h = 100;
+   152→    const mid = h / 2;
+   153→
+   154→    const computeGain = (freq: number) => {
+   155→      let total = 0;
+   156→      for (const band of bands) {
+   157→        if (!band.enabled) continue;
+   158→        const diff = Math.log2(freq / band.frequency);
+   159→        const bw = band.q * diff;
+   160→        const response = 1 / (1 + bw * bw);
+   161→        if (band.type === 'high-shelf' && freq > band.frequency) {
+   162→          total += band.gain * response;
+   163→        } else if (band.type === 'low-shelf' && freq < band.frequency) {
+   164→          total += band.gain * response;
+   165→        } else if (band.type === 'parametric' || band.type === 'notch' || band.type === 'band-pass') {
+   166→          total += band.gain * response;
+   167→        }
+   168→      }
+   169→      return total;
+   170→    };
+   171→
+   172→    const pathParts: string[] = [];
+   173→    for (let i = 0; i <= points; i++) {
+   174→      const t = i / points;
+   175→      const freq = 20 * Math.pow(1000, t);
+   176→      const gain = computeGain(freq);
+   177→      const x = (i / points) * w;
+   178→      const y = mid - (gain / 24) * (mid - 8);
+   179→      pathParts.push(`${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`);
+   180→    }
+   181→
+   182→    return (
+   183→      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-24 opacity-40" preserveAspectRatio="none">
+   184→        <defs>
+   185→          <linearGradient id="eqGrad" x1="0" y1="0" x2="0" y2="1">
+   186→            <stop offset="0%" stopColor="currentColor" stopOpacity="0.3" />
+   187→            <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+   188→          </linearGradient>
+   189→        </defs>
+   190→        {/* Grid lines */}
+   191→        <line x1={0} y1={mid} x2={w} y2={mid} stroke="currentColor" strokeOpacity="0.15" strokeWidth="0.5" />
+   192→        <line x1={0} y1={mid - (mid - 8)} x2={w} y2={mid - (mid - 8)} stroke="currentColor" strokeOpacity="0.08" strokeWidth="0.5" />
+   193→        <line x1={0} y1={mid + (mid - 8)} x2={w} y2={mid + (mid - 8)} stroke="currentColor" strokeOpacity="0.08" strokeWidth="0.5" />
+   194→        {/* Filled area */}
+   195→        <path d={`${pathParts.join(' ')} L ${w} ${mid} L 0 ${mid} Z`} fill="url(#eqGrad)" className="text-primary" />
+   196→        {/* Curve line */}
+   197→        <path d={pathParts.join(' ')} fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary" />
+   198→        {/* Frequency labels */}
+   199→        <text x={0} y={h - 2} fill="currentColor" className="text-muted-foreground" fontSize="8" fontFamily="monospace">20</text>
+   200→        <text x={w * 0.21} y={h - 2} fill="currentColor" className="text-muted-foreground" fontSize="8" fontFamily="monospace">100</text>
+   201→        <text x={w * 0.43} y={h - 2} fill="currentColor" className="text-muted-foreground" fontSize="8" fontFamily="monospace">1k</text>
+   202→        <text x={w * 0.64} y={h - 2} fill="currentColor" className="text-muted-foreground" fontSize="8" fontFamily="monospace">10k</text>
+   203→        <text x={w * 0.88} y={h - 2} fill="currentColor" className="text-muted-foreground" fontSize="8" fontFamily="monospace">20k</text>
+   204→      </svg>
+   205→    );
+   206→  };
+   207→
+   208→  // ─── Module Card renderer ───
+   209→
+   210→  type ModuleInfo = {
+   211→    key: keyof DSPConfig;
+   212→    icon: React.ReactNode;
+   213→    label: string;
+   214→    detail: string;
+   215→    enabled: boolean;
+   216→  };
+   217→
+   218→  const modules: ModuleInfo[] = [
+   219→    {
+   220→      key: 'eq',
+   221→      icon: <Waves className="w-4 h-4" />,
+   222→      label: 'Parametric EQ',
+   223→      detail: `${activeEQBands} active band${activeEQBands !== 1 ? 's' : ''}`,
+   224→      enabled: (dspConfig.eq ?? []).length > 0,
+   225→    },
+   226→    {
+   227→      key: 'roomCorrection',
+   228→      icon: <Crosshair className="w-4 h-4" />,
+   229→      label: 'Room Correction',
+   230→      detail: `${dspConfig.roomCorrection?.filterName ?? '—'} · ${formatSampleRate(dspConfig.roomCorrection?.samplerate ?? 48000)}`,
+   231→      enabled: dspConfig.roomCorrection?.enabled ?? false,
+   232→    },
+   233→    {
+   234→      key: 'upsampling',
+   235→      icon: <RefreshCw className="w-4 h-4" />,
+   236→      label: 'Upsampling',
+   237→      detail: `${formatSampleRate(dspConfig.upsampling?.targetRate ?? 176400)} · ${dspConfig.upsampling?.filterType ?? 'minimum-phase'}`,
+   238→      enabled: dspConfig.upsampling?.enabled ?? false,
+   239→    },
+   240→    {
+   241→      key: 'headphoneCorrection',
+   242→      icon: <Headphones className="w-4 h-4" />,
+   243→      label: 'Headphone Correction',
+   244→      detail: `${dspConfig.headphoneCorrection?.profileName ?? '—'} · ${dspConfig.headphoneCorrection?.manufacturer ?? '—'} ${dspConfig.headphoneCorrection?.model ?? ''}`,
+   245→      enabled: dspConfig.headphoneCorrection?.enabled ?? false,
+   246→    },
+   247→    {
+   248→      key: 'crossfeed',
+   249→      icon: <MoveHorizontal className="w-4 h-4" />,
+   250→      label: 'Crossfeed',
+   251→      detail: `Preset: ${dspConfig.crossfeed?.preset ?? 'none'}`,
+   252→      enabled: dspConfig.crossfeed?.enabled ?? false,
+   253→    },
+   254→    {
+   255→      key: 'loudness',
+   256→      icon: <Gauge className="w-4 h-4" />,
+   257→      label: 'Loudness / ReplayGain',
+   258→      detail: `${dspConfig.loudness?.targetLUFS ?? -16} LUFS · ${dspConfig.loudness?.method ?? 'ebu-r128'}`,
+   259→      enabled: dspConfig.loudness?.enabled ?? false,
+   260→    },
+   261→    {
+   262→      key: 'dither',
+   263→      icon: <Cpu className="w-4 h-4" />,
+   264→      label: 'Dither',
+   265→      detail: dspConfig.dither?.type === 'none' ? 'Disabled' : `${dspConfig.dither?.type === 'tpdf' ? 'TPDF' : dspConfig.dither?.type === 'triangular' ? 'Triangular' : 'Noise-Shaped'}`,
+   266→      enabled: dspConfig.dither?.enabled ?? false,
+   267→    },
+   268→  ];
+   269→
+   270→  // ─── Render ───
+   271→
+   272→  return (
+   273→    <ScrollArea className="h-full">
+   274→      <div className="p-6 max-w-5xl mx-auto space-y-6">
+   275→        {/* Page Header */}
+   276→        <div className="flex items-center gap-3 mb-2">
+   277→          <Sliders className="w-6 h-6 text-primary" />
+   278→          <h1 className="text-2xl font-bold">DSP Engine</h1>
+   279→          <Badge variant="secondary" className="text-xs ml-2">Configuration</Badge>
+   280→        </div>
+   281→        <p className="text-muted-foreground text-sm -mt-3 mb-4">
+   282→          Configure the digital signal processing chain for each zone.
+   283→        </p>
+   284→
+   285→        {/* ─── 1. Zone Selector ─── */}
+   286→        <Card className="bg-card border-border">
+   287→          <CardContent className="p-4">
+   288→            <div className="flex items-center gap-2 mb-3">
+   289→              <MonitorSpeaker className="w-4 h-4 text-muted-foreground" />
+   290→              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Zone</span>
+   291→            </div>
+   292→            <div className="flex gap-2 flex-wrap">
+   293→              {zones.map(zone => (
+   294→                <Button
+   295→                  key={zone.id}
+   296→                  variant="ghost"
+   297→                  size="sm"
+   298→                  className={
+   299→                    zone.id === selectedZoneId
+   300→                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+   301→                      : 'bg-surface hover:bg-surface/80 text-foreground'
+   302→                  }
+   303→                  onClick={() => {
+   304→                    setSelectedZoneId(zone.id);
+   305→                    setDspConfig(zone.dspConfig ?? defaultDSPConfig);
+   306→                    setVolumeMode(zone.volumeMode ?? 'dsp');
+   307→                    setMaxVolume(zone.maxVolume ?? 85);
+   308→                    setStartupVolume(zone.startupVolume ?? 40);
+   309→                    setClockMode(zone.clockMode ?? 'auto');
+   310→                  }}
+   311→                >
+   312→                  {zone.name}
+   313→                </Button>
+   314→              ))}
+   315→            </div>
+   316→          </CardContent>
+   317→        </Card>
+   318→
+   319→        {/* ─── 2. DSP Module Toggles ─── */}
+   320→        <Card className="bg-card border-border">
+   321→          <CardContent className="p-4">
+   322→            <div className="flex items-center gap-2 mb-4">
+   323→              <Zap className="w-4 h-4 text-muted-foreground" />
+   324→              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Processing Modules</span>
+   325→            </div>
+   326→            <div className="grid gap-3">
+   327→              {modules.map(mod => (
+   328→                <div
+   329→                  key={mod.key}
+   330→                  className={`flex items-center justify-between p-3 rounded-lg bg-surface/50 border-l-2 transition-colors ${
+   331→                    mod.enabled ? 'border-l-primary' : 'border-l-transparent'
+   332→                  }`}
+   333→                >
+   334→                  <div className="flex items-center gap-3 min-w-0">
+   335→                    <div className={`${mod.enabled ? 'text-primary' : 'text-muted-foreground'}`}>
+   336→                      {mod.icon}
+   337→                    </div>
+   338→                    <div className="min-w-0">
+   339→                      <div className="flex items-center gap-2">
+   340→                        <span className="text-sm font-medium">{mod.label}</span>
+   341→                        {mod.enabled && <CheckCircle2 className="w-3 h-3 text-signal-green" />}
+   342→                      </div>
+   343→                      <span className="text-xs text-muted-foreground truncate block">
+   344→                        {mod.detail}
+   345→                      </span>
+   346→                    </div>
+   347→                  </div>
+   348→                  <Switch
+   349→                    checked={mod.enabled}
+   350→                    onCheckedChange={() => toggleModule(mod.key)}
+   351→                  />
+   352→                </div>
+   353→              ))}
+   354→            </div>
+   355→          </CardContent>
+   356→        </Card>
+   357→
+   358→        {/* ─── 3. Parametric EQ Editor ─── */}
+   359→        <Card className="bg-card border-border">
+   360→          <CardContent className="p-4">
+   361→            <button
+   362→              className="flex items-center justify-between w-full text-left"
+   363→              onClick={() => toggleSection('eq')}
+   364→            >
+   365→              <div className="flex items-center gap-2">
+   366→                <Waves className="w-4 h-4 text-muted-foreground" />
+   367→                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Parametric EQ Editor</span>
+   368→                <Badge variant="secondary" className="text-[10px]">{(dspConfig.eq ?? []).length} bands</Badge>
+   369→              </div>
+   370→              {expandedSections.eq ? (
+   371→                <ChevronUp className="w-4 h-4 text-muted-foreground" />
+   372→              ) : (
+   373→                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+   374→              )}
+   375→            </button>
+   376→
+   377→            {expandedSections.eq && (
+   378→              <div className="mt-4 space-y-4">
+   379→                {/* EQ Curve Visualization */}
+   380→                <div className="rounded-lg bg-surface/50 p-3">
+   381→                  <EQCurveSVG />
+   382→                </div>
+   383→
+   384→                <Separator className="bg-border" />
+   385→
+   386→                {/* EQ Bands */}
+   387→                <div className="space-y-3">
+   388→                  {(dspConfig.eq ?? []).map((band, idx) => (
+   389→                    <div
+   390→                      key={band.id}
+   391→                      className={`p-3 rounded-lg border border-border bg-surface/30 ${
+   392→                        !band.enabled ? 'opacity-50' : ''
+   393→                      }`}
+   394→                    >
+   395→                      <div className="flex items-center justify-between mb-2">
+   396→                        <div className="flex items-center gap-2">
+   397→                          <span className="text-xs font-medium text-foreground">{band.label ?? `Band ${idx + 1}`}</span>
+   398→                          <Badge className={`text-[10px] ${bandTypeColor(band.type)}`} variant="secondary">
+   399→                            {band.type}
+   400→                          </Badge>
+   401→                        </div>
+   402→                        <div className="flex items-center gap-2">
+   403→                          <Switch
+   404→                            checked={band.enabled}
+   405→                            onCheckedChange={checked => updateEQBand(band.id, { enabled: checked })}
+   406→                          />
+   407→                          <Button
+   408→                            variant="ghost"
+   409→                            size="icon"
+   410→                            className="h-7 w-7 text-muted-foreground hover:text-signal-red"
+   411→                            onClick={() => removeEQBand(band.id)}
+   412→                          >
+   413→                            <Trash2 className="w-3.5 h-3.5" />
+   414→                          </Button>
+   415→                        </div>
+   416→                      </div>
+   417→
+   418→                      <div className="grid grid-cols-3 gap-3">
+   419→                        {/* Frequency */}
+   420→                        <div>
+   421→                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">Frequency</span>
+   422→                          <span className="font-mono text-sm text-foreground">
+   423→                            {band.frequency >= 1000
+   424→                              ? `${(band.frequency / 1000).toFixed(1)} kHz`
+   425→                              : `${band.frequency} Hz`}
+   426→                          </span>
+   427→                        </div>
+   428→
+   429→                        {/* Gain with +/- */}
+   430→                        <div>
+   431→                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">Gain</span>
+   432→                          <div className="flex items-center gap-1">
+   433→                            <Button
+   434→                              variant="outline"
+   435→                              size="icon"
+   436→                              className="h-6 w-6"
+   437→                              onClick={() => updateEQBand(band.id, { gain: Math.max(-24, band.gain - 0.5) })}
+   438→                            >
+   439→                              <span className="text-xs">−</span>
+   440→                            </Button>
+   441→                            <span className={`font-mono text-sm min-w-[3rem] text-center ${
+   442→                              band.gain > 0 ? 'text-signal-green' : band.gain < 0 ? 'text-signal-amber' : 'text-foreground'
+   443→                            }`}>
+   444→                              {band.gain > 0 ? '+' : ''}{band.gain.toFixed(1)} dB
+   445→                            </span>
+   446→                            <Button
+   447→                              variant="outline"
+   448→                              size="icon"
+   449→                              className="h-6 w-6"
+   450→                              onClick={() => updateEQBand(band.id, { gain: Math.min(24, band.gain + 0.5) })}
+   451→                            >
+   452→                              <span className="text-xs">+</span>
+   453→                            </Button>
+   454→                          </div>
+   455→                        </div>
+   456→
+   457→                        {/* Q Value */}
+   458→                        <div>
+   459→                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">Q</span>
+   460→                          <span className="font-mono text-sm text-foreground">{band.q.toFixed(2)}</span>
+   461→                        </div>
+   462→                      </div>
+   463→                    </div>
+   464→                  ))}
+   465→                </div>
+   466→
+   467→                <Button
+   468→                  variant="outline"
+   469→                  size="sm"
+   470→                  className="w-full border-dashed"
+   471→                  onClick={addEQBand}
+   472→                >
+   473→                  <Plus className="w-3.5 h-3.5 mr-2" />
+   474→                  Add Band
+   475→                </Button>
+   476→              </div>
+   477→            )}
+   478→          </CardContent>
+   479→        </Card>
+   480→
+   481→        {/* ─── 4. Upsampling Config ─── */}
+   482→        <Card className="bg-card border-border">
+   483→          <CardContent className="p-4">
+   484→            <button
+   485→              className="flex items-center justify-between w-full text-left"
+   486→              onClick={() => toggleSection('upsampling')}
+   487→            >
+   488→              <div className="flex items-center gap-2">
+   489→                <RefreshCw className="w-4 h-4 text-muted-foreground" />
+   490→                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Upsampling Configuration</span>
+   491→              </div>
+   492→              {expandedSections.upsampling ? (
+   493→                <ChevronUp className="w-4 h-4 text-muted-foreground" />
+   494→              ) : (
+   495→                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+   496→              )}
+   497→            </button>
+   498→
+   499→            {expandedSections.upsampling && (
+   500→              <div className="mt-4 space-y-4">
+   501→                {/* Target Rate */}
+   502→                <div className="flex items-center justify-between">
+   503→                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Target Rate</span>
+   504→                  <Select
+   505→                    value={String(dspConfig.upsampling?.targetRate ?? 176400)}
+   506→                    onValueChange={val =>
+   507→                      setDspConfig(prev => ({
+   508→                        ...prev,
+   509→                        upsampling: { ...(prev.upsampling ?? { enabled: false, targetRate: 176400, targetBitDepth: 32, filterType: 'minimum-phase', maxSrcRate: 96000 }), targetRate: Number(val) },
+   510→                      }))
+   511→                    }
+   512→                  >
+   513→                    <SelectTrigger className="w-48 bg-surface/50 border-border font-mono text-sm">
+   514→                      <SelectValue />
+   515→                    </SelectTrigger>
+   516→                    <SelectContent className="bg-card border-border">
+   517→                      <SelectItem value="88200">88.2 kHz (2×)</SelectItem>
+   518→                      <SelectItem value="176400">176.4 kHz (4×)</SelectItem>
+   519→                      <SelectItem value="352800">352.8 kHz (8×)</SelectItem>
+   520→                      <SelectItem value="96000">96 kHz (2×)</SelectItem>
+   521→                      <SelectItem value="192000">192 kHz (4×)</SelectItem>
+   522→                      <SelectItem value="384000">384 kHz (4×)</SelectItem>
+   523→                      <SelectItem value="768000">768 kHz (8×)</SelectItem>
+   524→                    </SelectContent>
+   525→                  </Select>
+   526→                </div>
+   527→
+   528→                {/* Target Bit Depth */}
+   529→                <div className="flex items-center justify-between">
+   530→                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Target Bit Depth</span>
+   531→                  <Select
+   532→                    value={String(dspConfig.upsampling?.targetBitDepth ?? 32)}
+   533→                    onValueChange={val =>
+   534→                      setDspConfig(prev => ({
+   535→                        ...prev,
+   536→                        upsampling: { ...(prev.upsampling ?? { enabled: false, targetRate: 176400, targetBitDepth: 32, filterType: 'minimum-phase', maxSrcRate: 96000 }), targetBitDepth: Number(val) },
+   537→                      }))
+   538→                    }
+   539→                  >
+   540→                    <SelectTrigger className="w-32 bg-surface/50 border-border font-mono text-sm">
+   541→                      <SelectValue />
+   542→                    </SelectTrigger>
+   543→                    <SelectContent className="bg-card border-border">
+   544→                      <SelectItem value="16">16-bit</SelectItem>
+   545→                      <SelectItem value="24">24-bit</SelectItem>
+   546→                      <SelectItem value="32">32-bit</SelectItem>
+   547→                    </SelectContent>
+   548→                  </Select>
+   549→                </div>
+   550→
+   551→                {/* Filter Type */}
+   552→                <div className="flex items-center justify-between">
+   553→                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Filter Type</span>
+   554→                  <Select
+   555→                    value={dspConfig.upsampling?.filterType ?? 'minimum-phase'}
+   556→                    onValueChange={val =>
+   557→                      setDspConfig(prev => ({
+   558→                        ...prev,
+   559→                        upsampling: { ...(prev.upsampling ?? { enabled: false, targetRate: 176400, targetBitDepth: 32, filterType: 'minimum-phase', maxSrcRate: 96000 }), filterType: val as DSPConfig['upsampling'] extends { filterType: infer F } ? F : never },
+   560→                      }))
+   561→                    }
+   562→                  >
+   563→                    <SelectTrigger className="w-48 bg-surface/50 border-border font-mono text-sm">
+   564→                      <SelectValue />
+   565→                    </SelectTrigger>
+   566→                    <SelectContent className="bg-card border-border">
+   567→                      <SelectItem value="minimum-phase">Minimum Phase</SelectItem>
+   568→                      <SelectItem value="linear-phase">Linear Phase</SelectItem>
+   569→                      <SelectItem value="apodizing">Apodizing</SelectItem>
+   570→                      <SelectItem value="brick-wall">Brick Wall</SelectItem>
+   571→                    </SelectContent>
+   572→                  </Select>
+   573→                </div>
+   574→
+   575→                {/* Max Source Rate */}
+   576→                <div className="flex items-center justify-between">
+   577→                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Max Source Rate</span>
+   578→                  <Select
+   579→                    value={String(dspConfig.upsampling?.maxSrcRate ?? 96000)}
+   580→                    onValueChange={val =>
+   581→                      setDspConfig(prev => ({
+   582→                        ...prev,
+   583→                        upsampling: { ...(prev.upsampling ?? { enabled: false, targetRate: 176400, targetBitDepth: 32, filterType: 'minimum-phase', maxSrcRate: 96000 }), maxSrcRate: Number(val) },
+   584→                      }))
+   585→                    }
+   586→                  >
+   587→                    <SelectTrigger className="w-48 bg-surface/50 border-border font-mono text-sm">
+   588→                      <SelectValue />
+   589→                    </SelectTrigger>
+   590→                    <SelectContent className="bg-card border-border">
+   591→                      <SelectItem value="44100">44.1 kHz</SelectItem>
+   592→                      <SelectItem value="48000">48 kHz</SelectItem>
+   593→                      <SelectItem value="88200">88.2 kHz</SelectItem>
+   594→                      <SelectItem value="96000">96 kHz</SelectItem>
+   595→                      <SelectItem value="176400">176.4 kHz</SelectItem>
+   596→                      <SelectItem value="192000">192 kHz</SelectItem>
+   597→                      <SelectItem value="352800">352.8 kHz</SelectItem>
+   598→                      <SelectItem value="384000">384 kHz</SelectItem>
+   599→                    </SelectContent>
+   600→                  </Select>
+   601→                </div>
+   602→              </div>
+   603→            )}
+   604→          </CardContent>
+   605→        </Card>
+   606→
+   607→        {/* ─── 5. Volume Control ─── */}
+   608→        <Card className="bg-card border-border">
+   609→          <CardContent className="p-4">
+   610→            <button
+   611→              className="flex items-center justify-between w-full text-left"
+   612→              onClick={() => toggleSection('volume')}
+   613→            >
+   614→              <div className="flex items-center gap-2">
+   615→                <Volume2 className="w-4 h-4 text-muted-foreground" />
+   616→                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Volume Control</span>
+   617→              </div>
+   618→              {expandedSections.volume ? (
+   619→                <ChevronUp className="w-4 h-4 text-muted-foreground" />
+   620→              ) : (
+   621→                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+   622→              )}
+   623→            </button>
+   624→
+   625→            {expandedSections.volume && (
+   626→              <div className="mt-4 space-y-5">
+   627→                {/* Volume Mode */}
+   628→                <div>
+   629→                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-2">Volume Mode</span>
+   630→                  <div className="flex gap-2">
+   631→                    {(['hardware', 'dsp', 'fixed'] as const).map(mode => (
+   632→                      <Button
+   633→                        key={mode}
+   634→                        variant={volumeMode === mode ? 'default' : 'outline'}
+   635→                        size="sm"
+   636→                        className={volumeMode === mode ? 'bg-primary text-primary-foreground' : 'border-border text-muted-foreground'}
+   637→                        onClick={() => setVolumeMode(mode)}
+   638→                      >
+   639→                        {mode === 'hardware' && <MonitorSpeaker className="w-3.5 h-3.5 mr-1.5" />}
+   640→                        {mode === 'dsp' && <Cpu className="w-3.5 h-3.5 mr-1.5" />}
+   641→                        {mode === 'fixed' && <VolumeX className="w-3.5 h-3.5 mr-1.5" />}
+   642→                        <span className="capitalize">{mode === 'dsp' ? 'DSP' : mode}</span>
+   643→                      </Button>
+   644→                    ))}
+   645→                  </div>
+   646→                  <p className="text-xs text-muted-foreground mt-2">
+   647→                    {volumeMode === 'hardware' && 'Volume is controlled by the DAC or amplifier hardware. Bit-perfect output preserved.'}
+   648→                    {volumeMode === 'dsp' && 'Volume is applied in the DSP pipeline before output. Allows limiting and ramping.'}
+   649→                    {volumeMode === 'fixed' && 'Fixed output level — no volume control. Use when connecting to an external preamp.'}
+   650→                  </p>
+   651→                </div>
+   652→
+   653→                <Separator className="bg-border" />
+   654→
+   655→                {/* Max Volume */}
+   656→                <div>
+   657→                  <div className="flex items-center justify-between mb-2">
+   658→                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Max Volume</span>
+   659→                    <span className={`font-mono text-sm ${maxVolume > 80 ? 'text-signal-red' : 'text-foreground'}`}>
+   660→                      {maxVolume}%
+   661→                    </span>
+   662→                  </div>
+   663→                  <Slider
+   664→                    value={[maxVolume]}
+   665→                    onValueChange={val => setMaxVolume(val[0])}
+   666→                    min={0}
+   667→                    max={100}
+   668→                    step={1}
+   669→                    className="w-full"
+   670→                  />
+   671→                  {maxVolume > 80 && (
+   672→                    <div className="flex items-center gap-1.5 mt-2 text-signal-red">
+   673→                      <AlertCircle className="w-3.5 h-3.5" />
+   674→                      <span className="text-xs">Warning: High maximum volume may cause speaker damage</span>
+   675→                    </div>
+   676→                  )}
+   677→                </div>
+   678→
+   679→                <Separator className="bg-border" />
+   680→
+   681→                {/* Startup Volume */}
+   682→                <div>
+   683→                  <div className="flex items-center justify-between mb-2">
+   684→                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Startup Volume</span>
+   685→                    <span className="font-mono text-sm text-foreground">{startupVolume}%</span>
+   686→                  </div>
+   687→                  <Slider
+   688→                    value={[startupVolume]}
+   689→                    onValueChange={val => setStartupVolume(val[0])}
+   690→                    min={0}
+   691→                    max={100}
+   692→                    step={1}
+   693→                    className="w-full"
+   694→                  />
+   695→                </div>
+   696→
+   697→                <Separator className="bg-border" />
+   698→
+   699→                {/* Volume Ramp Time */}
+   700→                <div>
+   701→                  <div className="flex items-center justify-between mb-2">
+   702→                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Volume Ramp Time</span>
+   703→                    <span className="font-mono text-sm text-foreground">{rampTime} ms</span>
+   704→                  </div>
+   705→                  <Slider
+   706→                    value={[rampTime]}
+   707→                    onValueChange={val => setRampTime(val[0])}
+   708→                    min={0}
+   709→                    max={2000}
+   710→                    step={50}
+   711→                    className="w-full"
+   712→                  />
+   713→                  <p className="text-xs text-muted-foreground mt-1">
+   714→                    Time for volume transitions between tracks or seeking. 0 = instant.
+   715→                  </p>
+   716→                </div>
+   717→              </div>
+   718→            )}
+   719→          </CardContent>
+   720→        </Card>
+   721→
+   722→        {/* ─── 6. Clock & Timing ─── */}
+   723→        <Card className="bg-card border-border">
+   724→          <CardContent className="p-4">
+   725→            <button
+   726→              className="flex items-center justify-between w-full text-left"
+   727→              onClick={() => toggleSection('clock')}
+   728→            >
+   729→              <div className="flex items-center gap-2">
+   730→                <Clock className="w-4 h-4 text-muted-foreground" />
+   731→                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Clock &amp; Timing</span>
+   732→              </div>
+   733→              {expandedSections.clock ? (
+   734→                <ChevronUp className="w-4 h-4 text-muted-foreground" />
+   735→              ) : (
+   736→                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+   737→              )}
+   738→            </button>
+   739→
+   740→            {expandedSections.clock && (
+   741→              <div className="mt-4 space-y-4">
+   742→                {/* Clock Mode */}
+   743→                <div>
+   744→                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-2">Clock Mode</span>
+   745→                  <div className="flex gap-2 flex-wrap">
+   746→                    {(['auto', 'master', 'slave', 'passthrough'] as const).map(mode => (
+   747→                      <Button
+   748→                        key={mode}
+   749→                        variant={clockMode === mode ? 'default' : 'outline'}
+   750→                        size="sm"
+   751→                        className={clockMode === mode ? 'bg-primary text-primary-foreground' : 'border-border text-muted-foreground'}
+   752→                        onClick={() => setClockMode(mode)}
+   753→                      >
+   754→                        <Activity className="w-3.5 h-3.5 mr-1.5" />
+   755→                        <span className="capitalize">{mode}</span>
+   756→                      </Button>
+   757→                    ))}
+   758→                  </div>
+   759→                </div>
+   760→
+   761→                <Separator className="bg-border" />
+   762→
+   763→                {/* Current Clock Source */}
+   764→                <div className="flex items-center justify-between">
+   765→                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Current Source</span>
+   766→                  <span className="font-mono text-sm text-foreground">
+   767→                    {selectedZone?.endpoints[0]?.clockSource ? String(selectedZone.endpoints[0].clockSource).toUpperCase() : 'INTERNAL'}
+   768→                  </span>
+   769→                </div>
+   770→
+   771→                {/* Jitter Indicator */}
+   772→                <div className="flex items-center justify-between">
+   773→                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Jitter</span>
+   774→                  <Badge className="bg-signal-green/15 text-signal-green border-signal-green/30 text-[10px]">
+   775→                    <CheckCircle2 className="w-3 h-3 mr-1" />
+   776→                    &lt; 1ns
+   777→                  </Badge>
+   778→                </div>
+   779→
+   780→                {/* Sync Status for Grouped Zones */}
+   781→                {selectedZone?.isGroup && (
+   782→                  <>
+   783→                    <Separator className="bg-border" />
+   784→                    <div className="flex items-center justify-between">
+   785→                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Sync Offset</span>
+   786→                      <span className="font-mono text-sm text-foreground">
+   787→                        {selectedZone.syncOffsetMs != null ? `${selectedZone.syncOffsetMs.toFixed(1)} ms` : '0.0 ms'}
+   788→                      </span>
+   789→                    </div>
+   790→                    <div className="flex items-center justify-between">
+   791→                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Group Sync</span>
+   792→                      <Badge variant="secondary" className="text-[10px] text-signal-green">
+   793→                        <CheckCircle2 className="w-3 h-3 mr-1" />
+   794→                        Synchronized
+   795→                      </Badge>
+   796→                    </div>
+   797→                  </>
+   798→                )}
+   799→
+   800→                {/* Endpoint Clock Info */}
+   801→                {selectedZone?.endpoints.map(ep => (
+   802→                  <div key={ep.id} className="p-3 rounded-lg bg-surface/50 border border-border">
+   803→                    <div className="flex items-center justify-between mb-2">
+   804→                      <span className="text-xs font-medium text-foreground">{ep.name}</span>
+   805→                      <span className={`w-2 h-2 rounded-full ${ep.status === 'online' ? 'bg-signal-green' : ep.status === 'standby' ? 'bg-signal-amber' : 'bg-signal-red'}`} />
+   806→                    </div>
+   807→                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+   808→                      <div className="flex justify-between">
+   809→                        <span className="text-muted-foreground">DAC</span>
+   810→                        <span className="font-mono text-foreground">{ep.dac ?? '—'}</span>
+   811→                      </div>
+   812→                      <div className="flex justify-between">
+   813→                        <span className="text-muted-foreground">Max Rate</span>
+   814→                        <span className="font-mono text-foreground">{formatSampleRate(ep.maxSampleRate)}</span>
+   815→                      </div>
+   816→                      <div className="flex justify-between">
+   817→                        <span className="text-muted-foreground">Latency</span>
+   818→                        <span className="font-mono text-foreground">{ep.latencyMs?.toFixed(1) ?? '—'} ms</span>
+   819→                      </div>
+   820→                      <div className="flex justify-between">
+   821→                        <span className="text-muted-foreground">Clock</span>
+   822→                        <span className="font-mono text-foreground">{ep.clockSource ? String(ep.clockSource) : 'internal'}</span>
+   823→                      </div>
+   824→                    </div>
+   825→                  </div>
+   826→                ))}
+   827→              </div>
+   828→            )}
+   829→          </CardContent>
+   830→        </Card>
+   831→
+   832→        {/* Bottom spacer */}
+   833→        <div className="h-8" />
+   834→      </div>
+   835→    </ScrollArea>
+   836→  );
+   837→}
+   838→

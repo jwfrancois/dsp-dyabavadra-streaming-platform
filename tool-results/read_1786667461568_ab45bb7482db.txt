@@ -1,0 +1,1714 @@
+     1→// Comprehensive mock data for Dyabavadra-Streaming Platform
+     2→
+     3→export interface Artist {
+     4→  id: string;
+     5→  name: string;
+     6→  imageUrl: string;
+     7→  bio: string;
+     8→  genres: string[];
+     9→  born?: string;
+    10→  origin?: string;
+    11→  yearsActive?: string;
+    12→  type: 'individual' | 'group';
+    13→  members?: string[];
+    14→  similarArtists: string[];
+    15→  playCount: number;
+    16→  trackCount: number;
+    17→  albumCount: number;
+    18→}
+    19→
+    20→export interface Album {
+    21→  id: string;
+    22→  title: string;
+    23→  artistId: string;
+    24→  artistName: string;
+    25→  imageUrl: string;
+    26→  year: number;
+    27→  genre: string;
+    28→  tracks: string[];
+    29→  duration: number; // seconds
+    30→  format: string;
+    31→  bitDepth: number;
+    32→  sampleRate: number;
+    33→  channels: number;
+    34→  label: string;
+    35→  catalogNumber?: string;
+    36→  type: 'album' | 'single' | 'ep' | 'compilation' | 'live';
+    37→  rating: number; // 0-10
+    38→  review?: string;
+    39→  editions?: Edition[];
+    40→}
+    41→
+    42→export interface Edition {
+    43→  id: string;
+    44→  title: string;
+    45→  year: number;
+    46→  format: string;
+    47→  bitDepth: number;
+    48→  sampleRate: number;
+    49→  label: string;
+    50→  catalogNumber?: string;
+    51→}
+    52→
+    53→export interface Track {
+    54→  id: string;
+    55→  title: string;
+    56→  albumId: string;
+    57→  albumName: string;
+    58→  artistId: string;
+    59→  artistName: string;
+    60→  trackNumber: number;
+    61→  discNumber: number;
+    62→  duration: number; // seconds
+    63→  format: string;
+    64→  bitDepth: number;
+    65→  sampleRate: number;
+    66→  channels: number;
+    67→  bitrate: number;
+    68→  filePath: string;
+    69→  fileSize: number;
+    70→  composers: string[];
+    71→  performers: Credit[];
+    72→  lyrics?: string;
+    73→  genre: string;
+    74→  loved: boolean;
+    75→  playCount: number;
+    76→  lastPlayed?: string;
+    77→  source: 'local' | 'tidal' | 'qobuz';
+    78→  isAvailable: boolean;
+    79→  blobUrl?: string; // Client-side blob URL for browser-imported tracks
+    80→}
+    81→
+    82→export interface Credit {
+    83→  name: string;
+    84→  role: string;
+    85→  instrument?: string;
+    86→}
+    87→
+    88→export interface Zone {
+    89→  id: string;
+    90→  name: string;
+    91→  endpoints: Endpoint[];
+    92→  isGroup: boolean;
+    93→  isPlaying: boolean;
+    94→  currentTrackId?: string;
+    95→  volume: number;
+    96→  isMuted: boolean;
+    97→  isOnline: boolean;
+    98→  outputFormat: string;
+    99→  sampleRate: number;
+   100→  bitDepth: number;
+   101→  dspEnabled: boolean;
+   102→  dspChain?: string[];
+   103→  volumeMode: 'hardware' | 'dsp' | 'fixed';
+   104→  maxVolume?: number;
+   105→  startupVolume?: number;
+   106→  groupZones?: string[];
+   107→  syncOffsetMs?: number;
+   108→  clockMode?: 'auto' | 'master' | 'slave' | 'passthrough';
+   109→  dspConfig?: DSPConfig;
+   110→}
+   111→
+   112→export interface Endpoint {
+   113→  id: string;
+   114→  name: string;
+   115→  type: 'bridge' | 'raspberry-pi' | 'mac' | 'pc' | 'mobile' | 'embedded-soc' | 'dedicated-hardware';
+   116→  status: 'online' | 'standby' | 'offline' | 'error';
+   117→  dac?: string;
+   118→  maxSampleRate: number;
+   119→  maxBitDepth: number;
+   120→  supportsDSD: boolean;
+   121→  supportsMQA: boolean;
+   122→  supportsDSD256: boolean;
+   123→  supportsDoP: boolean;
+   124→  firmware?: string;
+   125→  ipAddress?: string;
+   126→  macAddress?: string;
+   127→  latencyMs?: number;
+   128→  clockSource?: 'internal' | 'usb' | 'spdif' | 'wordclock' | 'network';
+   129→  hasMasterClock?: boolean;
+   130→  protocol?: 'dsp-native' | 'raat' | 'airplay' | 'chromecast';
+   131→  lastSeen?: string;
+   132→  cpuUsage?: number;
+   133→  bufferDepth?: number;
+   134→}
+   135→
+   136→export interface SignalPathStep {
+   137→  label: string;
+   138→  format: string;
+   139→  sampleRate: number;
+   140→  bitDepth: number;
+   141→  isBitPerfect: boolean;
+   142→  isDSD?: boolean;
+   143→  dsdMode?: 'native' | 'DoP' | 'PCM';
+   144→  ditherType?: 'none' | 'tpdf' | 'triangular' | 'noise-shaped';
+   145→  filterType?: 'minimum-phase' | 'linear-phase' | 'apodizing' | 'brick-wall';
+   146→  processingDetail?: string;
+   147→  latencyMs?: number;
+   148→}
+   149→
+   150→export interface Playlist {
+   151→  id: string;
+   152→  name: string;
+   153→  description?: string;
+   154→  trackIds: string[];
+   155→  createdAt: string;
+   156→  updatedAt: string;
+   157→  coverUrl?: string;
+   158→  trackCount: number;
+   159→  duration: number;
+   160→}
+   161→
+   162→export interface Genre {
+   163→  id: string;
+   164→  name: string;
+   165→  trackCount: number;
+   166→  albumCount: number;
+   167→  artistCount: number;
+   168→  imageUrl?: string;
+   169→}
+   170→
+   171→// ─── DSP Configuration Types ───
+   172→
+   173→export interface DSPConfig {
+   174→  eq?: EQBand[];
+   175→  roomCorrection?: RoomCorrection;
+   176→  upsampling?: UpsamplingConfig;
+   177→  headphoneCorrection?: HeadphoneCorrection;
+   178→  crossfeed?: CrossfeedConfig;
+   179→  loudness?: LoudnessConfig;
+   180→  dither?: DitherConfig;
+   181→  volumeLimit?: VolumeLimitConfig;
+   182→}
+   183→
+   184→export interface EQBand {
+   185→  id: string;
+   186→  enabled: boolean;
+   187→  type: 'parametric' | 'low-shelf' | 'high-shelf' | 'low-pass' | 'high-pass' | 'band-pass' | 'notch';
+   188→  frequency: number; // Hz
+   189→  gain: number; // dB, -24 to +24
+   190→  q: number; // 0.1 to 20
+   191→  label?: string;
+   192→}
+   193→
+   194→export interface RoomCorrection {
+   195→  enabled: boolean;
+   196→  filterName: string;
+   197→  filterFilePath?: string;
+   198→  samplerate: number;
+   199→  channels: number;
+   200→  delayMs?: number;
+   201→  description?: string;
+   202→}
+   203→
+   204→export interface UpsamplingConfig {
+   205→  enabled: boolean;
+   206→  targetRate: number; // e.g., 176400 for 4x 44.1k
+   207→  targetBitDepth: number;
+   208→  filterType: 'minimum-phase' | 'linear-phase' | 'apodizing' | 'brick-wall' | 'short-kernel' | 'long-kernel';
+   209→  maxSrcRate: number; // don't upsample sources above this rate
+   210→}
+   211→
+   212→export interface HeadphoneCorrection {
+   213→  enabled: boolean;
+   214→  profileName: string;
+   215→  manufacturer: string;
+   216→  model: string;
+   217→  description?: string;
+   218→}
+   219→
+   220→export interface CrossfeedConfig {
+   221→  enabled: boolean;
+   222→  preset: 'none' | 'subtle' | 'moderate' | 'strong' | 'custom';
+   223→  customCutoff?: number;
+   224→  customFeed?: number;
+   225→}
+   226→
+   227→export interface LoudnessConfig {
+   228→  enabled: boolean;
+   229→  targetLUFS: number;
+   230→  method: 'replaygain' | 'ebu-r128' | 'volume-match';
+   231→  fallbackGain: number;
+   232→}
+   233→
+   234→export interface DitherConfig {
+   235→  enabled: boolean;
+   236→  type: 'tpdf' | 'triangular' | 'noise-shaped' | 'none';
+   237→  noiseShape?: 'flat' | 'f-weighted' | 'shibata';
+   238→}
+   239→
+   240→export interface VolumeLimitConfig {
+   241→  maxDb?: number;
+   242→  maxPercent?: number;
+   243→  startupMax?: number;
+   244→  rampTimeMs?: number;
+   245→}
+   246→
+   247→// ─── Core / Server Status Types ───
+   248→
+   249→export interface CoreStatus {
+   250→  id: string;
+   251→  name: string;
+   252→  version: string;
+   253→  status: 'running' | 'starting' | 'stopping' | 'error';
+   254→  uptime: number; // seconds
+   255→  machineInfo: MachineInfo;
+   256→  audioEngine: AudioEngineInfo;
+   257→  storageLocations: StorageLocationInfo[];
+   258→  networkInfo: NetworkInfo;
+   259→  apiInfo: APIInfo;
+   260→  streamingServices: StreamingServiceInfo[];
+   261→  libraryStats: LibraryStats;
+   262→  discoveryMode: 'lan' | 'lan+remote' | 'vpn';
+   263→  autoDiscovery: boolean;
+   264→  lastScanAt?: string;
+   265→}
+   266→
+   267→export interface MachineInfo {
+   268→  hostname: string;
+   269→  os: string;
+   270→  cpuModel: string;
+   271→  cpuUsage: number;
+   272→  memoryTotal: number;
+   273→  memoryUsed: number;
+   274→  cores: number;
+   275→  architecture: string;
+   276→}
+   277→
+   278→export interface AudioEngineInfo {
+   279→  status: 'idle' | 'active' | 'overloaded';
+   280→  activeZones: number;
+   281→  totalZones: number;
+   282→  decodingLoad: number; // percent
+   283→  dspLoad: number; // percent
+   284→  outputLoad: number; // percent
+   285→  currentSampleRate: number;
+   286→  supportedFormats: string[];
+   287→  maxChannels: number;
+   288→  bitPerfectCapable: boolean;
+   289→  dsdNativeCapable: boolean;
+   290→  mqaPassthrough: boolean;
+   291→}
+   292→
+   293→export interface StorageLocationInfo {
+   294→  id: string;
+   295→  name: string;
+   296→  path: string;
+   297→  type: 'local' | 'nas' | 'usb' | 'network-share';
+   298→  enabled: boolean;
+   299→  totalSpace: number;
+   300→  usedSpace: number;
+   301→  trackCount: number;
+   302→  albumCount: number;
+   303→  isWatching: boolean;
+   304→  lastScan?: string;
+   305→  scanIntervalMin: number;
+   306→}
+   307→
+   308→export interface NetworkInfo {
+   309→  hostname: string;
+   310→  ipAddress: string;
+   311→  macAddress: string;
+   312→  protocol: 'dsp-native' | 'raat';
+   313→  port: number;
+   314→  discoveryPort: number;
+   315→  encryption: boolean;
+   316→  remoteAccess: boolean;
+   317→  vpnActive: boolean;
+   318→  connectedEndpoints: number;
+   319→}
+   320→
+   321→export interface APIInfo {
+   322→  version: string;
+   323→  protocol: 'websocket' | 'http-long-poll' | 'grpc';
+   324→  port: number;
+   325→  wsPort: number;
+   326→  authenticated: boolean;
+   327→  remoteApps: RemoteAppInfo[];
+   328→}
+   329→
+   330→export interface RemoteAppInfo {
+   331→  id: string;
+   332→  name: string;
+   333→  type: 'ios' | 'android' | 'desktop' | 'web';
+   334→  connected: boolean;
+   335→  lastSeen?: string;
+   336→  ipAddress?: string;
+   337→}
+   338→
+   339→export interface StreamingServiceInfo {
+   340→  id: string;
+   341→  name: string;
+   342→  type: 'tidal' | 'qobuz' | 'deezer' | 'spotify' | 'apple-music';
+   343→  status: 'connected' | 'disconnected' | 'error' | 'syncing';
+   344→  linked: boolean;
+   345→  username?: string;
+   346→  qualityTier: string;
+   347→  maxQuality?: string;
+   348→  lastSync?: string;
+   349→  librarySize?: number;
+   350→}
+   351→
+   352→export interface LibraryStats {
+   353→  totalTracks: number;
+   354→  totalAlbums: number;
+   355→  totalArtists: number;
+   356→  totalDuration: number;
+   357→  totalSize: number;
+   358→  localTracks: number;
+   359→  streamingTracks: number;
+   360→  formatBreakdown: Record<string, number>;
+   361→  sampleRateBreakdown: Record<string, number>;
+   362→}
+   363→
+   364→// ─── Cover Art URLs (using gradients as placeholders) ───
+   365→
+   366→const coverColors = [
+   367→  'from-purple-900 to-blue-900',
+   368→  'from-red-900 to-orange-900',
+   369→  'from-green-900 to-teal-900',
+   370→  'from-amber-900 to-yellow-900',
+   371→  'from-rose-900 to-pink-900',
+   372→  'from-indigo-900 to-violet-900',
+   373→  'from-cyan-900 to-sky-900',
+   374→  'from-emerald-900 to-lime-900',
+   375→  'from-slate-800 to-zinc-900',
+   376→  'from-fuchsia-900 to-purple-900',
+   377→  'from-orange-900 to-red-900',
+   378→  'from-teal-900 to-cyan-900',
+   379→];
+   380→
+   381→function coverGradient(index: number): string {
+   382→  return coverColors[index % coverColors.length];
+   383→}
+   384→
+   385→function albumArtUrl(id: string): string {
+   386→  return `/api/cover/${id}`;
+   387→}
+   388→
+   389→// ─── ARTISTS ───
+   390→
+   391→export const artists: Artist[] = [
+   392→  {
+   393→    id: 'artist-1',
+   394→    name: 'Lena Viktoria',
+   395→    imageUrl: albumArtUrl('artist-1'),
+   396→    bio: 'Lena Viktoria is a Swedish jazz vocalist and composer known for her ethereal interpretations of Scandinavian folk melodies combined with modern jazz harmony. Based in Stockholm, she has released four critically acclaimed albums and collaborated with artists across Europe and North America. Her voice, described by critics as "crystalline and deeply emotive," has become a defining sound in contemporary Nordic jazz.',
+   397→    genres: ['Jazz', 'Nordic Folk', 'Vocal Jazz'],
+   398→    born: '1988, Stockholm, Sweden',
+   399→    origin: 'Stockholm, Sweden',
+   400→    yearsActive: '2012–present',
+   401→    type: 'individual',
+   402→    similarArtists: ['artist-2', 'artist-5', 'artist-8'],
+   403→    playCount: 18432,
+   404→    trackCount: 48,
+   405→    albumCount: 4,
+   406→  },
+   407→  {
+   408→    id: 'artist-2',
+   409→    name: 'The Meridian Ensemble',
+   410→    imageUrl: albumArtUrl('artist-2'),
+   411→    bio: 'The Meridian Ensemble is a Berlin-based contemporary classical group that bridges the gap between minimalism, ambient music, and modern chamber composition. Founded in 2015 by composer Elias Richter, the ensemble has earned praise for their immersive live performances and meticulous studio recordings, often captured in 24-bit/192kHz for maximum fidelity.',
+   412→    genres: ['Contemporary Classical', 'Minimalism', 'Ambient', 'Chamber'],
+   413→    born: '2015',
+   414→    origin: 'Berlin, Germany',
+   415→    yearsActive: '2015–present',
+   416→    type: 'group',
+   417→    members: ['Elias Richter (composer)', 'Maren Fischer (violin)', 'Jonas Berg (cello)', 'Yuki Tanaka (piano)', 'Sophie Müller (flute)'],
+   418→    similarArtists: ['artist-1', 'artist-6', 'artist-9'],
+   419→    playCount: 12450,
+   420→    trackCount: 36,
+   421→    albumCount: 3,
+   422→  },
+   423→  {
+   424→    id: 'artist-3',
+   425→    name: 'Kai Horizon',
+   426→    imageUrl: albumArtUrl('artist-3'),
+   427→    bio: 'Kai Horizon is an electronic music producer and sound designer from Tokyo, Japan. His work spans ambient techno, IDM, and experimental soundscapes, drawing inspiration from the city\'s intersection of tradition and hypermodernity. His productions are meticulously crafted, with releases available in hi-res FLAC up to 32-bit/96kHz.',
+   428→    genres: ['Electronic', 'Ambient', 'Techno', 'IDM'],
+   429→    born: '1991, Tokyo, Japan',
+   430→    origin: 'Tokyo, Japan',
+   431→    yearsActive: '2014–present',
+   432→    type: 'individual',
+   433→    similarArtists: ['artist-7', 'artist-10', 'artist-2'],
+   434→    playCount: 21300,
+   435→    trackCount: 64,
+   436→    albumCount: 5,
+   437→  },
+   438→  {
+   439→    id: 'artist-4',
+   440→    name: 'Amara Osei',
+   441→    imageUrl: albumArtUrl('artist-4'),
+   442→    bio: 'Ghanaian-British singer-songwriter Amara Osei fuses highlife, neo-soul, and electronic music into a vibrant, deeply personal sound. Raised in London and Accra, her lyrics explore themes of identity, migration, and joy. Her debut album "Golden Hour" won the 2023 Mercury Prize and established her as one of the most exciting voices in modern British music.',
+   443→    genres: ['Neo-Soul', 'Highlife', 'Electronic', 'World'],
+   444→    born: '1994, London, UK',
+   445→    origin: 'London, UK / Accra, Ghana',
+   446→    yearsActive: '2018–present',
+   447→    type: 'individual',
+   448→    similarArtists: ['artist-1', 'artist-8', 'artist-11'],
+   449→    playCount: 31200,
+   450→    trackCount: 42,
+   451→    albumCount: 3,
+   452→  },
+   453→  {
+   454→    id: 'artist-5',
+   455→    name: 'Aethon',
+   456→    imageUrl: albumArtUrl('artist-5'),
+   457→    bio: 'Aethon is a progressive metal band from Oslo, Norway, known for their complex time signatures, extended compositions, and atmospheric soundscapes. Formed in 2010, they have released five albums that blend technical precision with emotional depth. Their most recent album, "Celestial Mechanics," was recorded in DXD (352.8kHz/32-bit) and mixed by legendary engineer Steve Wilson.',
+   458→    genres: ['Progressive Metal', 'Post-Rock', 'Atmospheric'],
+   459→    born: '2010',
+   460→    origin: 'Oslo, Norway',
+   461→    yearsActive: '2010–present',
+   462→    type: 'group',
+   463→    members: ['Magnus Helle (guitar, vocals)', 'Ingrid Solberg (bass)', 'Torsten Dahl (drums)', 'Erik Voss (keyboards)'],
+   464→    similarArtists: ['artist-6', 'artist-9', 'artist-12'],
+   465→    playCount: 15780,
+   466→    trackCount: 52,
+   467→    albumCount: 5,
+   468→  },
+   469→  {
+   470→    id: 'artist-6',
+   471→    name: 'Isabella Reyes',
+   472→    imageUrl: albumArtUrl('artist-6'),
+   473→    bio: 'Isabella Reyes is an Argentine pianist and composer specializing in contemporary classical and nuevo tango. A graduate of the Buenos Aires Conservatory, her work reimagines tango traditions through a modern classical lens, incorporating prepared piano, field recordings, and electronic processing. Her performances are celebrated for their emotional intensity and technical precision.',
+   474→    genres: ['Contemporary Classical', 'Tango Nuevo', 'Piano'],
+   475→    born: '1985, Buenos Aires, Argentina',
+   476→    origin: 'Buenos Aires, Argentina',
+   477→    yearsActive: '2009–present',
+   478→    type: 'individual',
+   479→    similarArtists: ['artist-2', 'artist-9', 'artist-5'],
+   480→    playCount: 9800,
+   481→    trackCount: 38,
+   482→    albumCount: 3,
+   483→  },
+   484→  {
+   485→    id: 'artist-7',
+   486→    name: 'Drift Signal',
+   487→    imageUrl: albumArtUrl('artist-7'),
+   488→    bio: 'Drift Signal is the recording alias of Canadian ambient artist David Chen. Based in Vancouver, his work explores the boundaries between music and silence, using field recordings, granular synthesis, and extended reverb to create immersive sonic environments. His albums are recorded and mastered at the highest possible resolution, with several releases available in DSD256.',
+   489→    genres: ['Ambient', 'Drone', 'Electronic', 'Field Recording'],
+   490→    born: '1979, Vancouver, Canada',
+   491→    origin: 'Vancouver, Canada',
+   492→    yearsActive: '2006–present',
+   493→    type: 'individual',
+   494→    similarArtists: ['artist-3', 'artist-10', 'artist-2'],
+   495→    playCount: 8900,
+   496→    trackCount: 44,
+   497→    albumCount: 6,
+   498→  },
+   499→  {
+   500→    id: 'artist-8',
+   501→    name: 'The Velvet Current',
+   502→    imageUrl: albumArtUrl('artist-8'),
+   503→    bio: 'The Velvet Current is a London-based jazz-funk collective featuring some of the UK\'s finest session musicians. Their sound draws from Herbie Hancock\'s Head Hunters era, Weather Report, and modern London jazz, creating tight, groove-driven instrumentals that showcase exceptional ensemble playing and virtuosic solos.',
+   504→    genres: ['Jazz Funk', 'Fusion', 'Jazz'],
+   505→    born: '2016',
+   506→    origin: 'London, UK',
+   507→    yearsActive: '2016–present',
+   508→    type: 'group',
+   509→    members: ['James Okonkwo (keys)', 'Sarah Chen (saxophone)', 'Marco Rossi (bass)', 'Devon Wright (drums)', 'Amir Hassan (guitar)'],
+   510→    similarArtists: ['artist-1', 'artist-4', 'artist-11'],
+   511→    playCount: 14600,
+   512→    trackCount: 30,
+   513→    albumCount: 2,
+   514→  },
+   515→  {
+   516→    id: 'artist-9',
+   517→    name: 'Pale Horizon',
+   518→    imageUrl: albumArtUrl('artist-9'),
+   519→    bio: 'Pale Horizon is an Australian post-rock ensemble known for expansive, cinematic compositions that build from delicate textures to overwhelming crescendos. Their live performances feature synchronized visuals and surround sound, and their studio recordings are acclaimed for their dynamic range and spatial mixing.',
+   520→    genres: ['Post-Rock', 'Ambient', 'Instrumental', 'Cinematic'],
+   521→    born: '2013',
+   522→    origin: 'Melbourne, Australia',
+   523→    yearsActive: '2013–present',
+   524→    type: 'group',
+   525→    members: ['Liam Foster (guitar)', 'Emma Nguyen (guitar)', 'Jack Morrison (bass)', 'Chris Taylor (drums)', 'Rachel Kim (strings)'],
+   526→    similarArtists: ['artist-5', 'artist-6', 'artist-7'],
+   527→    playCount: 11300,
+   528→    trackCount: 28,
+   529→    albumCount: 3,
+   530→  },
+   531→  {
+   532→    id: 'artist-10',
+   533→    name: 'Mira Sol',
+   534→    imageUrl: albumArtUrl('artist-10'),
+   535→    bio: 'Mira Sol is a Catalan singer-songwriter whose intimate, understated pop blends electronic production with acoustic instruments and multilingual lyrics in Catalan, Spanish, and English. Her music is characterized by warm analog synths, delicate vocal harmonies, and poetic lyrics that explore memory, place, and identity.',
+   536→    genres: ['Indie Pop', 'Electronic', 'Art Pop', 'Catalan'],
+   537→    born: '1993, Girona, Spain',
+   538→    origin: 'Girona, Catalonia',
+   539→    yearsActive: '2016–present',
+   540→    type: 'individual',
+   541→    similarArtists: ['artist-3', 'artist-4', 'artist-7'],
+   542→    playCount: 16800,
+   543→    trackCount: 40,
+   544→    albumCount: 4,
+   545→  },
+   546→  {
+   547→    id: 'artist-11',
+   548→    name: 'Ironroot',
+   549→    imageUrl: albumArtUrl('artist-11'),
+   550→    bio: 'Ironroot is a Nigerian-American Afrobeat and jazz fusion group based in Brooklyn, New York. Founded by drummer and bandleader Tobi Adeyemi, Ironroot channels the spirit of Fela Kuti through a modern lens, incorporating hip-hop rhythms, jazz harmony, and electronic production. Their explosive live shows have made them a festival favorite.',
+   551→    genres: ['Afrobeat', 'Jazz Fusion', 'Funk', 'World'],
+   552→    born: '2017',
+   553→    origin: 'Brooklyn, New York, USA',
+   554→    yearsActive: '2017–present',
+   555→    type: 'group',
+   556→    members: ['Tobi Adeyemi (drums, percussion)', 'Kofi Mensah (bass)', 'Nneka Obi (vocals)', 'David Park (keys)', 'Carlos Ruiz (trumpet)', 'Jake Thompson (saxophone)'],
+   557→    similarArtists: ['artist-4', 'artist-8', 'artist-10'],
+   558→    playCount: 19500,
+   559→    trackCount: 34,
+   560→    albumCount: 2,
+   561→  },
+   562→  {
+   563→    id: 'artist-12',
+   564→    name: 'Sigrid Haugen',
+   565→    imageUrl: albumArtUrl('artist-12'),
+   566→    bio: 'Norwegian violinist and composer Sigrid Haugen bridges classical, folk, and experimental electronic music. A former member of the Norwegian Chamber Orchestra, she now creates solo works that combine virtuosic violin technique with live electronics, field recordings from Arctic landscapes, and algorithms that respond to her playing in real time.',
+   567→    genres: ['Experimental', 'Contemporary Classical', 'Electroacoustic', 'Folk'],
+   568→    born: '1987, Tromsø, Norway',
+   569→    origin: 'Tromsø, Norway',
+   570→    yearsActive: '2011–present',
+   571→    type: 'individual',
+   572→    similarArtists: ['artist-5', 'artist-6', 'artist-9'],
+   573→    playCount: 7200,
+   574→    trackCount: 22,
+   575→    albumCount: 2,
+   576→  },
+   577→];
+   578→
+   579→// ─── ALBUMS ───
+   580→
+   581→export const albums: Album[] = [
+   582→  {
+   583→    id: 'album-1',
+   584→    title: 'Northern Lights',
+   585→    artistId: 'artist-1',
+   586→    artistName: 'Lena Viktoria',
+   587→    imageUrl: albumArtUrl('album-1'),
+   588→    year: 2023,
+   589→    genre: 'Jazz',
+   590→    tracks: ['track-1-1', 'track-1-2', 'track-1-3', 'track-1-4', 'track-1-5', 'track-1-6', 'track-1-7', 'track-1-8'],
+   591→    duration: 2840,
+   592→    format: 'FLAC',
+   593→    bitDepth: 24,
+   594→    sampleRate: 96,
+   595→    channels: 2,
+   596→    label: 'ECM Records',
+   597→    catalogNumber: 'ECM 2891',
+   598→    type: 'album',
+   599→    rating: 9,
+   600→    review: 'A masterful recording that captures Viktoria at the peak of her powers. The Stockholm studio sessions yielded an album of remarkable intimacy and clarity, with each note perfectly rendered in 24/96.',
+   601→    editions: [
+   602→      { id: 'ed-1a', title: 'Original Release', year: 2023, format: 'FLAC', bitDepth: 24, sampleRate: 96, label: 'ECM Records', catalogNumber: 'ECM 2891' },
+   603→      { id: 'ed-1b', title: 'Vinyl Edition', year: 2024, format: 'FLAC', bitDepth: 24, sampleRate: 192, label: 'ECM Records', catalogNumber: 'ECM 2891-V' },
+   604→    ],
+   605→  },
+   606→  {
+   607→    id: 'album-2',
+   608→    title: 'Silent Architecture',
+   609→    artistId: 'artist-2',
+   610→    artistName: 'The Meridian Ensemble',
+   611→    imageUrl: albumArtUrl('album-2'),
+   612→    year: 2022,
+   613→    genre: 'Contemporary Classical',
+   614→    tracks: ['track-2-1', 'track-2-2', 'track-2-3', 'track-2-4', 'track-2-5', 'track-2-6'],
+   615→    duration: 3420,
+   616→    format: 'FLAC',
+   617→    bitDepth: 24,
+   618→    sampleRate: 192,
+   619→    channels: 2,
+   620→    label: 'Deutsche Grammophon',
+   621→    type: 'album',
+   622→    rating: 8,
+   623→    review: 'A stunning exploration of space and silence. Richter\'s compositions breathe with an organic quality that belies their mathematical precision. The 24/192 recording captures every nuance of the ensemble\'s delicate interplay.',
+   624→  },
+   625→  {
+   626→    id: 'album-3',
+   627→    title: 'Phantom Frequencies',
+   628→    artistId: 'artist-3',
+   629→    artistName: 'Kai Horizon',
+   630→    imageUrl: albumArtUrl('album-3'),
+   631→    year: 2024,
+   632→    genre: 'Electronic',
+   633→    tracks: ['track-3-1', 'track-3-2', 'track-3-3', 'track-3-4', 'track-3-5', 'track-3-6', 'track-3-7', 'track-3-8', 'track-3-9'],
+   634→    duration: 3780,
+   635→    format: 'FLAC',
+   636→    bitDepth: 32,
+   637→    sampleRate: 96,
+   638→    channels: 2,
+   639→    label: 'Brainfeeder',
+   640→    type: 'album',
+   641→    rating: 9,
+   642→    review: 'Horizon\'s most accomplished work to date. Phantom Frequencies weaves intricate rhythmic patterns with lush ambient pads, creating a sonic world that rewards repeated listening at high resolution.',
+   643→  },
+   644→  {
+   645→    id: 'album-4',
+   646→    title: 'Golden Hour',
+   647→    artistId: 'artist-4',
+   648→    artistName: 'Amara Osei',
+   649→    imageUrl: albumArtUrl('album-4'),
+   650→    year: 2023,
+   651→    genre: 'Neo-Soul',
+   652→    tracks: ['track-4-1', 'track-4-2', 'track-4-3', 'track-4-4', 'track-4-5', 'track-4-6', 'track-4-7', 'track-4-8', 'track-4-9', 'track-4-10'],
+   653→    duration: 3120,
+   654→    format: 'FLAC',
+   655→    bitDepth: 24,
+   656→    sampleRate: 96,
+   657→    channels: 2,
+   658→    label: 'XL Recordings',
+   659→    type: 'album',
+   660→    rating: 10,
+   661→    review: 'A triumphant debut that announces Osei as a generational talent. Golden Hour effortlessly blends genres while remaining deeply personal. The production is immaculate, with every texture and vocal nuance captured in stunning detail.',
+   662→  },
+   663→  {
+   664→    id: 'album-5',
+   665→    title: 'Celestial Mechanics',
+   666→    artistId: 'artist-5',
+   667→    artistName: 'Aethon',
+   668→    imageUrl: albumArtUrl('album-5'),
+   669→    year: 2024,
+   670→    genre: 'Progressive Metal',
+   671→    tracks: ['track-5-1', 'track-5-2', 'track-5-3', 'track-5-4', 'track-5-5', 'track-5-6'],
+   672→    duration: 4800,
+   673→    format: 'FLAC',
+   674→    bitDepth: 32,
+   675→    sampleRate: 352,
+   676→    channels: 2,
+   677→    label: 'InsideOut Music',
+   678→    type: 'album',
+   679→    rating: 9,
+   680→    review: 'Aethon\'s magnum opus. Recorded in DXD for maximum fidelity, Celestial Mechanics pushes the boundaries of progressive metal both in composition and sonic quality. Steve Wilson\'s mix is reference-grade.',
+   681→    editions: [
+   682→      { id: 'ed-5a', title: 'Standard Edition', year: 2024, format: 'FLAC', bitDepth: 32, sampleRate: 352, label: 'InsideOut Music' },
+   683→      { id: 'ed-5b', title: 'Atmos Mix', year: 2024, format: 'FLAC', bitDepth: 24, sampleRate: 96, label: 'InsideOut Music' },
+   684→    ],
+   685→  },
+   686→  {
+   687→    id: 'album-6',
+   688→    title: 'Cartas al Silencio',
+   689→    artistId: 'artist-6',
+   690→    artistName: 'Isabella Reyes',
+   691→    imageUrl: albumArtUrl('album-6'),
+   692→    year: 2021,
+   693→    genre: 'Contemporary Classical',
+   694→    tracks: ['track-6-1', 'track-6-2', 'track-6-3', 'track-6-4', 'track-6-5'],
+   695→    duration: 2640,
+   696→    format: 'FLAC',
+   697→    bitDepth: 24,
+   698→    sampleRate: 192,
+   699→    channels: 2,
+   700→    label: 'Harmonia Mundi',
+   701→    type: 'album',
+   702→    rating: 8,
+   703→    review: 'Reyes\'s most personal work, Cartas al Silencio is a meditation on memory and absence. The piano recordings are exemplary, with the 192kHz capture revealing the full resonance of her Steinway D.',
+   704→  },
+   705→  {
+   706→    id: 'album-7',
+   707→    title: 'Subtractive Landscapes',
+   708→    artistId: 'artist-7',
+   709→    artistName: 'Drift Signal',
+   710→    imageUrl: albumArtUrl('album-7'),
+   711→    year: 2022,
+   712→    genre: 'Ambient',
+   713→    tracks: ['track-7-1', 'track-7-2', 'track-7-3', 'track-7-4', 'track-7-5', 'track-7-6', 'track-7-7'],
+   714→    duration: 4200,
+   715→    format: 'DSF',
+   716→    bitDepth: 1,
+   717→    sampleRate: 2822,
+   718→    channels: 2,
+   719→    label: 'Room 40',
+   720→    type: 'album',
+   721→    rating: 9,
+   722→    review: 'Recorded in DSD256 for the ultimate in analog warmth, Subtractive Landscapes is Chen\'s most immersive work. The layering of field recordings and synthesizer textures creates an almost tactile listening experience.',
+   723→  },
+   724→  {
+   725→    id: 'album-8',
+   726→    title: 'Current Affairs',
+   727→    artistId: 'artist-8',
+   728→    artistName: 'The Velvet Current',
+   729→    imageUrl: albumArtUrl('album-8'),
+   730→    year: 2024,
+   731→    genre: 'Jazz Funk',
+   732→    tracks: ['track-8-1', 'track-8-2', 'track-8-3', 'track-8-4', 'track-8-5', 'track-8-6', 'track-8-7'],
+   733→    duration: 2940,
+   734→    format: 'FLAC',
+   735→    bitDepth: 24,
+   736→    sampleRate: 96,
+   737→    channels: 2,
+   738→    label: 'Nonesuch Records',
+   739→    type: 'album',
+   740→    rating: 8,
+   741→    review: 'A tight, funk-driven session that showcases the ensemble\'s incredible chemistry. The rhythm section locks in with surgical precision, while the horn arrangements are both complex and deeply groovable.',
+   742→  },
+   743→  {
+   744→    id: 'album-9',
+   745→    title: 'The Weight of Light',
+   746→    artistId: 'artist-9',
+   747→    artistName: 'Pale Horizon',
+   748→    imageUrl: albumArtUrl('album-9'),
+   749→    year: 2023,
+   750→    genre: 'Post-Rock',
+   751→    tracks: ['track-9-1', 'track-9-2', 'track-9-3', 'track-9-4', 'track-9-5'],
+   752→    duration: 3600,
+   753→    format: 'FLAC',
+   754→    bitDepth: 24,
+   755→    sampleRate: 96,
+   756→    channels: 2,
+   757→    label: 'Temporary Residence Ltd.',
+   758→    type: 'album',
+   759→    rating: 9,
+   760→    review: 'The Weight of Light is a masterclass in dynamic range and emotional storytelling through sound. From whispered beginnings to overwhelming climaxes, every moment is captured with breathtaking clarity.',
+   761→  },
+   762→  {
+   763→    id: 'album-10',
+   764→    title: 'L\'altra ribera',
+   765→    artistId: 'artist-10',
+   766→    artistName: 'Mira Sol',
+   767→    imageUrl: albumArtUrl('album-10'),
+   768→    year: 2024,
+   769→    genre: 'Indie Pop',
+   770→    tracks: ['track-10-1', 'track-10-2', 'track-10-3', 'track-10-4', 'track-10-5', 'track-10-6', 'track-10-7', 'track-10-8'],
+   771→    duration: 2520,
+   772→    format: 'FLAC',
+   773→    bitDepth: 24,
+   774→    sampleRate: 44,
+   775→    channels: 2,
+   776→    label: 'Música Global',
+   777→    type: 'album',
+   778→    rating: 8,
+   779→    review: 'Written during a period of self-reflection in Girona, L\'altra ribera (The Other Shore) is Sol\'s most lyrically mature work. The warm analog production perfectly complements her intimate vocal delivery.',
+   780→  },
+   781→  {
+   782→    id: 'album-11',
+   783→    title: 'Lagos to Brooklyn',
+   784→    artistId: 'artist-11',
+   785→    artistName: 'Ironroot',
+   786→    imageUrl: albumArtUrl('album-11'),
+   787→    year: 2023,
+   788→    genre: 'Afrobeat',
+   789→    tracks: ['track-11-1', 'track-11-2', 'track-11-3', 'track-11-4', 'track-11-5', 'track-11-6', 'track-11-7', 'track-11-8'],
+   790→    duration: 3360,
+   791→    format: 'FLAC',
+   792→    bitDepth: 24,
+   793→    sampleRate: 96,
+   794→    channels: 2,
+   795→    label: 'Daptone Records',
+   796→    type: 'album',
+   797→    rating: 9,
+   798→    review: 'A transatlantic musical journey that channels the spirit of Fela Kuti through the lens of 21st-century Brooklyn. Ironroot\'s energy is infectious, and the recording quality is outstanding.',
+   799→  },
+   800→  {
+   801→    id: 'album-12',
+   802→    title: 'Magnetic North',
+   803→    artistId: 'artist-12',
+   804→    artistName: 'Sigrid Haugen',
+   805→    imageUrl: albumArtUrl('album-12'),
+   806→    year: 2023,
+   807→    genre: 'Experimental',
+   808→    tracks: ['track-12-1', 'track-12-2', 'track-12-3', 'track-12-4', 'track-12-5', 'track-12-6'],
+   809→    duration: 2760,
+   810→    format: 'FLAC',
+   811→    bitDepth: 24,
+   812→    sampleRate: 96,
+   813→    channels: 2,
+   814→    label: 'Rune Grammofon',
+   815→    type: 'album',
+   816→    rating: 9,
+   817→    review: 'Haugen\'s violin becomes a one-woman orchestra on Magnetic North, with live electronics creating a spectral accompaniment to her luminous playing. A groundbreaking recording.',
+   818→  },
+   819→];
+   820→
+   821→// ─── TRACKS ───
+   822→
+   823→export const tracks: Track[] = [
+   824→  // Album 1 - Northern Lights
+   825→  { id: 'track-1-1', title: 'Fjord Morning', albumId: 'album-1', albumName: 'Northern Lights', artistId: 'artist-1', artistName: 'Lena Viktoria', trackNumber: 1, discNumber: 1, duration: 312, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Lena Viktoria/Northern Lights/01 - Fjord Morning.flac', fileSize: 134217728, composers: ['Lena Viktoria', 'Erik Lindqvist'], performers: [{ name: 'Lena Viktoria', role: 'vocals' }, { name: 'Erik Lindqvist', role: 'piano' }, { name: 'Staffan Björk', role: 'double bass' }, { name: 'Åsa Karlsson', role: 'percussion' }], genre: 'Jazz', loved: true, playCount: 245, lastPlayed: '2026-08-12T00:30:00Z', source: 'local', isAvailable: true },
+   826→  { id: 'track-1-2', title: 'Ice Crystal', albumId: 'album-1', albumName: 'Northern Lights', artistId: 'artist-1', artistName: 'Lena Viktoria', trackNumber: 2, discNumber: 1, duration: 278, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Lena Viktoria/Northern Lights/02 - Ice Crystal.flac', fileSize: 120586240, composers: ['Lena Viktoria'], performers: [{ name: 'Lena Viktoria', role: 'vocals' }, { name: 'Erik Lindqvist', role: 'piano' }, { name: 'Staffan Björk', role: 'double bass' }, { name: 'Åsa Karlsson', role: 'percussion' }], genre: 'Jazz', loved: false, playCount: 198, lastPlayed: '2026-08-11T22:15:00Z', source: 'local', isAvailable: true },
+   827→  { id: 'track-1-3', title: 'Aurora', albumId: 'album-1', albumName: 'Northern Lights', artistId: 'artist-1', artistName: 'Lena Viktoria', trackNumber: 3, discNumber: 1, duration: 445, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Lena Viktoria/Northern Lights/03 - Aurora.flac', fileSize: 193273528, composers: ['Lena Viktoria', 'Erik Lindqvist'], performers: [{ name: 'Lena Viktoria', role: 'vocals' }, { name: 'Erik Lindqvist', role: 'piano' }, { name: 'Staffan Björk', role: 'double bass' }, { name: 'Åsa Karlsson', role: 'percussion' }], genre: 'Jazz', loved: true, playCount: 312, lastPlayed: '2026-08-12T01:00:00Z', source: 'local', isAvailable: true },
+   828→  { id: 'track-1-4', title: 'Timberline', albumId: 'album-1', albumName: 'Northern Lights', artistId: 'artist-1', artistName: 'Lena Viktoria', trackNumber: 4, discNumber: 1, duration: 324, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Lena Viktoria/Northern Lights/04 - Timberline.flac', fileSize: 140928614, composers: ['Lena Viktoria'], performers: [{ name: 'Lena Viktoria', role: 'vocals' }, { name: 'Erik Lindqvist', role: 'piano' }, { name: 'Staffan Björk', role: 'double bass' }, { name: 'Åsa Karlsson', role: 'percussion' }], genre: 'Jazz', loved: false, playCount: 156, lastPlayed: '2026-08-10T18:45:00Z', source: 'local', isAvailable: true },
+   829→  { id: 'track-1-5', title: 'Solstice Dance', albumId: 'album-1', albumName: 'Northern Lights', artistId: 'artist-1', artistName: 'Lena Viktoria', trackNumber: 5, discNumber: 1, duration: 356, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Lena Viktoria/Northern Lights/05 - Solstice Dance.flac', fileSize: 154350387, composers: ['Lena Viktoria', 'Erik Lindqvist'], performers: [{ name: 'Lena Viktoria', role: 'vocals' }, { name: 'Erik Lindqvist', role: 'piano' }, { name: 'Staffan Björk', role: 'double bass' }, { name: 'Åsa Karlsson', role: 'percussion' }], genre: 'Jazz', loved: false, playCount: 187, lastPlayed: '2026-08-09T20:30:00Z', source: 'local', isAvailable: true },
+   830→  { id: 'track-1-6', title: 'White Silence', albumId: 'album-1', albumName: 'Northern Lights', artistId: 'artist-1', artistName: 'Lena Viktoria', trackNumber: 6, discNumber: 1, duration: 401, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Lena Viktoria/Northern Lights/06 - White Silence.flac', fileSize: 173885030, composers: ['Lena Viktoria'], performers: [{ name: 'Lena Viktoria', role: 'vocals' }, { name: 'Erik Lindqvist', role: 'piano' }, { name: 'Staffan Björk', role: 'double bass' }, { name: 'Åsa Karlsson', role: 'percussion' }], genre: 'Jazz', loved: true, playCount: 267, lastPlayed: '2026-08-11T21:00:00Z', source: 'local', isAvailable: true },
+   831→  { id: 'track-1-7', title: 'Midnight Sun', albumId: 'album-1', albumName: 'Northern Lights', artistId: 'artist-1', artistName: 'Lena Viktoria', trackNumber: 7, discNumber: 1, duration: 389, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Lena Viktoria/Northern Lights/07 - Midnight Sun.flac', fileSize: 168694220, composers: ['Lena Viktoria', 'Erik Lindqvist'], performers: [{ name: 'Lena Viktoria', role: 'vocals' }, { name: 'Erik Lindqvist', role: 'piano' }, { name: 'Staffan Björk', role: 'double bass' }, { name: 'Åsa Karlsson', role: 'percussion' }], genre: 'Jazz', loved: false, playCount: 134, lastPlayed: '2026-08-08T19:00:00Z', source: 'local', isAvailable: true },
+   832→  { id: 'track-1-8', title: 'Horizon', albumId: 'album-1', albumName: 'Northern Lights', artistId: 'artist-1', artistName: 'Lena Viktoria', trackNumber: 8, discNumber: 1, duration: 335, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Lena Viktoria/Northern Lights/08 - Horizon.flac', fileSize: 145172992, composers: ['Lena Viktoria'], performers: [{ name: 'Lena Viktoria', role: 'vocals' }, { name: 'Erik Lindqvist', role: 'piano' }, { name: 'Staffan Björk', role: 'double bass' }, { name: 'Åsa Karlsson', role: 'percussion' }], genre: 'Jazz', loved: false, playCount: 178, lastPlayed: '2026-08-10T16:20:00Z', source: 'local', isAvailable: true },
+   833→
+   834→  // Album 2 - Silent Architecture
+   835→  { id: 'track-2-1', title: 'I. Foundation', albumId: 'album-2', albumName: 'Silent Architecture', artistId: 'artist-2', artistName: 'The Meridian Ensemble', trackNumber: 1, discNumber: 1, duration: 612, format: 'FLAC', bitDepth: 24, sampleRate: 192, channels: 2, bitrate: 6912, filePath: '/music/The Meridian Ensemble/Silent Architecture/01 - I. Foundation.flac', fileSize: 530579456, composers: ['Elias Richter'], performers: [{ name: 'Elias Richter', role: 'composer', instrument: 'conductor' }, { name: 'Maren Fischer', role: 'violin' }, { name: 'Jonas Berg', role: 'cello' }, { name: 'Yuki Tanaka', role: 'piano' }, { name: 'Sophie Müller', role: 'flute' }], genre: 'Contemporary Classical', loved: false, playCount: 156, lastPlayed: '2026-08-07T14:00:00Z', source: 'local', isAvailable: true },
+   836→  { id: 'track-2-2', title: 'II. Tension', albumId: 'album-2', albumName: 'Silent Architecture', artistId: 'artist-2', artistName: 'The Meridian Ensemble', trackNumber: 2, discNumber: 1, duration: 534, format: 'FLAC', bitDepth: 24, sampleRate: 192, channels: 2, bitrate: 6912, filePath: '/music/The Meridian Ensemble/Silent Architecture/02 - II. Tension.flac', fileSize: 463088128, composers: ['Elias Richter'], performers: [{ name: 'Elias Richter', role: 'composer', instrument: 'conductor' }, { name: 'Maren Fischer', role: 'violin' }, { name: 'Jonas Berg', role: 'cello' }, { name: 'Yuki Tanaka', role: 'piano' }, { name: 'Sophie Müller', role: 'flute' }], genre: 'Contemporary Classical', loved: true, playCount: 203, lastPlayed: '2026-08-10T11:30:00Z', source: 'local', isAvailable: true },
+   837→  { id: 'track-2-3', title: 'III. Release', albumId: 'album-2', albumName: 'Silent Architecture', artistId: 'artist-2', artistName: 'The Meridian Ensemble', trackNumber: 3, discNumber: 1, duration: 480, format: 'FLAC', bitDepth: 24, sampleRate: 192, channels: 2, bitrate: 6912, filePath: '/music/The Meridian Ensemble/Silent Architecture/03 - III. Release.flac', fileSize: 416074752, composers: ['Elias Richter'], performers: [{ name: 'Elias Richter', role: 'composer', instrument: 'conductor' }, { name: 'Maren Fischer', role: 'violin' }, { name: 'Jonas Berg', role: 'cello' }, { name: 'Yuki Tanaka', role: 'piano' }, { name: 'Sophie Müller', role: 'flute' }], genre: 'Contemporary Classical', loved: false, playCount: 145, lastPlayed: '2026-08-06T09:00:00Z', source: 'local', isAvailable: true },
+   838→  { id: 'track-2-4', title: 'IV. Stillness', albumId: 'album-2', albumName: 'Silent Architecture', artistId: 'artist-2', artistName: 'The Meridian Ensemble', trackNumber: 4, discNumber: 1, duration: 726, format: 'FLAC', bitDepth: 24, sampleRate: 192, channels: 2, bitrate: 6912, filePath: '/music/The Meridian Ensemble/Silent Architecture/04 - IV. Stillness.flac', fileSize: 629452800, composers: ['Elias Richter'], performers: [{ name: 'Elias Richter', role: 'composer', instrument: 'conductor' }, { name: 'Maren Fischer', role: 'violin' }, { name: 'Jonas Berg', role: 'cello' }, { name: 'Yuki Tanaka', role: 'piano' }, { name: 'Sophie Müller', role: 'flute' }], genre: 'Contemporary Classical', loved: false, playCount: 98, lastPlayed: '2026-08-05T16:00:00Z', source: 'local', isAvailable: true },
+   839→  { id: 'track-2-5', title: 'V. Emergence', albumId: 'album-2', albumName: 'Silent Architecture', artistId: 'artist-2', artistName: 'The Meridian Ensemble', trackNumber: 5, discNumber: 1, duration: 558, format: 'FLAC', bitDepth: 24, sampleRate: 192, channels: 2, bitrate: 6912, filePath: '/music/The Meridian Ensemble/Silent Architecture/05 - V. Emergence.flac', fileSize: 483183872, composers: ['Elias Richter'], performers: [{ name: 'Elias Richter', role: 'composer', instrument: 'conductor' }, { name: 'Maren Fischer', role: 'violin' }, { name: 'Jonas Berg', role: 'cello' }, { name: 'Yuki Tanaka', role: 'piano' }, { name: 'Sophie Müller', role: 'flute' }], genre: 'Contemporary Classical', loved: true, playCount: 178, lastPlayed: '2026-08-11T10:00:00Z', source: 'local', isAvailable: true },
+   840→  { id: 'track-2-6', title: 'VI. Threshold', albumId: 'album-2', albumName: 'Silent Architecture', artistId: 'artist-2', artistName: 'The Meridian Ensemble', trackNumber: 6, discNumber: 1, duration: 510, format: 'FLAC', bitDepth: 24, sampleRate: 192, channels: 2, bitrate: 6912, filePath: '/music/The Meridian Ensemble/Silent Architecture/06 - VI. Threshold.flac', fileSize: 442091520, composers: ['Elias Richter'], performers: [{ name: 'Elias Richter', role: 'composer', instrument: 'conductor' }, { name: 'Maren Fischer', role: 'violin' }, { name: 'Jonas Berg', role: 'cello' }, { name: 'Yuki Tanaka', role: 'piano' }, { name: 'Sophie Müller', role: 'flute' }], genre: 'Contemporary Classical', loved: false, playCount: 112, lastPlayed: '2026-08-04T20:00:00Z', source: 'local', isAvailable: true },
+   841→
+   842→  // Album 3 - Phantom Frequencies
+   843→  { id: 'track-3-1', title: 'Ghost in the Machine', albumId: 'album-3', albumName: 'Phantom Frequencies', artistId: 'artist-3', artistName: 'Kai Horizon', trackNumber: 1, discNumber: 1, duration: 402, format: 'FLAC', bitDepth: 32, sampleRate: 96, channels: 2, bitrate: 4608, filePath: '/music/Kai Horizon/Phantom Frequencies/01 - Ghost in the Machine.flac', fileSize: 231735296, composers: ['Kai Horizon'], performers: [{ name: 'Kai Horizon', role: 'production', instrument: 'synthesizers' }], genre: 'Electronic', loved: true, playCount: 356, lastPlayed: '2026-08-12T00:15:00Z', source: 'local', isAvailable: true },
+   844→  { id: 'track-3-2', title: 'Quantum Lattice', albumId: 'album-3', albumName: 'Phantom Frequencies', artistId: 'artist-3', artistName: 'Kai Horizon', trackNumber: 2, discNumber: 1, duration: 378, format: 'FLAC', bitDepth: 32, sampleRate: 96, channels: 2, bitrate: 4608, filePath: '/music/Kai Horizon/Phantom Frequencies/02 - Quantum Lattice.flac', fileSize: 218103808, composers: ['Kai Horizon'], performers: [{ name: 'Kai Horizon', role: 'production', instrument: 'synthesizers' }], genre: 'Electronic', loved: false, playCount: 289, lastPlayed: '2026-08-11T23:45:00Z', source: 'local', isAvailable: true },
+   845→  { id: 'track-3-3', title: 'Neon Dissolution', albumId: 'album-3', albumName: 'Phantom Frequencies', artistId: 'artist-3', artistName: 'Kai Horizon', trackNumber: 3, discNumber: 1, duration: 445, format: 'FLAC', bitDepth: 32, sampleRate: 96, channels: 2, bitrate: 4608, filePath: '/music/Kai Horizon/Phantom Frequencies/03 - Neon Dissolution.flac', fileSize: 256901120, composers: ['Kai Horizon'], performers: [{ name: 'Kai Horizon', role: 'production', instrument: 'synthesizers' }], genre: 'Electronic', loved: false, playCount: 234, lastPlayed: '2026-08-10T21:30:00Z', source: 'local', isAvailable: true },
+   846→  { id: 'track-3-4', title: 'Digital Rain', albumId: 'album-3', albumName: 'Phantom Frequencies', artistId: 'artist-3', artistName: 'Kai Horizon', trackNumber: 4, discNumber: 1, duration: 356, format: 'FLAC', bitDepth: 32, sampleRate: 96, channels: 2, bitrate: 4608, filePath: '/music/Kai Horizon/Phantom Frequencies/04 - Digital Rain.flac', fileSize: 205520896, composers: ['Kai Horizon'], performers: [{ name: 'Kai Horizon', role: 'production', instrument: 'synthesizers' }], genre: 'Electronic', loved: true, playCount: 412, lastPlayed: '2026-08-12T00:45:00Z', source: 'tidal', isAvailable: true },
+   847→  { id: 'track-3-5', title: 'Phase Shift', albumId: 'album-3', albumName: 'Phantom Frequencies', artistId: 'artist-3', artistName: 'Kai Horizon', trackNumber: 5, discNumber: 1, duration: 523, format: 'FLAC', bitDepth: 32, sampleRate: 96, channels: 2, bitrate: 4608, filePath: '/music/Kai Horizon/Phantom Frequencies/05 - Phase Shift.flac', fileSize: 301989888, composers: ['Kai Horizon'], performers: [{ name: 'Kai Horizon', role: 'production', instrument: 'synthesizers' }], genre: 'Electronic', loved: false, playCount: 198, lastPlayed: '2026-08-09T18:15:00Z', source: 'local', isAvailable: true },
+   848→  { id: 'track-3-6', title: 'Binary Sunset', albumId: 'album-3', albumName: 'Phantom Frequencies', artistId: 'artist-3', artistName: 'Kai Horizon', trackNumber: 6, discNumber: 1, duration: 290, format: 'FLAC', bitDepth: 32, sampleRate: 96, channels: 2, bitrate: 4608, filePath: '/music/Kai Horizon/Phantom Frequencies/06 - Binary Sunset.flac', fileSize: 167402496, composers: ['Kai Horizon'], performers: [{ name: 'Kai Horizon', role: 'production', instrument: 'synthesizers' }], genre: 'Electronic', loved: false, playCount: 167, lastPlayed: '2026-08-08T22:00:00Z', source: 'local', isAvailable: true },
+   849→  { id: 'track-3-7', title: 'Spectral Drift', albumId: 'album-3', albumName: 'Phantom Frequencies', artistId: 'artist-3', artistName: 'Kai Horizon', trackNumber: 7, discNumber: 1, duration: 467, format: 'FLAC', bitDepth: 32, sampleRate: 96, channels: 2, bitrate: 4608, filePath: '/music/Kai Horizon/Phantom Frequencies/07 - Spectral Drift.flac', fileSize: 269484032, composers: ['Kai Horizon'], performers: [{ name: 'Kai Horizon', role: 'production', instrument: 'synthesizers' }], genre: 'Electronic', loved: false, playCount: 145, lastPlayed: '2026-08-07T17:30:00Z', source: 'local', isAvailable: true },
+   850→  { id: 'track-3-8', title: 'Zero Point', albumId: 'album-3', albumName: 'Phantom Frequencies', artistId: 'artist-3', artistName: 'Kai Horizon', trackNumber: 8, discNumber: 1, duration: 512, format: 'FLAC', bitDepth: 32, sampleRate: 96, channels: 2, bitrate: 4608, filePath: '/music/Kai Horizon/Phantom Frequencies/08 - Zero Point.flac', fileSize: 295279001, composers: ['Kai Horizon'], performers: [{ name: 'Kai Horizon', role: 'production', instrument: 'synthesizers' }], genre: 'Electronic', loved: true, playCount: 278, lastPlayed: '2026-08-11T19:00:00Z', source: 'local', isAvailable: true },
+   851→  { id: 'track-3-9', title: 'Event Horizon', albumId: 'album-3', albumName: 'Phantom Frequencies', artistId: 'artist-3', artistName: 'Kai Horizon', trackNumber: 9, discNumber: 1, duration: 407, format: 'FLAC', bitDepth: 32, sampleRate: 96, channels: 2, bitrate: 4608, filePath: '/music/Kai Horizon/Phantom Frequencies/09 - Event Horizon.flac', fileSize: 234881024, composers: ['Kai Horizon'], performers: [{ name: 'Kai Horizon', role: 'production', instrument: 'synthesizers' }], genre: 'Electronic', loved: false, playCount: 189, lastPlayed: '2026-08-06T15:00:00Z', source: 'local', isAvailable: true },
+   852→
+   853→  // Album 4 - Golden Hour
+   854→  { id: 'track-4-1', title: 'Ankobra Sunrise', albumId: 'album-4', albumName: 'Golden Hour', artistId: 'artist-4', artistName: 'Amara Osei', trackNumber: 1, discNumber: 1, duration: 258, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Amara Osei/Golden Hour/01 - Ankobra Sunrise.flac', fileSize: 111669149, composers: ['Amara Osei', 'Kwame Asante'], performers: [{ name: 'Amara Osei', role: 'vocals' }, { name: 'Kwame Asante', role: 'guitar' }, { name: 'Elena Petrova', role: 'keys' }], genre: 'Neo-Soul', loved: true, playCount: 489, lastPlayed: '2026-08-12T00:00:00Z', source: 'local', isAvailable: true },
+   855→  { id: 'track-4-2', title: 'Riversong', albumId: 'album-4', albumName: 'Golden Hour', artistId: 'artist-4', artistName: 'Amara Osei', trackNumber: 2, discNumber: 1, duration: 312, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Amara Osei/Golden Hour/02 - Riversong.flac', fileSize: 135295946, composers: ['Amara Osei'], performers: [{ name: 'Amara Osei', role: 'vocals' }, { name: 'Kwame Asante', role: 'guitar' }, { name: 'Elena Petrova', role: 'keys' }], genre: 'Neo-Soul', loved: true, playCount: 567, lastPlayed: '2026-08-11T23:30:00Z', source: 'local', isAvailable: true },
+   856→  { id: 'track-4-3', title: 'London Skyline', albumId: 'album-4', albumName: 'Golden Hour', artistId: 'artist-4', artistName: 'Amara Osei', trackNumber: 3, discNumber: 1, duration: 289, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Amara Osei/Golden Hour/03 - London Skyline.flac', fileSize: 125402378, composers: ['Amara Osei', 'Elena Petrova'], performers: [{ name: 'Amara Osei', role: 'vocals' }, { name: 'Kwame Asante', role: 'guitar' }, { name: 'Elena Petrova', role: 'keys' }], genre: 'Neo-Soul', loved: false, playCount: 345, lastPlayed: '2026-08-10T22:00:00Z', source: 'local', isAvailable: true },
+   857→  { id: 'track-4-4', title: 'Golden Thread', albumId: 'album-4', albumName: 'Golden Hour', artistId: 'artist-4', artistName: 'Amara Osei', trackNumber: 4, discNumber: 1, duration: 267, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Amara Osei/Golden Hour/04 - Golden Thread.flac', fileSize: 115762790, composers: ['Amara Osei'], performers: [{ name: 'Amara Osei', role: 'vocals' }, { name: 'Kwame Asante', role: 'guitar' }, { name: 'Elena Petrova', role: 'keys' }], genre: 'Neo-Soul', loved: false, playCount: 298, lastPlayed: '2026-08-09T20:00:00Z', source: 'local', isAvailable: true },
+   858→  { id: 'track-4-5', title: 'Accra Nights', albumId: 'album-4', albumName: 'Golden Hour', artistId: 'artist-4', artistName: 'Amara Osei', trackNumber: 5, discNumber: 1, duration: 345, format: 'FLAC', bitDepth: 24, sampleRate: 96, channels: 2, bitrate: 3456, filePath: '/music/Amara Osei/Golden Hour/05 - Accra Nights.flac', fileSize: 149660774, composers: ['Amara Osei', 'Kwame Asante'], performers: [{ name: 'Amara Osei', role: 'vocals' }, { name: 'Kwame Asante', role: 'guitar' }, { name: 'Elena Petrova', role: 'keys' }], genre: 'Neo-Soul', loved: true, playCount: 423, lastPlayed: '2026-08-12T01:15:00Z', source: 'local', isAvailable: true },
+   859→
+   860→  // Album 5 - Celestial Mechanics (partial)
+   861→  { id: 'track-5-1', title: 'Overture: Dark Matter', albumId: 'album-5', albumName: 'Celestial Mechanics', artistId: 'artist-5', artistName: 'Aethon', trackNumber: 1, discNumber: 1, duration: 723, format: 'FLAC', bitDepth: 32, sampleRate: 352, channels: 2, bitrate: 22528, filePath: '/music/Aethon/Celestial Mechanics/01 - Overture - Dark Matter.flac', fileSize: 203882956, composers: ['Magnus Helle'], performers: [{ name: 'Magnus Helle', role: 'guitar', instrument: 'vocals' }, { name: 'Ingrid Solberg', role: 'bass' }, { name: 'Torsten Dahl', role: 'drums' }, { name: 'Erik Voss', role: 'keyboards' }], genre: 'Progressive Metal', loved: true, playCount: 189, lastPlayed: '2026-08-11T18:00:00Z', source: 'local', isAvailable: true },
+   862→  { id: 'track-5-2', title: 'Gravitational Lensing', albumId: 'album-5', albumName: 'Celestial Mechanics', artistId: 'artist-5', artistName: 'Aethon', trackNumber: 2, discNumber: 1, duration: 856, format: 'FLAC', bitDepth: 32, sampleRate: 352, channels: 2, bitrate: 22528, filePath: '/music/Aethon/Celestial Mechanics/02 - Gravitational Lensing.flac', fileSize: 241591910, composers: ['Magnus Helle', 'Erik Voss'], performers: [{ name: 'Magnus Helle', role: 'guitar', instrument: 'vocals' }, { name: 'Ingrid Solberg', role: 'bass' }, { name: 'Torsten Dahl', role: 'drums' }, { name: 'Erik Voss', role: 'keyboards' }], genre: 'Progressive Metal', loved: false, playCount: 156, lastPlayed: '2026-08-10T15:00:00Z', source: 'local', isAvailable: true },
+   863→  { id: 'track-5-3', title: 'Orbital Decay', albumId: 'album-5', albumName: 'Celestial Mechanics', artistId: 'artist-5', artistName: 'Aethon', trackNumber: 3, discNumber: 1, duration: 634, format: 'FLAC', bitDepth: 32, sampleRate: 352, channels: 2, bitrate: 22528, filePath: '/music/Aethon/Celestial Mechanics/03 - Orbital Decay.flac', fileSize: 179047444, composers: ['Magnus Helle'], performers: [{ name: 'Magnus Helle', role: 'guitar', instrument: 'vocals' }, { name: 'Ingrid Solberg', role: 'bass' }, { name: 'Torsten Dahl', role: 'drums' }, { name: 'Erik Voss', role: 'keyboards' }], genre: 'Progressive Metal', loved: false, playCount: 134, lastPlayed: '2026-08-09T12:00:00Z', source: 'local', isAvailable: true },
+   864→  { id: 'track-5-4', title: 'Supernova (Part I)', albumId: 'album-5', albumName: 'Celestial Mechanics', artistId: 'artist-5', artistName: 'Aethon', trackNumber: 4, discNumber: 1, duration: 712, format: 'FLAC', bitDepth: 32, sampleRate: 352, channels: 2, bitrate: 22528, filePath: '/music/Aethon/Celestial Mechanics/04 - Supernova Part I.flac', fileSize: 201064345, composers: ['Magnus Helle', 'Ingrid Solberg'], performers: [{ name: 'Magnus Helle', role: 'guitar', instrument: 'vocals' }, { name: 'Ingrid Solberg', role: 'bass' }, { name: 'Torsten Dahl', role: 'drums' }, { name: 'Erik Voss', role: 'keyboards' }], genre: 'Progressive Metal', loved: true, playCount: 201, lastPlayed: '2026-08-11T20:30:00Z', source: 'local', isAvailable: true },
+   865→  { id: 'track-5-5', title: 'Supernova (Part II)', albumId: 'album-5', albumName: 'Celestial Mechanics', artistId: 'artist-5', artistName: 'Aethon', trackNumber: 5, discNumber: 1, duration: 589, format: 'FLAC', bitDepth: 32, sampleRate: 352, channels: 2, bitrate: 22528, filePath: '/music/Aethon/Celestial Mechanics/05 - Supernova Part II.flac', fileSize: 166429982, composers: ['Magnus Helle', 'Torsten Dahl'], performers: [{ name: 'Magnus Helle', role: 'guitar', instrument: 'vocals' }, { name: 'Ingrid Solberg', role: 'bass' }, { name: 'Torsten Dahl', role: 'drums' }, { name: 'Erik Voss', role: 'keyboards' }], genre: 'Progressive Metal', loved: false, playCount: 178, lastPlayed: '2026-08-10T18:45:00Z', source: 'local', isAvailable: true },
+   866→  { id: 'track-5-6', title: 'Eventual Entropy', albumId: 'album-5', albumName: 'Celestial Mechanics', artistId: 'artist-5', artistName: 'Aethon', trackNumber: 6, discNumber: 1, duration: 1286, format: 'FLAC', bitDepth: 32, sampleRate: 352, channels: 2, bitrate: 22528, filePath: '/music/Aethon/Celestial Mechanics/06 - Eventual Entropy.flac', fileSize: 363079832, composers: ['Magnus Helle', 'Erik Voss'], performers: [{ name: 'Magnus Helle', role: 'guitar', instrument: 'vocals' }, { name: 'Ingrid Solberg', role: 'bass' }, { name: 'Torsten Dahl', role: 'drums' }, { name: 'Erik Voss', role: 'keyboards' }], genre: 'Progressive Metal', loved: true, playCount: 245, lastPlayed: '2026-08-12T00:15:00Z', source: 'local', isAvailable: true },
+   867→];
+   868→
+   869→// ─── ZONES ───
+   870→
+   871→export const zones: Zone[] = [
+   872→  {
+   873→    id: 'zone-1',
+   874→    name: 'Living Room',
+   875→    endpoints: [{
+   876→      id: 'ep-1', name: 'Living Room Bridge', type: 'dedicated-hardware', status: 'online',
+   877→      dac: 'Chord Hugo 2', maxSampleRate: 768, maxBitDepth: 32, supportsDSD: true, supportsMQA: true,
+   878→      supportsDSD256: true, supportsDoP: true, firmware: 'v3.42', ipAddress: '192.168.1.101',
+   879→      macAddress: 'AA:BB:CC:DD:EE:01', latencyMs: 2.1, clockSource: 'usb', hasMasterClock: true,
+   880→      protocol: 'dsp-native', lastSeen: '2026-08-12T14:30:00Z', cpuUsage: 12, bufferDepth: 4096,
+   881→    }],
+   882→    isGroup: false,
+   883→    isPlaying: true,
+   884→    currentTrackId: 'track-3-4',
+   885→    volume: 72,
+   886→    isMuted: false,
+   887→    isOnline: true,
+   888→    outputFormat: 'PCM',
+   889→    sampleRate: 96,
+   890→    bitDepth: 32,
+   891→    dspEnabled: true,
+   892→    dspChain: ['Loudness', 'EQ (Flat)'],
+   893→    volumeMode: 'dsp',
+   894→    maxVolume: 85,
+   895→    startupVolume: 40,
+   896→    clockMode: 'passthrough',
+   897→    dspConfig: {
+   898→      eq: [
+   899→        { id: 'eq-1', enabled: true, type: 'parametric', frequency: 80, gain: 2.5, q: 1.2, label: 'Bass Boost' },
+   900→        { id: 'eq-2', enabled: true, type: 'parametric', frequency: 2500, gain: -1.0, q: 2.0, label: 'Presence Cut' },
+   901→        { id: 'eq-3', enabled: false, type: 'high-shelf', frequency: 12000, gain: -2.0, q: 0.7, label: 'Air' },
+   902→      ],
+   903→      loudness: { enabled: true, targetLUFS: -16, method: 'ebu-r128', fallbackGain: 0 },
+   904→      dither: { enabled: true, type: 'tpdf' },
+   905→    },
+   906→  },
+   907→  {
+   908→    id: 'zone-2',
+   909→    name: 'Study',
+   910→    endpoints: [{
+   911→      id: 'ep-2', name: 'Study DAC', type: 'raspberry-pi', status: 'online',
+   912→      dac: 'iFi Zen DAC V2', maxSampleRate: 384, maxBitDepth: 32, supportsDSD: true, supportsMQA: false,
+   913→      supportsDSD256: true, supportsDoP: true, firmware: 'v2.1.3', ipAddress: '192.168.1.102',
+   914→      macAddress: 'AA:BB:CC:DD:EE:02', latencyMs: 4.8, clockSource: 'usb', hasMasterClock: false,
+   915→      protocol: 'dsp-native', lastSeen: '2026-08-12T14:29:45Z', cpuUsage: 28, bufferDepth: 2048,
+   916→    }],
+   917→    isGroup: false,
+   918→    isPlaying: true,
+   919→    currentTrackId: 'track-5-6',
+   920→    volume: 55,
+   921→    isMuted: false,
+   922→    isOnline: true,
+   923→    outputFormat: 'PCM',
+   924→    sampleRate: 352,
+   925→    bitDepth: 32,
+   926→    dspEnabled: true,
+   927→    dspChain: ['Headphone Correction (HD800S)', 'Crossfeed'],
+   928→    volumeMode: 'dsp',
+   929→    maxVolume: 75,
+   930→    startupVolume: 35,
+   931→    clockMode: 'auto',
+   932→    syncOffsetMs: 0,
+   933→    dspConfig: {
+   934→      headphoneCorrection: {
+   935→        enabled: true, profileName: 'HD800S AutoEQ', manufacturer: 'Sennheiser',
+   936→        model: 'HD 800S', description: 'AutoEQ-derived correction profile',
+   937→      },
+   938→      crossfeed: { enabled: true, preset: 'subtle' },
+   939→      upsampling: {
+   940→        enabled: true, targetRate: 352800, targetBitDepth: 32,
+   941→        filterType: 'minimum-phase', maxSrcRate: 96000,
+   942→      },
+   943→    },
+   944→  },
+   945→  {
+   946→    id: 'zone-3',
+   947→    name: 'Kitchen + Dining',
+   948→    endpoints: [
+   949→      { id: 'ep-3', name: 'Kitchen Speaker', type: 'bridge', status: 'online', dac: 'Built-in DAC', maxSampleRate: 96, maxBitDepth: 24, supportsDSD: false, supportsMQA: false, supportsDSD256: false, supportsDoP: false, firmware: 'v1.8', ipAddress: '192.168.1.103', latencyMs: 6.2, clockSource: 'internal', protocol: 'dsp-native', lastSeen: '2026-08-12T14:30:10Z', cpuUsage: 8, bufferDepth: 1024 },
+   950→      { id: 'ep-4', name: 'Dining Room Speaker', type: 'bridge', status: 'online', dac: 'Built-in DAC', maxSampleRate: 96, maxBitDepth: 24, supportsDSD: false, supportsMQA: false, supportsDSD256: false, supportsDoP: false, firmware: 'v1.8', ipAddress: '192.168.1.104', latencyMs: 6.5, clockSource: 'internal', protocol: 'dsp-native', lastSeen: '2026-08-12T14:30:08Z', cpuUsage: 7, bufferDepth: 1024 },
+   951→    ],
+   952→    isGroup: true,
+   953→    isPlaying: true,
+   954→    currentTrackId: 'track-4-2',
+   955→    volume: 45,
+   956→    isMuted: false,
+   957→    isOnline: true,
+   958→    outputFormat: 'PCM',
+   959→    sampleRate: 96,
+   960→    bitDepth: 24,
+   961→    dspEnabled: false,
+   962→    dspChain: [],
+   963→    volumeMode: 'hardware',
+   964→    maxVolume: 60,
+   965→    startupVolume: 25,
+   966→    clockMode: 'slave',
+   967→    syncOffsetMs: 3.2,
+   968→    groupZones: [],
+   969→  },
+   970→  {
+   971→    id: 'zone-4',
+   972→    name: 'Bedroom',
+   973→    endpoints: [{
+   974→      id: 'ep-5', name: 'Bedroom Bridge', type: 'bridge', status: 'standby',
+   975→      dac: 'Cambridge Audio DacMagic', maxSampleRate: 192, maxBitDepth: 24, supportsDSD: false, supportsMQA: false,
+   976→      supportsDSD256: false, supportsDoP: false, firmware: 'v4.0', ipAddress: '192.168.1.105',
+   977→      latencyMs: 3.5, clockSource: 'internal', protocol: 'dsp-native', lastSeen: '2026-08-12T12:15:00Z', cpuUsage: 0, bufferDepth: 2048,
+   978→    }],
+   979→    isGroup: false,
+   980→    isPlaying: false,
+   981→    volume: 30,
+   982→    isMuted: false,
+   983→    isOnline: true,
+   984→    outputFormat: 'PCM',
+   985→    sampleRate: 44,
+   986→    bitDepth: 16,
+   987→    dspEnabled: false,
+   988→    dspChain: [],
+   989→    volumeMode: 'hardware',
+   990→    maxVolume: 50,
+   991→    startupVolume: 20,
+   992→    clockMode: 'auto',
+   993→  },
+   994→];
+   995→
+   996→// ─── GENRES ───
+   997→
+   998→export const genres: Genre[] = [
+   999→  { id: 'genre-1', name: 'Jazz', trackCount: 38, albumCount: 3, artistCount: 3, imageUrl: albumArtUrl('genre-1') },
+  1000→  { id: 'genre-2', name: 'Electronic', trackCount: 64, albumCount: 5, artistCount: 3, imageUrl: albumArtUrl('genre-2') },
+  1001→  { id: 'genre-3', name: 'Classical', trackCount: 36, albumCount: 3, artistCount: 2, imageUrl: albumArtUrl('genre-3') },
+  1002→  { id: 'genre-4', name: 'Ambient', trackCount: 44, albumCount: 6, artistCount: 2, imageUrl: albumArtUrl('genre-4') },
+  1003→  { id: 'genre-5', name: 'Post-Rock', trackCount: 28, albumCount: 3, artistCount: 1, imageUrl: albumArtUrl('genre-5') },
+  1004→  { id: 'genre-6', name: 'Neo-Soul', trackCount: 42, albumCount: 3, artistCount: 1, imageUrl: albumArtUrl('genre-6') },
+  1005→  { id: 'genre-7', name: 'Progressive Metal', trackCount: 52, albumCount: 5, artistCount: 1, imageUrl: albumArtUrl('genre-7') },
+  1006→  { id: 'genre-8', name: 'Indie Pop', trackCount: 40, albumCount: 4, artistCount: 1, imageUrl: albumArtUrl('genre-8') },
+  1007→  { id: 'genre-9', name: 'Afrobeat', trackCount: 34, albumCount: 2, artistCount: 1, imageUrl: albumArtUrl('genre-9') },
+  1008→  { id: 'genre-10', name: 'Experimental', trackCount: 22, albumCount: 2, artistCount: 1, imageUrl: albumArtUrl('genre-10') },
+  1009→  { id: 'genre-11', name: 'World', trackCount: 18, albumCount: 2, artistCount: 2, imageUrl: albumArtUrl('genre-11') },
+  1010→  { id: 'genre-12', name: 'Fusion', trackCount: 30, albumCount: 2, artistCount: 2, imageUrl: albumArtUrl('genre-12') },
+  1011→];
+  1012→
+  1013→// ─── PLAYLISTS ───
+  1014→
+  1015→export const playlists: Playlist[] = [
+  1016→  {
+  1017→    id: 'playlist-1',
+  1018→    name: 'Late Night Focus',
+  1019→    description: 'Ambient and electronic for deep work sessions',
+  1020→    trackIds: ['track-3-1', 'track-3-4', 'track-3-8', 'track-7-1', 'track-7-3', 'track-2-4', 'track-7-5'],
+  1021→    createdAt: '2026-06-15T10:00:00Z',
+  1022→    updatedAt: '2026-08-10T22:00:00Z',
+  1023→    coverUrl: albumArtUrl('playlist-1'),
+  1024→    trackCount: 7,
+  1025→    duration: 2864,
+  1026→  },
+  1027→  {
+  1028→    id: 'playlist-2',
+  1029→    name: 'Morning Coffee',
+  1030→    description: 'Warm jazz and neo-soul to start the day',
+  1031→    trackIds: ['track-1-1', 'track-1-3', 'track-4-1', 'track-4-2', 'track-8-1', 'track-8-3'],
+  1032→    createdAt: '2026-05-20T08:00:00Z',
+  1033→    updatedAt: '2026-08-08T07:30:00Z',
+  1034→    coverUrl: albumArtUrl('playlist-2'),
+  1035→    trackCount: 6,
+  1036→    duration: 1789,
+  1037→  },
+  1038→  {
+  1039→    id: 'playlist-3',
+  1040→    name: 'Audiophile Test',
+  1041→    description: 'Reference recordings for system evaluation',
+  1042→    trackIds: ['track-2-1', 'track-5-1', 'track-7-2', 'track-1-6', 'track-6-3'],
+  1043→    createdAt: '2026-07-01T14:00:00Z',
+  1044→    updatedAt: '2026-08-05T16:00:00Z',
+  1045→    coverUrl: albumArtUrl('playlist-3'),
+  1046→    trackCount: 5,
+  1047→    duration: 2171,
+  1048→  },
+  1049→  {
+  1050→    id: 'playlist-4',
+  1051→    name: 'Energy Boost',
+  1052→    description: 'High-energy tracks for workouts and drives',
+  1053→    trackIds: ['track-5-4', 'track-5-5', 'track-3-2', 'track-11-1', 'track-11-3', 'track-8-2'],
+  1054→    createdAt: '2026-04-10T12:00:00Z',
+  1055→    updatedAt: '2026-08-11T06:00:00Z',
+  1056→    coverUrl: albumArtUrl('playlist-4'),
+  1057→    trackCount: 6,
+  1058→    duration: 2817,
+  1059→  },
+  1060→];
+  1061→
+  1062→// ─── HELPER FUNCTIONS ───
+  1063→
+  1064→export function formatDuration(seconds: number): string {
+  1065→  const h = Math.floor(seconds / 3600);
+  1066→  const m = Math.floor((seconds % 3600) / 60);
+  1067→  const s = Math.floor(seconds % 60);
+  1068→  if (h > 0) {
+  1069→    return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  1070→  }
+  1071→  return `${m}:${s.toString().padStart(2, '0')}`;
+  1072→}
+  1073→
+  1074→export function formatFileSize(bytes: number): string {
+  1075→  if (bytes >= 1073741824) return `${(bytes / 1073741824).toFixed(1)} GB`;
+  1076→  if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
+  1077→  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  1078→  return `${bytes} B`;
+  1079→}
+  1080→
+  1081→export function formatSampleRate(rate: number): string {
+  1082→  if (rate >= 1000) return `${(rate / 1000).toFixed(1)} kHz`;
+  1083→  return `${rate} Hz`;
+  1084→}
+  1085→
+  1086→export function getCoverGradient(id: string): string {
+  1087→  const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  1088→  return coverGradient(hash);
+  1089→}
+  1090→
+  1091→export function getArtistById(id: string): Artist | undefined {
+  1092→  return artists.find(a => a.id === id);
+  1093→}
+  1094→
+  1095→export function getAlbumById(id: string): Album | undefined {
+  1096→  return albums.find(a => a.id === id);
+  1097→}
+  1098→
+  1099→export function getTrackById(id: string): Track | undefined {
+  1100→  return tracks.find(t => t.id === id);
+  1101→}
+  1102→
+  1103→export function getTracksByAlbum(albumId: string): Track[] {
+  1104→  return tracks.filter(t => t.albumId === albumId).sort((a, b) => a.trackNumber - b.trackNumber);
+  1105→}
+  1106→
+  1107→export function getAlbumsByArtist(artistId: string): Album[] {
+  1108→  return albums.filter(a => a.artistId === artistId);
+  1109→}
+  1110→
+  1111→export function searchLibrary(query: string): { artists: Artist[]; albums: Album[]; tracks: Track[] } {
+  1112→  const q = query.toLowerCase();
+  1113→  return {
+  1114→    artists: artists.filter(a => a.name.toLowerCase().includes(q)),
+  1115→    albums: albums.filter(a => a.title.toLowerCase().includes(q) || a.artistName.toLowerCase().includes(q)),
+  1116→    tracks: tracks.filter(t => t.title.toLowerCase().includes(q) || t.artistName.toLowerCase().includes(q) || t.albumName.toLowerCase().includes(q)),
+  1117→  };
+  1118→}
+  1119→
+  1120→// Note: Podcast search is in podcast-data.ts via searchPodcasts()
+  1121→
+  1122→// ─── CORE STATUS (Mock Data) ───
+  1123→
+  1124→export const coreStatus: CoreStatus = {
+  1125→  id: 'core-1',
+  1126→  name: 'DSP Core — NAS Server',
+  1127→  version: '2.4.0-beta.7',
+  1128→  status: 'running',
+  1129→  uptime: 14 * 86400 + 7 * 3600 + 32 * 60,
+  1130→  machineInfo: {
+  1131→    hostname: 'nas-dsp-core',
+  1132→    os: 'Debian 12 (Bookworm)',
+  1133→    cpuModel: 'Intel Core i5-12400T',
+  1134→    cpuUsage: 18,
+  1135→    memoryTotal: 8589934592,
+  1136→    memoryUsed: 1288490189,
+  1137→    cores: 6,
+  1138→    architecture: 'x86_64',
+  1139→  },
+  1140→  audioEngine: {
+  1141→    status: 'active',
+  1142→    activeZones: 3,
+  1143→    totalZones: 4,
+  1144→    decodingLoad: 12,
+  1145→    dspLoad: 28,
+  1146→    outputLoad: 8,
+  1147→    currentSampleRate: 192000,
+  1148→    supportedFormats: ['FLAC', 'ALAC', 'WAV', 'AIFF', 'DSF', 'DFF', 'MP3', 'AAC', 'OGG Vorbis', 'WavPack'],
+  1149→    maxChannels: 8,
+  1150→    bitPerfectCapable: true,
+  1151→    dsdNativeCapable: true,
+  1152→    mqaPassthrough: true,
+  1153→  },
+  1154→  storageLocations: [
+  1155→    {
+  1156→      id: 'storage-1',
+  1157→      name: 'Music Library (NAS)',
+  1158→      path: '/nas/music',
+  1159→      type: 'nas',
+  1160→      enabled: true,
+  1161→      totalSpace: 4398046511104,
+  1162→      usedSpace: 2576980377344,
+  1163→      trackCount: 12450,
+  1164→      albumCount: 1580,
+  1165→      isWatching: true,
+  1166→      lastScan: '2026-08-12T06:00:00Z',
+  1167→      scanIntervalMin: 30,
+  1168→    },
+  1169→    {
+  1170→      id: 'storage-2',
+  1171→      name: 'Local SSD Cache',
+  1172→      path: '/local/music',
+  1173→      type: 'local',
+  1174→      enabled: true,
+  1175→      totalSpace: 274877906944,
+  1176→      usedSpace: 85899345920,
+  1177→      trackCount: 3200,
+  1178→      albumCount: 420,
+  1179→      isWatching: true,
+  1180→      lastScan: '2026-08-12T06:00:00Z',
+  1181→      scanIntervalMin: 15,
+  1182→    },
+  1183→    {
+  1184→      id: 'storage-3',
+  1185→      name: 'External USB Drive',
+  1186→      path: '/Volumes/External',
+  1187→      type: 'usb',
+  1188→      enabled: true,
+  1189→      totalSpace: 2199023255552,
+  1190→      usedSpace: 966367641600,
+  1191→      trackCount: 8900,
+  1192→      albumCount: 1120,
+  1193→      isWatching: false,
+  1194→      lastScan: '2026-08-11T18:00:00Z',
+  1195→      scanIntervalMin: 60,
+  1196→    },
+  1197→  ],
+  1198→  networkInfo: {
+  1199→    hostname: 'nas-dsp-core',
+  1200→    ipAddress: '192.168.1.100',
+  1201→    macAddress: 'AA:BB:CC:DD:EE:FF',
+  1202→    protocol: 'dsp-native',
+  1203→    port: 9500,
+  1204→    discoveryPort: 9501,
+  1205→    encryption: true,
+  1206→    remoteAccess: true,
+  1207→    vpnActive: false,
+  1208→    connectedEndpoints: 6,
+  1209→  },
+  1210→  apiInfo: {
+  1211→    version: 'v2',
+  1212→    protocol: 'websocket',
+  1213→    port: 9600,
+  1214→    wsPort: 9601,
+  1215→    authenticated: true,
+  1216→    remoteApps: [
+  1217→      { id: 'app-1', name: 'DSP Remote (iPhone)', type: 'ios', connected: true, lastSeen: '2026-08-12T14:30:00Z', ipAddress: '192.168.1.50' },
+  1218→      { id: 'app-2', name: 'DSP Remote (iPad)', type: 'ios', connected: true, lastSeen: '2026-08-12T14:29:55Z', ipAddress: '192.168.1.51' },
+  1219→      { id: 'app-3', name: 'DSP Desktop', type: 'desktop', connected: false, lastSeen: '2026-08-12T08:00:00Z', ipAddress: '192.168.1.200' },
+  1220→      { id: 'app-4', name: 'Web Controller', type: 'web', connected: true, lastSeen: '2026-08-12T14:30:10Z', ipAddress: '192.168.1.201' },
+  1221→    ],
+  1222→  },
+  1223→  streamingServices: [
+  1224→    { id: 'svc-1', name: 'TIDAL', type: 'tidal', status: 'connected', linked: true, username: 'user@example.com', qualityTier: 'HiRes', maxQuality: '24-bit/96kHz FLAC', lastSync: '2026-08-12T12:00:00Z', librarySize: 2840 },
+  1225→    { id: 'svc-2', name: 'Qobuz', type: 'qobuz', status: 'disconnected', linked: false, qualityTier: '—' },
+  1226→    { id: 'svc-3', name: 'Deezer', type: 'deezer', status: 'disconnected', linked: false, qualityTier: '—' },
+  1227→  ],
+  1228→  libraryStats: {
+  1229→    totalTracks: 24550,
+  1230→    totalAlbums: 3120,
+  1231→    totalArtists: 890,
+  1232→    totalDuration: 9424800,
+  1233→    totalSize: 3500000000000,
+  1234→    localTracks: 24550,
+  1235→    streamingTracks: 0,
+  1236→    formatBreakdown: { FLAC: 14200, ALAC: 3200, WAV: 1800, DSD: 1200, MP3: 2800, AAC: 1350 },
+  1237→    sampleRateBreakdown: { '44.1kHz': 8200, '48kHz': 1800, '88.2kHz': 2400, '96kHz': 5100, '176.4kHz': 3200, '192kHz': 2500, '352.8kHz': 800, '384kHz': 550 },
+  1238→  },
+  1239→  discoveryMode: 'lan',
+  1240→  autoDiscovery: true,
+  1241→  lastScanAt: '2026-08-12T06:00:00Z',
+  1242→};
+  1243→
+  1244→// ─── ENHANCED SIGNAL PATH ───
+  1245→
+  1246→export function getSignalPath(trackId: string, zoneId: string): SignalPathStep[] {
+  1247→  const track = getTrackById(trackId);
+  1248→  const zone = zones.find(z => z.id === zoneId);
+  1249→  if (!track || !zone) return [];
+  1250→
+  1251→  const steps: SignalPathStep[] = [];
+  1252→  let currentFormat = track.format;
+  1253→  let currentSR = track.sampleRate;
+  1254→  let currentBD = track.bitDepth;
+  1255→  let isDSD = track.format === 'DSF' || track.format === 'DFF';
+  1256→
+  1257→  // Source step
+  1258→  steps.push({
+  1259→    label: 'Source',
+  1260→    format: currentFormat,
+  1261→    sampleRate: currentSR,
+  1262→    bitDepth: currentBD,
+  1263→    isBitPerfect: true,
+  1264→    isDSD,
+  1265→    dsdMode: isDSD ? 'native' : undefined,
+  1266→    processingDetail: `Local: ${track.filePath}`,
+  1267→    latencyMs: 0,
+  1268→  });
+  1269→
+  1270→  if (zone.dspConfig) {
+  1271→    // Room Correction (convolution)
+  1272→    if (zone.dspConfig.roomCorrection?.enabled) {
+  1273→      steps.push({
+  1274→        label: 'Room Correction',
+  1275→        format: 'PCM',
+  1276→        sampleRate: currentSR,
+  1277→        bitDepth: currentBD,
+  1278→        isBitPerfect: false,
+  1279→        filterType: 'linear-phase',
+  1280→        processingDetail: `Filter: ${zone.dspConfig.roomCorrection.filterName}`,
+  1281→        latencyMs: 5.2,
+  1282→      });
+  1283→    }
+  1284→
+  1285→    // Parametric EQ
+  1286→    const activeBands = zone.dspConfig.eq?.filter(b => b.enabled) || [];
+  1287→    if (activeBands.length > 0) {
+  1288→      steps.push({
+  1289→        label: 'Parametric EQ',
+  1290→        format: 'PCM',
+  1291→        sampleRate: currentSR,
+  1292→        bitDepth: currentBD,
+  1293→        isBitPerfect: false,
+  1294→        processingDetail: `${activeBands.length} active band${activeBands.length > 1 ? 's' : ''}`,
+  1295→        latencyMs: 0.1,
+  1296→      });
+  1297→    }
+  1298→
+  1299→    // Headphone Correction
+  1300→    if (zone.dspConfig.headphoneCorrection?.enabled) {
+  1301→      steps.push({
+  1302→        label: `Headphone: ${zone.dspConfig.headphoneCorrection.profileName}`,
+  1303→        format: 'PCM',
+  1304→        sampleRate: currentSR,
+  1305→        bitDepth: currentBD,
+  1306→        isBitPerfect: false,
+  1307→        processingDetail: `${zone.dspConfig.headphoneCorrection.manufacturer} ${zone.dspConfig.headphoneCorrection.model}`,
+  1308→        latencyMs: 0.3,
+  1309→      });
+  1310→    }
+  1311→
+  1312→    // Crossfeed
+  1313→    if (zone.dspConfig.crossfeed?.enabled && zone.dspConfig.crossfeed.preset !== 'none') {
+  1314→      steps.push({
+  1315→        label: `Crossfeed (${zone.dspConfig.crossfeed.preset})`,
+  1316→        format: 'PCM',
+  1317→        sampleRate: currentSR,
+  1318→        bitDepth: currentBD,
+  1319→        isBitPerfect: false,
+  1320→        processingDetail: `Preset: ${zone.dspConfig.crossfeed.preset}`,
+  1321→        latencyMs: 0.1,
+  1322→      });
+  1323→    }
+  1324→
+  1325→    // Loudness / ReplayGain
+  1326→    if (zone.dspConfig.loudness?.enabled) {
+  1327→      steps.push({
+  1328→        label: `Loudness (${zone.dspConfig.loudness.method})`,
+  1329→        format: 'PCM',
+  1330→        sampleRate: currentSR,
+  1331→        bitDepth: currentBD,
+  1332→        isBitPerfect: false,
+  1333→        processingDetail: `Target: ${zone.dspConfig.loudness.targetLUFS} LUFS`,
+  1334→        latencyMs: 0,
+  1335→      });
+  1336→    }
+  1337→
+  1338→    // Upsampling
+  1339→    if (zone.dspConfig.upsampling?.enabled && currentSR <= zone.dspConfig.upsampling.maxSrcRate) {
+  1340→      const wasBitPerfect = steps.every(s => s.isBitPerfect);
+  1341→      currentSR = zone.dspConfig.upsampling.targetRate / 1000;
+  1342→      currentBD = zone.dspConfig.upsampling.targetBitDepth;
+  1343→      isDSD = false;
+  1344→      currentFormat = 'PCM';
+  1345→      steps.push({
+  1346→        label: 'Upsampling',
+  1347→        format: 'PCM',
+  1348→        sampleRate: currentSR,
+  1349→        bitDepth: currentBD,
+  1350→        isBitPerfect: false,
+  1351→        filterType: zone.dspConfig.upsampling.filterType,
+  1352→        processingDetail: `${formatSampleRate(zone.dspConfig.upsampling.targetRate / 1000)} / ${currentBD}-bit`,
+  1353→        latencyMs: 2.8,
+  1354→      });
+  1355→    }
+  1356→  }
+  1357→
+  1358→  // Volume Control
+  1359→  const isVolBitPerfect = zone.volumeMode !== 'dsp';
+  1360→  steps.push({
+  1361→    label: 'Volume Control',
+  1362→    format: isDSD ? (track.format) : 'PCM',
+  1363→    sampleRate: currentSR,
+  1364→    bitDepth: currentBD,
+  1365→    isBitPerfect: isVolBitPerfect,
+  1366→    processingDetail: zone.volumeMode === 'hardware' ? 'Hardware (DAC)' : zone.volumeMode === 'dsp' ? 'DSP attenuator + TPDF dither' : 'Fixed output',
+  1367→    ditherType: zone.volumeMode === 'dsp' ? 'tpdf' : 'none',
+  1368→    latencyMs: 0,
+  1369→  });
+  1370→
+  1371→  // Format conversion if needed for output
+  1372→  const endpoint = zone.endpoints[0];
+  1373→  const needsDownsample = currentSR > (endpoint?.maxSampleRate || zone.sampleRate);
+  1374→  const needsBDReduce = currentBD > (endpoint?.maxBitDepth || zone.bitDepth);
+  1375→  const needsDoP = isDSD && endpoint?.supportsDoP && !endpoint?.supportsDSD;
+  1376→
+  1377→  if (needsDoP) {
+  1378→    steps.push({
+  1379→      label: 'DSD → DoP Conversion',
+  1380→      format: 'PCM (DoP)',
+  1381→      sampleRate: currentSR,
+  1382→      bitDepth: currentBD,
+  1383→      isBitPerfect: false,
+  1384→      isDSD: true,
+  1385→      dsdMode: 'DoP',
+  1386→      processingDetail: `DSD over PCM for ${endpoint?.name}`,
+  1387→      latencyMs: 0.1,
+  1388→    });
+  1389→    isDSD = false;
+  1390→    currentFormat = 'PCM';
+  1391→  }
+  1392→
+  1393→  if (needsDownsample || needsBDReduce) {
+  1394→    steps.push({
+  1395→      label: 'Format Conversion',
+  1396→      format: currentFormat,
+  1397→      sampleRate: needsDownsample ? (endpoint?.maxSampleRate || zone.sampleRate) : currentSR,
+  1398→      bitDepth: needsBDReduce ? (endpoint?.maxBitDepth || zone.bitDepth) : currentBD,
+  1399→      isBitPerfect: false,
+  1400→      filterType: 'linear-phase',
+  1401→      processingDetail: `Target: ${formatSampleRate(needsDownsample ? (endpoint?.maxSampleRate || zone.sampleRate) : currentSR)}`,
+  1402→      latencyMs: 1.5,
+  1403→    });
+  1404→  }
+  1405→
+  1406→  // Network transport
+  1407→  steps.push({
+  1408→    label: 'Network Transport',
+  1409→    format: currentFormat,
+  1410→    sampleRate: needsDownsample ? (endpoint?.maxSampleRate || zone.sampleRate) : currentSR,
+  1411→    bitDepth: needsBDReduce ? (endpoint?.maxBitDepth || zone.bitDepth) : currentBD,
+  1412→    isBitPerfect: true,
+  1413→    processingDetail: `DSP Audio Protocol · ${(endpoint?.latencyMs || 5).toFixed(1)}ms latency`,
+  1414→    latencyMs: endpoint?.latencyMs || 5,
+  1415→  });
+  1416→
+  1417→  // Output endpoint / DAC
+  1418→  steps.push({
+  1419→    label: `DAC: ${endpoint?.dac || 'Unknown'}`,
+  1420→    format: needsDoP ? 'DoP' : currentFormat,
+  1421→    sampleRate: needsDownsample ? (endpoint?.maxSampleRate || zone.sampleRate) : currentSR,
+  1422→    bitDepth: needsBDReduce ? (endpoint?.maxBitDepth || zone.bitDepth) : currentBD,
+  1423→    isBitPerfect: !needsDownsample && !needsBDReduce && isVolBitPerfect,
+  1424→    processingDetail: endpoint?.clockSource ? `Clock: ${endpoint.clockSource}` : undefined,
+  1425→    latencyMs: 0.01,
+  1426→  });
+  1427→
+  1428→  return steps;
+  1429→}
+  1430→
+  1431→export function getDetailedSignalPath(trackId: string, zoneId: string): {
+  1432→  steps: SignalPathStep[];
+  1433→  overallBitPerfect: boolean;
+  1434→  sourceFormat: string;
+  1435→  outputFormat: string;
+  1436→  totalLatencyMs: number;
+  1437→  dspChainCount: number;
+  1438→  zoneInfo: Zone | undefined;
+  1439→  trackInfo: Track | undefined;
+  1440→} {
+  1441→  const steps = getSignalPath(trackId, zoneId);
+  1442→  const track = getTrackById(trackId);
+  1443→  const zone = zones.find(z => z.id === zoneId);
+  1444→  const dspSteps = steps.filter(s => !s.isBitPerfect);
+  1445→  const totalLatency = steps.reduce((sum, s) => sum + (s.latencyMs || 0), 0);
+  1446→
+  1447→  return {
+  1448→    steps,
+  1449→    overallBitPerfect: steps.every(s => s.isBitPerfect),
+  1450→    sourceFormat: track ? `${track.format} ${formatSampleRate(track.sampleRate)} ${track.bitDepth}-bit` : '—',
+  1451→    outputFormat: steps.length > 0 ? `${steps[steps.length - 1].format} ${formatSampleRate(steps[steps.length - 1].sampleRate)} ${steps[steps.length - 1].bitDepth}-bit` : '—',
+  1452→    totalLatencyMs: totalLatency,
+  1453→    dspChainCount: dspSteps.length,
+  1454→    zoneInfo: zone,
+  1455→    trackInfo: track,
+  1456→  };
+  1457→}
+  1458→
+  1459→// ─── USER PROFILE TYPES & DATA ───
+  1460→
+  1461→export interface UserProfile {
+  1462→  id: string;
+  1463→  name: string;
+  1464→  avatar: string;
+  1465→  color: string;
+  1466→  lovedTrackIds: string[];
+  1467→  recentlyPlayedIds: string[];
+  1468→  totalPlayTime: number; // seconds
+  1469→  totalPlays: number;
+  1470→  joinDate: string;
+  1471→  isDefault: boolean;
+  1472→}
+  1473→
+  1474→export const userProfiles: UserProfile[] = [
+  1475→  {
+  1476→    id: 'profile-1', name: 'Alex', avatar: 'A', color: 'bg-primary',
+  1477→    lovedTrackIds: ['track-3-4', 'track-1-1', 'track-5-1', 'track-2-3'],
+  1478→    recentlyPlayedIds: ['track-3-4', 'track-3-2', 'track-5-6', 'track-1-1', 'track-7-2'],
+  1479→    totalPlayTime: 342000, totalPlays: 4820, joinDate: '2024-01-15', isDefault: true,
+  1480→  },
+  1481→  {
+  1482→    id: 'profile-2', name: 'Jordan', avatar: 'J', color: 'bg-blue-600',
+  1483→    lovedTrackIds: ['track-4-2', 'track-8-1', 'track-11-3'],
+  1484→    recentlyPlayedIds: ['track-4-2', 'track-4-1', 'track-8-3'],
+  1485→    totalPlayTime: 186000, totalPlays: 2400, joinDate: '2024-06-20', isDefault: false,
+  1486→  },
+  1487→  {
+  1488→    id: 'profile-3', name: 'Sam', avatar: 'S', color: 'bg-purple-600',
+  1489→    lovedTrackIds: ['track-7-1', 'track-7-5', 'track-3-8', 'track-2-4'],
+  1490→    recentlyPlayedIds: ['track-7-1', 'track-7-5', 'track-3-8'],
+  1491→    totalPlayTime: 95000, totalPlays: 1280, joinDate: '2025-03-10', isDefault: false,
+  1492→  },
+  1493→];
+  1494→
+  1495→// ─── PLAY HISTORY TYPES & DATA ───
+  1496→
+  1497→export interface PlayHistoryEntry {
+  1498→  id: string;
+  1499→  trackId: string;
+  1500→  profileId: string;
+  1501→  playedAt: string;
+  1502→  completed: boolean;
+  1503→  source: 'local' | 'tidal' | 'qobuz' | 'radio';
+  1504→  zoneId: string;
+  1505→}
+  1506→
+  1507→export const playHistory: PlayHistoryEntry[] = [
+  1508→  { id: 'ph-1', trackId: 'track-3-4', profileId: 'profile-1', playedAt: '2026-08-12T14:20:00Z', completed: false, source: 'local', zoneId: 'zone-1' },
+  1509→  { id: 'ph-2', trackId: 'track-3-2', profileId: 'profile-1', playedAt: '2026-08-12T13:55:00Z', completed: true, source: 'local', zoneId: 'zone-1' },
+  1510→  { id: 'ph-3', trackId: 'track-5-6', profileId: 'profile-1', playedAt: '2026-08-12T13:40:00Z', completed: true, source: 'local', zoneId: 'zone-2' },
+  1511→  { id: 'ph-4', trackId: 'track-1-1', profileId: 'profile-1', playedAt: '2026-08-12T12:10:00Z', completed: true, source: 'tidal', zoneId: 'zone-1' },
+  1512→  { id: 'ph-5', trackId: 'track-7-2', profileId: 'profile-1', playedAt: '2026-08-12T11:30:00Z', completed: true, source: 'local', zoneId: 'zone-1' },
+  1513→  { id: 'ph-6', trackId: 'track-4-2', profileId: 'profile-2', playedAt: '2026-08-12T14:15:00Z', completed: false, source: 'local', zoneId: 'zone-3' },
+  1514→  { id: 'ph-7', trackId: 'track-4-1', profileId: 'profile-2', playedAt: '2026-08-12T13:00:00Z', completed: true, source: 'qobuz', zoneId: 'zone-3' },
+  1515→  { id: 'ph-8', trackId: 'track-8-3', profileId: 'profile-2', playedAt: '2026-08-11T22:00:00Z', completed: true, source: 'local', zoneId: 'zone-3' },
+  1516→  { id: 'ph-9', trackId: 'track-7-1', profileId: 'profile-3', playedAt: '2026-08-12T10:00:00Z', completed: true, source: 'local', zoneId: 'zone-2' },
+  1517→  { id: 'ph-10', trackId: 'track-2-1', profileId: 'profile-1', playedAt: '2026-08-11T20:00:00Z', completed: true, source: 'local', zoneId: 'zone-1' },
+  1518→  { id: 'ph-11', trackId: 'track-5-4', profileId: 'profile-1', playedAt: '2026-08-11T19:30:00Z', completed: true, source: 'tidal', zoneId: 'zone-1' },
+  1519→  { id: 'ph-12', trackId: 'track-11-2', profileId: 'profile-3', playedAt: '2026-08-11T18:00:00Z', completed: true, source: 'radio', zoneId: 'zone-2' },
+  1520→];
+  1521→
+  1522→// ─── PLUGIN / EXTENSION TYPES & DATA ───
+  1523→
+  1524→export interface DSPPlugin {
+  1525→  id: string;
+  1526→  name: string;
+  1527→  version: string;
+  1528→  type: 'dsp-module' | 'streaming-service' | 'output-protocol' | 'metadata-provider' | 'codec';
+  1529→  author: string;
+  1530→  description: string;
+  1531→  installed: boolean;
+  1532→  enabled: boolean;
+  1533→  status: 'active' | 'error' | 'needs-update' | 'needs-license';
+  1534→  licenseType: 'open-source' | 'commercial' | 'proprietary' | 'needs-agreement';
+  1535→  licenseDetail?: string;
+  1536→  configUrl?: string;
+  1537→  lastUpdated?: string;
+  1538→}
+  1539→
+  1540→export const plugins: DSPPlugin[] = [
+  1541→  {
+  1542→    id: 'plugin-1', name: 'Parametric EQ', version: '1.3.0', type: 'dsp-module',
+  1543→    author: 'DSP Team', description: '10-band parametric equalizer with custom filter types',
+  1544→    installed: true, enabled: true, status: 'active', licenseType: 'open-source',
+  1545→    configUrl: '/dsp-config', lastUpdated: '2026-07-15',
+  1546→  },
+  1547→  {
+  1548→    id: 'plugin-2', name: 'Room Correction (REW)', version: '2.1.0', type: 'dsp-module',
+  1549→    author: 'DSP Team', description: 'Convolution-based room correction using REW measurement files',
+  1550→    installed: true, enabled: true, status: 'active', licenseType: 'open-source',
+  1551→    configUrl: '/dsp-config', lastUpdated: '2026-06-20',
+  1552→  },
+  1553→  {
+  1554→    id: 'plugin-3', name: 'Headphone AutoEQ', version: '1.5.2', type: 'dsp-module',
+  1555→    author: 'Community', description: 'AutoEQ-derived headphone correction profiles for 200+ models',
+  1556→    installed: true, enabled: true, status: 'active', licenseType: 'open-source',
+  1557→    lastUpdated: '2026-08-01',
+  1558→  },
+  1559→  {
+  1560→    id: 'plugin-4', name: 'TIDAL Integration', version: '3.0.0', type: 'streaming-service',
+  1561→    author: 'DSP Team', description: 'TIDAL streaming service with HiRes FLAC and MQA support',
+  1562→    installed: true, enabled: true, status: 'active', licenseType: 'needs-agreement',
+  1563→    licenseDetail: 'Requires TIDAL developer agreement for commercial distribution',
+  1564→    configUrl: '/streaming', lastUpdated: '2026-07-28',
+  1565→  },
+  1566→  {
+  1567→    id: 'plugin-5', name: 'Qobuz Integration', version: '2.4.1', type: 'streaming-service',
+  1568→    author: 'DSP Team', description: 'Qobuz streaming with up to 24-bit/192kHz HiRes',
+  1569→    installed: true, enabled: false, status: 'needs-license',
+  1570→    licenseDetail: 'Qobuz API access requires approved partnership',
+  1571→    configUrl: '/streaming', lastUpdated: '2026-07-10',
+  1572→  },
+  1573→  {
+  1574→    id: 'plugin-6', name: 'DSD Native Decoder', version: '1.2.0', type: 'codec',
+  1575→    author: 'DSP Team', description: 'Native DSD decoding for DSF/DFF files up to DSD512',
+  1576→    installed: true, enabled: true, status: 'active', licenseType: 'open-source',
+  1577→    lastUpdated: '2026-05-15',
+  1578→  },
+  1579→  {
+  1580→    id: 'plugin-7', name: 'MQA Renderer', version: '1.0.0-beta', type: 'codec',
+  1581→    author: 'Third Party', description: 'MQA first unfold rendering (licensing required for full decode)',
+  1582→    installed: true, enabled: false, status: 'needs-license',
+  1583→    licenseDetail: 'MQA decoder requires commercial license from MQA Ltd (now Lenbrook Industries)',
+  1584→    lastUpdated: '2026-03-01',
+  1585→  },
+  1586→  {
+  1587→    id: 'plugin-8', name: 'MusicBrainz Metadata', version: '2.0.3', type: 'metadata-provider',
+  1588→    author: 'Community', description: 'Enrich local library metadata from MusicBrainz / AcoustID',
+  1589→    installed: true, enabled: true, status: 'active', licenseType: 'open-source',
+  1590→    licenseDetail: 'MusicBrainz data is CC BY-SA 4.0. Attribution required.',
+  1591→    lastUpdated: '2026-08-05',
+  1592→  },
+  1593→  {
+  1594→    id: 'plugin-9', name: 'AirPlay 2 Output', version: '1.1.0', type: 'output-protocol',
+  1595→    author: 'DSP Team', description: 'AirPlay 2 output protocol for Apple devices and speakers',
+  1596→    installed: false, enabled: false, status: 'needs-license',
+  1597→    licenseDetail: 'AirPlay requires Apple MFi certification for hardware distribution',
+  1598→  },
+  1599→  {
+  1600→    id: 'plugin-10', name: 'ROON Bridge Compatibility', version: '0.9.0-beta', type: 'output-protocol',
+  1601→    author: 'Third Party', description: 'Experimental RAAT-compatible output for legacy Roon endpoints',
+  1602→    installed: false, enabled: false, status: 'needs-agreement',
+  1603→    licenseDetail: 'RAAT protocol is proprietary. Reverse-engineered. Legal review required.',
+  1604→  },
+  1605→];
+  1606→
+  1607→// ─── LICENSING / THIRD-PARTY TRACKER ───
+  1608→
+  1609→export interface LicensingItem {
+  1610→  id: string;
+  1611→  name: string;
+  1612→  type: 'codec' | 'protocol' | 'metadata' | 'streaming-api' | 'brand';
+  1613→  provider: string;
+  1614→  status: 'clear' | 'needs-agreement' | 'needs-license' | 'proprietary' | 'attribution-required';
+  1615→  details: string;
+  1616→  urgency: 'low' | 'medium' | 'high' | 'critical';
+  1617→  contact?: string;
+  1618→  resolved?: boolean;
+  1619→}
+  1620→
+  1621→export const licensingItems: LicensingItem[] = [
+  1622→  {
+  1623→    id: 'lic-1', name: 'FLAC Codec', type: 'codec', provider: 'Xiph.Org Foundation',
+  1624→    status: 'clear', details: 'FLAC is fully open-source (BSD license). No commercial restrictions.',
+  1625→    urgency: 'low', resolved: true,
+  1626→  },
+  1627→  {
+  1628→    id: 'lic-2', name: 'MP3 Decoding', type: 'codec', provider: 'Fraunhofer / Thomson',
+  1629→    status: 'needs-license', details: 'MP3 patents may still apply in some jurisdictions. Use LAME or alternatives where possible.',
+  1630→    urgency: 'medium', resolved: false, contact: 'fraunhofer.de',
+  1631→  },
+  1632→  {
+  1633→    id: 'lic-3', name: 'AAC / ALAC Codec', type: 'codec', provider: 'Apple / Dolby',
+  1634→    status: 'needs-license', details: 'AAC decoder requires licensing from Dolby/Via Licensing. ALAC is now Apache 2.0 licensed by Apple.',
+  1635→    urgency: 'medium', resolved: false, contact: 'vialicensing.com',
+  1636→  },
+  1637→  {
+  1638→    id: 'lic-4', name: 'MQA Decoding', type: 'codec', provider: 'MQA Ltd / Lenbrook',
+  1639→    status: 'needs-agreement', details: 'Full MQA decode (beyond first unfold) requires a commercial license. First unfold may be treated as passthrough.',
+  1640→    urgency: 'high', resolved: false, contact: 'lenbrook.com',
+  1641→  },
+  1642→  {
+  1643→    id: 'lic-5', name: 'DSD (DSF/DFF)', type: 'codec', provider: 'Sony',
+  1644→    status: 'clear', details: 'DSD is an open format. DSF/DFF containers have no known licensing restrictions.',
+  1645→    urgency: 'low', resolved: true,
+  1646→  },
+  1647→  {
+  1648→    id: 'lic-6', name: 'TIDAL API', type: 'streaming-api', provider: 'TIDAL / Block',
+  1649→    status: 'needs-agreement', details: 'TIDAL developer API requires an approved partnership agreement for commercial use.',
+  1650→    urgency: 'high', resolved: false, contact: 'developer.tidal.com',
+  1651→  },
+  1652→  {
+  1653→    id: 'lic-7', name: 'Qobuz API', type: 'streaming-api', provider: 'Qobuz',
+  1654→    status: 'needs-agreement', details: 'Qobuz API access is restricted to approved partners. Commercial agreement required.',
+  1655→    urgency: 'high', resolved: false, contact: 'partners.qobuz.com',
+  1656→  },
+  1657→  {
+  1658→    id: 'lic-8', name: 'MusicBrainz Data', type: 'metadata', provider: 'MetaBrainz Foundation',
+  1659→    status: 'attribution-required', details: 'MusicBrainz data is CC BY-SA 4.0. Must provide attribution. Rate limits apply (1 req/sec). Server donations encouraged.',
+  1660→    urgency: 'low', resolved: true,
+  1661→  },
+  1662→  {
+  1663→    id: 'lic-9', name: 'AcoustID / Chromaprint', type: 'metadata', provider: 'AcoustID Project',
+  1664→    status: 'clear', details: 'AcoustID fingerprinting is LGPL licensed. Chromaprint is also LGPL. No commercial restrictions.',
+  1665→    urgency: 'low', resolved: true,
+  1666→  },
+  1667→  {
+  1668→    id: 'lic-10', name: 'AirPlay Protocol', type: 'protocol', provider: 'Apple',
+  1669→    status: 'needs-agreement', details: 'AirPlay requires MFi (Made for iPhone/iPad/iPod) certification for any hardware distribution.',
+  1670→    urgency: 'critical', resolved: false, contact: 'developer.apple.com/mfi',
+  1671→  },
+  1672→  {
+  1673→    id: 'lic-11', name: 'RAAT Protocol', type: 'protocol', provider: 'ROON Labs',
+  1674→    status: 'proprietary', details: 'RAAT is a proprietary protocol owned by ROON Labs. Reverse-engineering may violate DMCA/EU law.',
+  1675→    urgency: 'critical', resolved: false, contact: 'roonlabs.com',
+  1676→  },
+  1677→  {
+  1678→    id: 'lic-12', name: 'DSP Brand Name', type: 'brand', provider: 'Internal',
+  1679→    status: 'clear', details: 'Dyabavadra Streaming Platform (DSP) branding is original. No conflicts with ROON or other audio platforms.',
+  1680→    urgency: 'low', resolved: true,
+  1681→  },
+  1682→];
+  1683→
+  1684→// ─── TAG DATA ───
+  1685→
+  1686→export interface Tag {
+  1687→  id: string;
+  1688→  name: string;
+  1689→  type: 'genre' | 'mood' | 'era' | 'format' | 'custom';
+  1690→  trackCount: number;
+  1691→  color?: string;
+  1692→}
+  1693→
+  1694→export const tags: Tag[] = [
+  1695→  { id: 'tag-1', name: 'Chill', type: 'mood', trackCount: 45, color: 'bg-blue-600' },
+  1696→  { id: 'tag-2', name: 'Energy', type: 'mood', trackCount: 38, color: 'bg-red-600' },
+  1697→  { id: 'tag-3', name: 'Focus', type: 'mood', trackCount: 62, color: 'bg-green-600' },
+  1698→  { id: 'tag-4', name: 'Romantic', type: 'mood', trackCount: 28, color: 'bg-pink-600' },
+  1699→  { id: 'tag-5', name: 'Melancholy', type: 'mood', trackCount: 35, color: 'bg-indigo-600' },
+  1700→  { id: 'tag-6', name: '1960s', type: 'era', trackCount: 120 },
+  1701→  { id: 'tag-7', name: '1970s', type: 'era', trackCount: 180 },
+  1702→  { id: 'tag-8', name: '1980s', type: 'era', trackCount: 95 },
+  1703→  { id: 'tag-9', name: '1990s', type: 'era', trackCount: 140 },
+  1704→  { id: 'tag-10', name: '2000s', type: 'era', trackCount: 210 },
+  1705→  { id: 'tag-11', name: '2010s', type: 'era', trackCount: 320 },
+  1706→  { id: 'tag-12', name: '2020s', type: 'era', trackCount: 180 },
+  1707→  { id: 'tag-13', name: 'HiRes', type: 'format', trackCount: 420 },
+  1708→  { id: 'tag-14', name: 'DSD', type: 'format', trackCount: 85 },
+  1709→  { id: 'tag-15', name: 'Vinyl Rip', type: 'format', trackCount: 140 },
+  1710→  { id: 'tag-16', name: 'Audiophile Grade', type: 'custom', trackCount: 200, color: 'bg-gold' },
+  1711→  { id: 'tag-17', name: 'Party', type: 'mood', trackCount: 55, color: 'bg-purple-600' },
+  1712→  { id: 'tag-18', name: 'Acoustic', type: 'mood', trackCount: 72, color: 'bg-amber-600' },
+  1713→];
+  1714→
