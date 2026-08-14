@@ -154,16 +154,16 @@ const systemLogs = [
 export function SystemHealthView() {
   const core = useSystemStore(s => s.core);
 
-  const cpuUsage = core.machineInfo?.cpuUsage ?? coreStatus.machineInfo.cpuUsage;
-  const memUsed = core.machineInfo?.memoryUsed ?? coreStatus.machineInfo.memoryUsed;
-  const memTotal = core.machineInfo?.memoryTotal ?? coreStatus.machineInfo.memoryTotal;
-  const memPct = Math.round((memUsed / memTotal) * 100);
+  const cpuUsage = core.machineInfo?.cpuUsage ?? 0;
+  const memUsed = core.machineInfo?.memoryUsed ?? 0;
+  const memTotal = core.machineInfo?.memoryTotal ?? 1073741824;
+  const memPct = memTotal > 0 ? Math.round((memUsed / memTotal) * 100) : 0;
   const memHeadroom = ((memTotal - memUsed) / 1073741824).toFixed(1);
 
-  const audioEngine = core.audioEngine ?? coreStatus.audioEngine;
-  const storageLocations = core.storageLocations ?? coreStatus.storageLocations;
-  const libraryStats = core.libraryStats ?? coreStatus.libraryStats;
-  const uptime = core.uptime ?? coreStatus.uptime;
+  const audioEngine = core.audioEngine ?? null;
+  const storageLocations = core.storageLocations ?? [];
+  const libraryStats = core.libraryStats ?? null;
+  const uptime = core.uptime ?? 0;
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">

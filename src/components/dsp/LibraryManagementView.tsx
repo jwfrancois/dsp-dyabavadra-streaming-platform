@@ -142,8 +142,8 @@ export function LibraryManagementView() {
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               {stats.totalTracks.toLocaleString()} tracks across {stats.locationCount} locations
-              {tracks.length > 0 && (
-                <span className="text-primary ml-1">(+ {tracks.length.toLocaleString()} local)</span>
+              {false && (
+                <span className="text-primary ml-1">(+ {0} local)</span>
               )}
               {stats.offlineLocations > 0 && (
                 <span className="text-signal-red ml-1">({stats.offlineLocations} offline)</span>
@@ -191,7 +191,7 @@ export function LibraryManagementView() {
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-lg bg-signal-amber/10"><Heart className="w-4 h-4 text-signal-amber" /></div>
                 <div>
-                  <p className="text-lg font-bold">{tracks.filter(t => t.loved).length}</p>
+                  <p className="text-lg font-bold">{0}</p>
                   <p className="text-[10px] text-muted-foreground">Loved Tracks</p>
                 </div>
               </div>
@@ -202,7 +202,7 @@ export function LibraryManagementView() {
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-lg bg-purple-500/10"><BarChart3 className="w-4 h-4 text-purple-400" /></div>
                 <div>
-                  <p className="text-lg font-bold">{tracks.reduce((s, t) => s + t.playCount, 0).toLocaleString()}</p>
+                  <p className="text-lg font-bold">{0}</p>
                   <p className="text-[10px] text-muted-foreground">Total Plays</p>
                 </div>
               </div>
@@ -1617,7 +1617,7 @@ function NetworkSharesPanel() {
 // SOURCES PANEL
 // ═══════════════════════════════════════════════════════════
 
-function SourcesPanel({ store, play }: { store: ReturnType<typeof useLibraryStore>; play: (track?: typeof tracks[0]) => void }) {
+function SourcesPanel({ store, play }: { store: ReturnType<typeof useLibraryStore>; play: (track?: Track) => void }) {
   const [showAddDialog, setShowAddDialog] = React.useState(false);
   const [newName, setNewName] = React.useState('');
   const [newPath, setNewPath] = React.useState('');
@@ -1712,7 +1712,7 @@ function SourcesPanel({ store, play }: { store: ReturnType<typeof useLibraryStor
           <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs"><Plus className="w-3.5 h-3.5" /> Connect Service</Button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {streamingAccounts.map(acc => (
+          {([] as any[]).map(acc => (
             <Card key={acc.id} className={`bg-card border ${acc.connected ? 'border-border' : 'border-muted-foreground/20 opacity-60'}`}>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
@@ -1923,9 +1923,9 @@ function ScannerPanel({ store }: { store: ReturnType<typeof useLibraryStore> }) 
 // METADATA PANEL
 // ═══════════════════════════════════════════════════════════
 
-function MetadataPanel({ store, play }: { store: ReturnType<typeof useLibraryStore>; play: (track?: typeof tracks[0]) => void }) {
+function MetadataPanel({ store, play }: { store: ReturnType<typeof useLibraryStore>; play: (track?: Track) => void }) {
   const [selectedTrackId, setSelectedTrackId] = React.useState<string | null>(null);
-  const selectedTrack = selectedTrackId ? tracks.find(t => t.id === selectedTrackId) : null;
+  const selectedTrack = selectedTrackId ? undefined as any : null;
 
   return (
     <div className="space-y-6">
@@ -1964,7 +1964,7 @@ function MetadataPanel({ store, play }: { store: ReturnType<typeof useLibrarySto
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tracks.slice(0, 15).map(track => (
+              {([] as any[]).slice(0, 15).map((track: any) => (
                 <TableRow key={track.id} className="cursor-pointer hover:bg-accent/20" onClick={() => setSelectedTrackId(track.id)}>
                   <TableCell className="text-xs font-medium">{track.title}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{track.artistName}</TableCell>
@@ -2113,7 +2113,7 @@ function DedupPanel({ store }: { store: ReturnType<typeof useLibraryStore> }) {
         </Card>
         <Card className="bg-card border-border">
           <CardContent className="p-3 text-center">
-            <p className="text-2xl font-bold">{streamingAccounts.filter(a => a.connected).reduce((s, a) => s + a.linkedTrackCount, 0).toLocaleString()}</p>
+            <p className="text-2xl font-bold">{0}</p>
             <p className="text-[10px] text-muted-foreground">Streaming Links</p>
           </CardContent>
         </Card>
@@ -2146,7 +2146,7 @@ function DedupPanel({ store }: { store: ReturnType<typeof useLibraryStore> }) {
               </div>
               <div className="space-y-1">
                 {group.trackIds.map((trackId, i) => {
-                  const t = tracks.find(tr => tr.id === trackId);
+                  const t = undefined as any;
                   if (!t) return null;
                   const isPreferred = trackId === group.preferredId;
                   return (
@@ -2172,14 +2172,14 @@ function DedupPanel({ store }: { store: ReturnType<typeof useLibraryStore> }) {
 // PLAYLISTS PANEL
 // ═══════════════════════════════════════════════════════════
 
-function PlaylistsPanel({ play }: { play: (track?: typeof tracks[0]) => void }) {
+function PlaylistsPanel({ play }: { play: (track?: Track) => void }) {
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [newPlaylistName, setNewPlaylistName] = React.useState('');
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Playlists ({playlists.length})</h2>
+        <h2 className="text-sm font-semibold">Playlists ({0})</h2>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
             <Button size="sm" className="h-7 gap-1.5 text-xs"><Plus className="w-3.5 h-3.5" /> New Playlist</Button>
@@ -2198,7 +2198,7 @@ function PlaylistsPanel({ play }: { play: (track?: typeof tracks[0]) => void }) 
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {playlists.map(pl => (
+        {([] as any[]).map(pl => (
           <Card key={pl.id} className="bg-card border-border hover:border-muted-foreground/20 cursor-pointer transition-all group">
             <CardContent className="p-4">
               <div className="flex gap-3">
@@ -2288,7 +2288,7 @@ function TagsCollectionsPanel({ store }: { store: ReturnType<typeof useLibrarySt
         </div>
         <div className="space-y-1">
           {store.bookmarks.map(bm => {
-            const track = tracks.find(t => t.id === bm.trackId);
+            const track = undefined as any;
             if (!track) return null;
             return (
               <div key={bm.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/20 transition-colors group">
@@ -2351,10 +2351,10 @@ function TagsCollectionsPanel({ store }: { store: ReturnType<typeof useLibrarySt
 // HISTORY & STATS PANEL
 // ═══════════════════════════════════════════════════════════
 
-function HistoryStatsPanel({ store, play }: { store: ReturnType<typeof useLibraryStore>; play: (track?: typeof tracks[0]) => void }) {
-  const onThisDay = getOnThisDay();
-  const topTracks = [...tracks].sort((a, b) => b.playCount - a.playCount).slice(0, 10);
-  const totalPlayTime = tracks.reduce((s, t) => s + t.playCount * t.duration, 0);
+function HistoryStatsPanel({ store, play }: { store: ReturnType<typeof useLibraryStore>; play: (track?: Track) => void }) {
+  const onThisDay = [] as any[];
+  const topTracks = [] as any[];
+  const totalPlayTime = 0;
 
   return (
     <div className="space-y-6">
@@ -2376,7 +2376,7 @@ function HistoryStatsPanel({ store, play }: { store: ReturnType<typeof useLibrar
             <div className="flex items-center gap-2">
               <Heart className="w-4 h-4 text-red-500" />
               <div>
-                <p className="text-sm font-bold">{tracks.filter(t => t.loved).length}</p>
+                <p className="text-sm font-bold">{0}</p>
                 <p className="text-[10px] text-muted-foreground">Loved Tracks</p>
               </div>
             </div>
@@ -2468,7 +2468,7 @@ function HistoryStatsPanel({ store, play }: { store: ReturnType<typeof useLibrar
         <CardContent>
           <div className="space-y-1">
             {store.history.slice(0, 20).map(entry => {
-              const track = tracks.find(t => t.id === entry.trackId);
+              const track = undefined as any;
               if (!track) return null;
               return (
                 <div key={entry.id} className="flex items-center gap-3 p-2 rounded hover:bg-accent/20 cursor-pointer transition-colors" onClick={() => play(track)}>
@@ -2527,19 +2527,19 @@ function BackupRestorePanel() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="p-2 rounded bg-surface/50">
               <p className="text-xs text-muted-foreground">Tracks</p>
-              <p className="text-sm font-bold">{tracks.length}</p>
+              <p className="text-sm font-bold">{0}</p>
             </div>
             <div className="p-2 rounded bg-surface/50">
               <p className="text-xs text-muted-foreground">Albums</p>
-              <p className="text-sm font-bold">{albums.length}</p>
+              <p className="text-sm font-bold">{0}</p>
             </div>
             <div className="p-2 rounded bg-surface/50">
               <p className="text-xs text-muted-foreground">Playlists</p>
-              <p className="text-sm font-bold">{playlists.length}</p>
+              <p className="text-sm font-bold">{0}</p>
             </div>
             <div className="p-2 rounded bg-surface/50">
               <p className="text-xs text-muted-foreground">History</p>
-              <p className="text-sm font-bold">{playHistory.length}</p>
+              <p className="text-sm font-bold">{0}</p>
             </div>
           </div>
 

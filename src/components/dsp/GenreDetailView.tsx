@@ -170,8 +170,8 @@ export function GenreDetailView() {
           </section>
         )}
 
-        {/* Related Genres */}
-        {genreDetail && genreDetail.relatedGenres.length > 0 && (
+        {/* Related Genres — mock data removed */}
+        {false && (
           <section className="mb-8">
             <h2 className="text-lg font-semibold mb-3">Related Genres</h2>
             <div className="flex flex-wrap gap-2">

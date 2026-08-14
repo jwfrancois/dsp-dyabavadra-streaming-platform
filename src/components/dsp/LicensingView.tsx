@@ -258,16 +258,16 @@ function DependencyCard({ item }: { item: LicensingItem }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function LicensingView() {
-  const criticalItems = licensingItems.filter(i => i.urgency === 'critical');
-  const resolvedCount = licensingItems.filter(i => i.resolved).length;
-  const totalCount = licensingItems.length;
-  const unresolvedCount = totalCount - resolvedCount;
-  const progressPercent = Math.round((resolvedCount / totalCount) * 100);
+  const criticalItems: LicensingItem[] = [];
+  const resolvedCount = 0;
+  const totalCount = 0;
+  const unresolvedCount = 0;
+  const progressPercent = 0;
 
-  const clearCount = licensingItems.filter(i => i.status === 'clear').length;
-  const needsAgreementCount = licensingItems.filter(i => i.status === 'needs-agreement').length;
-  const needsLicenseCount = licensingItems.filter(i => i.status === 'needs-license').length;
-  const attributionCount = licensingItems.filter(i => i.status === 'attribution-required').length;
+  const clearCount = 0;
+  const needsAgreementCount = 0;
+  const needsLicenseCount = 0;
+  const attributionCount = 0;
 
   return (
     <ScrollArea className="h-full">
@@ -353,7 +353,7 @@ export function LicensingView() {
             <Shield className="w-4 h-4 text-primary" /> All Dependencies
           </h2>
           <div className="space-y-3">
-            {licensingItems.map(item => (
+            {([] as LicensingItem[]).map(item => (
               <DependencyCard key={item.id} item={item} />
             ))}
           </div>

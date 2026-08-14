@@ -181,8 +181,8 @@ function PluginCard({ plugin }: { plugin: DSPPlugin }) {
 export function PluginManagerView() {
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('all');
 
-  const installedPlugins = plugins.filter(p => p.installed);
-  const availablePlugins = plugins.filter(p => !p.installed);
+  const installedPlugins: DSPPlugin[] = [];
+  const availablePlugins: DSPPlugin[] = [];
 
   const filterByCategory = (list: DSPPlugin[]) =>
     activeCategory === 'all' ? list : list.filter(p => p.type === activeCategory);

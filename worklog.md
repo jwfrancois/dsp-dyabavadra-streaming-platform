@@ -289,3 +289,30 @@ Stage Summary:
 - All removed symbol references replaced with empty/undefined/null defaults
 - Empty states added for views that previously rendered mock zone/track lists
 - Build passes with zero errors
+---
+Task ID: 8
+Agent: main
+Task: Fix 24 remaining bare references to removed mock data in LibraryManagementView.tsx
+
+Work Log:
+- Identified 24 bare references to removed mock data identifiers (`tracks`, `albums`, `playlists`, `playHistory`, `streamingAccounts`, `getOnThisDay`) across 9 functions in LibraryManagementView.tsx
+- These caused runtime "X is not defined" errors because components are React.lazy() loaded, so the build doesn't catch them
+- Fixed LibraryManagementView() main export (4 refs): replaced `tracks.length > 0` conditional with `false`, replaced `.filter()/.reduce()` count expressions with `0`
+- Fixed SourcesPanel() (2 refs): replaced `typeof tracks[0]` type annotation with `Track` (already imported), replaced `streamingAccounts.map(...)` with `([] as any[]).map(...)`
+- Fixed MetadataPanel() (3 refs): replaced `typeof tracks[0]` with `Track`, replaced `tracks.find(...)` with `undefined as any`, replaced `tracks.slice(0,15).map(...)` with `([] as any[]).slice(0,15).map(...)`
+- Fixed DedupPanel() (2 refs): replaced `streamingAccounts.filter(...).reduce(...)` count with `0`, replaced `tracks.find(...)` with `undefined as any`
+- Fixed PlaylistsPanel() (3 refs): replaced `typeof tracks[0]` with `Track`, replaced `playlists.length` with `0`, replaced `playlists.map(...)` with `([] as any[]).map(...)`
+- Fixed TagsCollectionsPanel() (1 ref): replaced `tracks.find(...)` with `undefined as any`
+- Fixed HistoryStatsPanel() (5 refs): replaced `typeof tracks[0]` with `Track`, replaced `getOnThisDay()` with `[] as any[]`, replaced `[...tracks].sort(...)` with `[] as any[]`, replaced `tracks.reduce(...)` with `0`, replaced `tracks.filter(...).length` with `0`
+- Fixed HistoryStatsPanel play history section (1 ref): replaced `tracks.find(...)` with `undefined as any`
+- Fixed BackupRestorePanel() (4 refs): replaced `tracks.length`, `albums.length`, `playlists.length`, `playHistory.length` with `0`
+- Verified with rg that no bare references remain (all remaining matches are valid: property accesses, string literals, local variables from `localStore`)
+- Lint passes with same pre-existing React Compiler memoization errors (unchanged)
+
+Stage Summary:
+- 24 bare references fixed across 9 functions in LibraryManagementView.tsx
+- Type annotations changed from `typeof tracks[0]` to `Track` (using existing import)
+- `.find()` calls replaced with `undefined as any` (guarded by subsequent null checks)
+- `.map()/.filter()/.reduce()/.sort()` calls replaced with empty arrays or `0`
+- Conditional rendering changed to always-false (`false &&`)
+- No new lint errors introduced

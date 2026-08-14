@@ -36,14 +36,8 @@ export function PerformerDetailView() {
   }, [performerName]);
 
   const uniqueAlbums = useMemo(() => {
-    const albumMap = new Map<string, Album>();
-    for (const credit of credits) {
-      const album = albums.find((a) => a.id === credit.track.albumId);
-      if (album && !albumMap.has(album.id)) {
-        albumMap.set(album.id, album);
-      }
-    }
-    return Array.from(albumMap.values());
+    // Mock albums removed — performer albums no longer available
+    return [] as Album[];
   }, [credits]);
 
   const collaborators = useMemo(() => {
