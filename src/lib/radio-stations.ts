@@ -368,7 +368,12 @@ export function getAllGenres(): string[] {
   return Array.from(genres).sort();
 }
 
-export function getAllCountries(): string[] {
+export interface RadioCountry {
+  code: string;
+  name: string;
+}
+
+export function getAllCountries(): RadioCountry[] {
   const seen = new Map<string, string>();
   for (const s of _stations) {
     if (!seen.has(s.countryCode)) {
@@ -377,5 +382,5 @@ export function getAllCountries(): string[] {
   }
   return Array.from(seen.entries())
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([, name]) => name);
+    .map(([code, name]) => ({ code, name }));
 }
