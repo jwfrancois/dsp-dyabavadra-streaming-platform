@@ -11,6 +11,7 @@ interface CoverArtProps {
   isPlaying?: boolean;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   onClick?: () => void;
+  coverArtUrl?: string | null;
 }
 
 const sizeMap = {
@@ -20,7 +21,7 @@ const sizeMap = {
   xl: 'w-64 h-64',
 };
 
-export function CoverArt({ id, className, showVinyl, isPlaying, size = 'md', onClick }: CoverArtProps) {
+export function CoverArt({ id, className, showVinyl, isPlaying, size = 'md', onClick, coverArtUrl }: CoverArtProps) {
   const gradient = getCoverGradient(id);
 
   return (
@@ -56,6 +57,10 @@ export function CoverArt({ id, className, showVinyl, isPlaying, size = 'md', onC
         )}
         onClick={onClick}
       >
+        {/* Show real cover art if available */}
+        {coverArtUrl && (
+          <img src={coverArtUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        )}
         {/* Texture overlay */}
         <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.1),transparent_70%)]" />
         <div className="absolute inset-0 opacity-10 bg-[linear-gradient(45deg,transparent_40%,rgba(255,255,255,0.05)_50%,transparent_60%)]" />
@@ -64,12 +69,16 @@ export function CoverArt({ id, className, showVinyl, isPlaying, size = 'md', onC
   );
 }
 
-export function CoverArtGrid({ id, className, onClick }: { id: string; className?: string; onClick?: () => void }) {
+export function CoverArtGrid({ id, className, onClick, coverArtUrl }: { id: string; className?: string; onClick?: () => void; coverArtUrl?: string | null }) {
+  const gradient = getCoverGradient(id);
   return (
     <div
-      className={`rounded-md bg-gradient-to-br ${getCoverGradient(id)} overflow-hidden cover-art-hover ${className || 'w-full aspect-square'}`}
+      className={`rounded-md bg-gradient-to-br overflow-hidden cover-art-hover ${className || 'w-full aspect-square'} ${gradient}`}
       onClick={onClick}
     >
+      {coverArtUrl && (
+        <img src={coverArtUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+      )}
       <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.1),transparent_70%)]" />
     </div>
   );

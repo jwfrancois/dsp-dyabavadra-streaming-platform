@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { usePlayerStore } from '@/store/player';
 import { useUIStore } from '@/store/ui';
 import { usePodcastStore } from '@/store/podcast';
+import { useLocalLibraryStore } from '@/store/local-library';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +33,7 @@ export function PlayerBar() {
   } = usePodcastStore();
   const toggleLoveTrack = useProfilesStore(s => s.toggleLoveTrack);
   const isTrackLoved = useProfilesStore(s => s.isTrackLoved);
+  const localTracks = useLocalLibraryStore(s => s.tracks);
   const activeZone = activeZoneId ? {
     id: activeZoneId,
     name: activeZoneId === 'zone-1' ? 'Main Listening Room' : activeZoneId === 'zone-2' ? 'Study' : `Zone ${activeZoneId}`,
@@ -45,8 +47,20 @@ export function PlayerBar() {
   const currentRadioStationId = usePlayerStore(s => s.currentRadioStationId);
   const stopRadio = usePlayerStore(s => s.stopRadio);
 
+  // Resolve cover art for the current track
+  const currentTrackCover = useMemo(() => {
+    if (!currentTrack) return null;
+    const lt = localTracks.find(t => t.id === currentTrack.id);
+    if (lt?.coverArt) return lt.coverArt;
+    // Check sibling tracks in the same album
+    const siblings = localTracks.filter(t => t.album === currentTrack.albumName && (t.artist === currentTrack.artistName || t.albumArtist === currentTrack.artistName));
+    for (const s of siblings) {
+      if (s.coverArt) return s.coverArt;
+    }
+    return null;
+  }, [currentTrack, localTracks]);
+
   const handleProgressChange = useCallback((value: number[]) => {
-    // Use real audio seek
     audioSeekTo(value[0]);
     seek(value[0]);
   }, [seek]);
@@ -66,7 +80,7 @@ export function PlayerBar() {
     return (
       <div className="h-20 border-t border-border bg-card flex items-center px-4 gap-4">
         <div className="flex items-center gap-3 w-64 flex-shrink-0">
-          <div className={`w-12 h-12 rounded-md bg-gradient-to-br from-purple-600 to-pink-500 flex items-center justify-center flex-shrink-0`}>
+          <div className="w-12 h-12 rounded-md bg-gradient-to-br from-purple-600 to-pink-500 flex items-center justify-center flex-shrink-0">
             <Radio className="w-6 h-6 text-white" />
           </div>
           <div className="min-w-0 flex-1">
@@ -106,7 +120,7 @@ export function PlayerBar() {
     );
   }
 
-  // Podcast mode: derive display values from episode
+  // Podcast mode
   if (showingPodcast) {
     const ep = currentEpisode;
     const show = ep.showId ? { title: ep.showId.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) } : null;
@@ -142,7 +156,6 @@ export function PlayerBar() {
         {/* Center: Controls & Progress */}
         <div className="flex-1 flex flex-col items-center gap-1 max-w-2xl mx-auto">
           <div className="flex items-center gap-2">
-            {/* Skip Silence toggle */}
             <Button
               variant={skipSilence ? 'secondary' : 'ghost'}
               size="icon"
@@ -152,31 +165,15 @@ export function PlayerBar() {
             >
               <Scissors className="w-3.5 h-3.5" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground"
-              onClick={previous}
-            >
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={previous}>
               <SkipBack className="w-4 h-4" />
             </Button>
-            <Button
-              variant="default"
-              size="icon"
-              className="h-9 w-9 rounded-full"
-              onClick={togglePlay}
-            >
+            <Button variant="default" size="icon" className="h-9 w-9 rounded-full" onClick={togglePlay}>
               {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground"
-              onClick={next}
-            >
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={next}>
               <SkipForward className="w-4 h-4" />
             </Button>
-            {/* Speed control */}
             <Button
               variant="secondary"
               size="sm"
@@ -187,7 +184,6 @@ export function PlayerBar() {
               <FastForward className="w-3 h-3" />
               {playbackSpeed}x
             </Button>
-            {/* Stop button */}
             <Button
               variant="ghost"
               size="icon"
@@ -198,7 +194,6 @@ export function PlayerBar() {
               <Square className="w-4 h-4" />
             </Button>
           </div>
-          {/* Progress */}
           <div className="flex items-center gap-2 w-full">
             <span className="text-[11px] text-muted-foreground w-10 text-right tabular-nums">
               {formatDuration(currentTime)}
@@ -219,17 +214,12 @@ export function PlayerBar() {
 
         {/* Right: Sleep Timer, Volume, Zone, Queue */}
         <div className="flex items-center gap-2 w-64 justify-end flex-shrink-0">
-          {/* Sleep Timer */}
           {sleepTimerMinutes !== null && (
             <Badge variant="outline" className="text-[10px] h-5 px-1.5 gap-1 text-signal-amber border-signal-amber/30">
               <Moon className="w-3 h-3" /> {sleepTimerMinutes}m
             </Badge>
           )}
-          <Badge variant="outline" className="text-[10px] h-5 px-1.5 font-mono">
-            {ep.format}
-          </Badge>
-
-          {/* Volume */}
+          <Badge variant="outline" className="text-[10px] h-5 px-1.5 font-mono">{ep.format}</Badge>
           <div className="flex items-center gap-1.5">
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
               {isMuted || volume === 0 ? (
@@ -249,24 +239,13 @@ export function PlayerBar() {
               className="w-20"
             />
           </div>
-
           {activeZone && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1 text-xs text-muted-foreground"
-              onClick={() => navigate('zones')}
-            >
+            <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground" onClick={() => navigate('zones')}>
               <Gauge className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{activeZone.name}</span>
             </Button>
           )}
-          <Button
-            variant={queueDrawerOpen ? 'secondary' : 'ghost'}
-            size="icon"
-            className="h-8 w-8"
-            onClick={toggleQueueDrawer}
-          >
+          <Button variant={queueDrawerOpen ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8" onClick={toggleQueueDrawer}>
             <ListMusic className="w-4 h-4" />
           </Button>
         </div>
@@ -274,18 +253,27 @@ export function PlayerBar() {
     );
   }
 
-  // Music mode: existing behavior — use duration from store (set by audio engine)
+  // ── MUSIC MODE ──
   const dur = usePlayerStore.getState().duration || currentTrack!.duration;
   const trackProgress = dur > 0 ? (currentTime / dur) * 100 : 0;
 
   return (
     <div className="h-20 border-t border-border bg-card flex items-center px-4 gap-4">
-      {/* Left: Track Info */}
+      {/* Left: Track Info with real cover art */}
       <div className="flex items-center gap-3 w-64 flex-shrink-0">
         <div
-          className={`w-12 h-12 rounded-md bg-gradient-to-br ${getCoverGradient(currentTrack!.id)} flex-shrink-0 cursor-pointer cover-art-hover`}
+          className="w-12 h-12 rounded-md bg-gradient-to-br flex-shrink-0 cursor-pointer cover-art-hover relative overflow-hidden shadow-sm"
           onClick={() => navigate('album-detail', { albumId: currentTrack!.albumId })}
-        />
+        >
+          {/* Show real cover art if available */}
+          {currentTrackCover ? (
+            <img src={currentTrackCover} alt={currentTrack!.albumName} className="w-full h-full object-cover" />
+          ) : (
+            <div className={`w-full h-full bg-gradient-to-br ${getCoverGradient(currentTrack!.id)}`} />
+          )}
+          {/* Subtle shine */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.15),transparent_70%)] pointer-events-none" />
+        </div>
         <div className="min-w-0 flex-1">
           <p
             className="text-sm font-medium truncate cursor-pointer hover:text-primary transition-colors"
@@ -326,28 +314,13 @@ export function PlayerBar() {
           >
             <Shuffle className="w-4 h-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground"
-            onClick={previous}
-          >
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={previous}>
             <SkipBack className="w-4 h-4" />
           </Button>
-          <Button
-            variant="default"
-            size="icon"
-            className="h-9 w-9 rounded-full"
-            onClick={togglePlay}
-          >
+          <Button variant="default" size="icon" className="h-9 w-9 rounded-full" onClick={togglePlay}>
             {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground"
-            onClick={next}
-          >
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={next}>
             <SkipForward className="w-4 h-4" />
           </Button>
           <Button
@@ -405,22 +378,12 @@ export function PlayerBar() {
           />
         </div>
         {activeZone && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1 text-xs text-muted-foreground"
-            onClick={() => navigate('zones')}
-          >
+          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground" onClick={() => navigate('zones')}>
             <Gauge className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{activeZone.name}</span>
           </Button>
         )}
-        <Button
-          variant={queueDrawerOpen ? 'secondary' : 'ghost'}
-          size="icon"
-          className="h-8 w-8"
-          onClick={toggleQueueDrawer}
-        >
+        <Button variant={queueDrawerOpen ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8" onClick={toggleQueueDrawer}>
           <ListMusic className="w-4 h-4" />
         </Button>
       </div>

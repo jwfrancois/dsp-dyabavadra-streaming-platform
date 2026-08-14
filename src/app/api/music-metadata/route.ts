@@ -262,7 +262,81 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Discography not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ error: 'Invalid type parameter. Use: lyrics, artist-bio, album-info, discography, or query' }, { status: 400 });
+    // Artist image search — returns URLs of artist photos
+    if (type === 'artist-image' && artist) {
+      const cacheKey = `artist-img:${artist}`;
+      const cached = getCached(cacheKey);
+      if (cached) return NextResponse.json(cached);
+
+      const queries = [
+        `${artist} musician artist photo portrait`,
+        `${artist} band official photo`,
+      ];
+
+      let imageUrl: string | null = null;
+      let imageSource: string = '';
+
+      for (const query of queries) {
+        const results = await webSearch(query, 5);
+        for (const result of results) {
+          // Prefer Wikipedia, official sites, music platforms for artist images
+          const host = new URL(result.url).hostname;
+          if (
+            host.includes('wikipedia.org') ||
+            host.includes('allmusic.com') ||
+            host.includes('discogs.com') ||
+            host.includes('last.fm') ||
+            host.includes('musicbrainz.org') ||
+            host.includes('rateyourmusic.com') ||
+            result.snippet.toLowerCase().includes('photo') ||
+            result.snippet.toLowerCase().includes('portrait')
+          ) {
+            imageUrl = result.url;
+            imageSource = host;
+            break;
+          }
+        }
+        if (imageUrl) break;
+      }
+
+      // Fallback: use any result with a reasonable URL
+      if (!imageUrl) {
+        const results = await webSearch(`${artist} artist`, 3);
+        if (results.length > 0) {
+          imageUrl = results[0].url;
+          imageSource = new URL(results[0].url).hostname;
+        }
+      }
+
+      if (imageUrl) {
+        const data = { imageUrl, source: imageSource, artist };
+        setCache(cacheKey, data);
+        return NextResponse.json(data);
+      }
+      return NextResponse.json({ error: 'Artist image not found' }, { status: 404 });
+    }
+
+    // Similar artists search
+    if (type === 'similar-artists' && artist) {
+      const cacheKey = `similar:${artist}`;
+      const cached = getCached(cacheKey);
+      if (cached) return NextResponse.json(cached);
+
+      const results = await webSearch(`${artist} similar artists related musicians`, 5);
+      const data = {
+        artist,
+        results: results.slice(0, 5).map(r => ({
+          name: r.name,
+          snippet: r.snippet,
+          url: r.url,
+          source: r.host_name,
+        })),
+      };
+      setCache(cacheKey, data);
+      return NextResponse.json(data);
+    }
+
+    return NextResponse.json({ error: 'Invalid type parameter. Use: lyrics, artist-bio, album-info, discography, artist-image, similar-artists, or query' }, { status: 400 });
   } catch (err) {
     console.error('Music metadata API error:', err);
     return NextResponse.json({ error: 'Failed to fetch music metadata' }, { status: 500 });

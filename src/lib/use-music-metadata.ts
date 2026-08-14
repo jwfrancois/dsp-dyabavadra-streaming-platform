@@ -20,6 +20,19 @@ export interface AlbumInfoResult {
   error?: string;
 }
 
+export interface ArtistImageResult {
+  imageUrl: string;
+  source: string;
+  artist: string;
+  error?: string;
+}
+
+export interface SimilarArtistsResult {
+  artist: string;
+  results: Array<{ name: string; snippet: string; url: string; source: string }>;
+  error?: string;
+}
+
 export interface SearchResult {
   query: string;
   results: Array<{ title: string; snippet: string; url: string; source: string; date: string }>;
@@ -177,4 +190,52 @@ export function useMusicSearch(query: string, enabled = false) {
   }, [enabled, query, search]);
 
   return { data, loading, error, search };
+}
+
+// ─── Artist Image Hook ───
+
+export function useArtistImage(artist: string, enabled = true) {
+  const [data, setData] = useState<ArtistImageResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fetchedRef = useRef(false);
+
+  useEffect(() => {
+    if (!artist || !enabled || fetchedRef.current) return;
+    fetchedRef.current = true;
+    setLoading(true);
+    setError(null);
+
+    const params = new URLSearchParams({ type: 'artist-image', artist });
+    fetchAPI<ArtistImageResult>(`/api/music-metadata?${params}`, `artist-img:${artist}`)
+      .then(d => setData(d))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [artist, enabled]);
+
+  return { data, loading, error };
+}
+
+// ─── Similar Artists Hook ───
+
+export function useSimilarArtists(artist: string, enabled = true) {
+  const [data, setData] = useState<SimilarArtistsResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fetchedRef = useRef(false);
+
+  useEffect(() => {
+    if (!artist || !enabled || fetchedRef.current) return;
+    fetchedRef.current = true;
+    setLoading(true);
+    setError(null);
+
+    const params = new URLSearchParams({ type: 'similar-artists', artist });
+    fetchAPI<SimilarArtistsResult>(`/api/music-metadata?${params}`, `similar:${artist}`)
+      .then(d => setData(d))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [artist, enabled]);
+
+  return { data, loading, error };
 }
