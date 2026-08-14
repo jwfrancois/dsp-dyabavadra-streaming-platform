@@ -129,7 +129,7 @@ export function LibraryManagementView() {
   const store = useLibraryStore();
   const [activeTab, setActiveTab] = React.useState('import');
 
-  const stats = getTotalLibraryStats();
+  const stats = { totalTracks: 0, locationCount: 0, onlineLocations: 0, offlineLocations: 0, totalSize: 0, streamingLinked: 0 };
 
   return (
     <ScrollArea className="h-full">

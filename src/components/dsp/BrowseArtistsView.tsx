@@ -92,7 +92,7 @@ export function BrowseArtistsView() {
             const isLocal = artist.id.startsWith('local-artist-');
             const albumCount = isLocal
               ? [...new Set(localTracks.filter(lt => lt.artist === artist.name || lt.albumArtist === artist.name).map(lt => lt.album))].length
-              : getAlbumsByArtist(artist.id).length;
+              : 0;
 
             return (
               <div

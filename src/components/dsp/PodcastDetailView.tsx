@@ -43,7 +43,7 @@ export function PodcastDetailView() {
   const feedError = usePodcastStore(s => s.feedError);
   const fetchDiscoveredEpisodes = usePodcastStore(s => s.fetchDiscoveredEpisodes);
 
-  const show = podcastShows.find(s => s.id === showId) || discoveredShows[showId] || null;
+  const show = discoveredShows[showId] || null;
   const isDiscovered = !!discoveredShows[showId];
 
   // Auto-fetch episodes for discovered podcasts
@@ -60,7 +60,7 @@ export function PodcastDetailView() {
         (a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime()
       );
     }
-    return getEpisodesByShow(showId);
+    return [];
   }, [isDiscovered, showId, discoveredEpisodes]);
 
   const unplayed = useMemo(() => {

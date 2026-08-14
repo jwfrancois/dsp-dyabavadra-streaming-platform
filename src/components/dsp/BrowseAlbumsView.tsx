@@ -90,9 +90,8 @@ export function BrowseAlbumsView() {
     }
   });
 
-  const playAlbum = (albumId: string) => {
-    const albumTracks = getTracksByAlbum(albumId);
-    if (albumTracks.length > 0) setQueue(albumTracks, 0);
+  const playAlbum = (_albumId: string) => {
+    // Mock tracks removed — no-op
   };
 
   const isLocalAlbum = (id: string) => id.startsWith('local-album-');

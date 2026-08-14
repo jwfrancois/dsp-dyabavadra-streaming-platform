@@ -64,49 +64,22 @@ export function GenreDetailView() {
   const { viewParams, navigate } = useUIStore();
   const { play, setQueue } = usePlayerStore();
   const genreName = viewParams.genreName;
-  const genreDetail = getGenreDetailByName(genreName || '');
-  const basicGenre = genres.find(g => g.name === genreName);
 
-  if (!genreDetail && !basicGenre) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
-        <Music className="w-12 h-12" />
-        <p>Genre not found</p>
-        <Button variant="outline" onClick={() => navigate('browse-genres')}>
-          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Genres
-        </Button>
-      </div>
-    );
-  }
-
+  // Mock data removed — show genre page with empty state
   const gradientClass = genreColorMap[genreName || ''] || 'from-gray-800 to-gray-900';
 
-  const trackCount = basicGenre?.trackCount ?? tracks.filter(t => t.genre === genreName).length;
-  const albumCount = basicGenre?.albumCount ?? albums.filter(a => a.genre === genreName).length;
-  const artistCount = basicGenre?.artistCount ?? new Set(tracks.filter(t => t.genre === genreName).map(t => t.artistId)).size;
+  const trackCount = 0;
+  const albumCount = 0;
+  const artistCount = 0;
 
-  const genreTracks = tracks.filter(t => t.genre === genreName);
-  const totalDuration = genreTracks.reduce((sum, t) => sum + t.duration, 0);
+  const genreTracks: import('@/lib/data').Track[] = [];
+  const totalDuration = 0;
 
-  const playAll = () => {
-    if (genreTracks.length > 0) {
-      setQueue(genreTracks.sort((a, b) => a.trackNumber - b.trackNumber), 0);
-    }
-  };
+  const playAll = () => {};
 
-  const topArtists = genreDetail
-    ? genreDetail.topArtists.map(id => getArtistById(id)).filter(Boolean)
-    : [];
-
-  const essentialAlbums = genreDetail
-    ? genreDetail.essentialAlbums.map(id => getAlbumById(id)).filter(Boolean)
-    : [];
-
-  const relatedEditorials = genreDetail
-    ? genreDetail.editorialCollections
-        .map(id => editorialCollections.find(e => e.id === id))
-        .filter(Boolean)
-    : [];
+  const topArtists: { id: string; name: string; imageUrl: string }[] = [];
+  const essentialAlbums: { id: string; title: string; artistName: string; imageUrl: string; year: number }[] = [];
+  const relatedEditorials: { id: string; title: string; type: string }[] = [];
 
   return (
     <ScrollArea className="h-full">

@@ -159,28 +159,34 @@ export function PodcastsView() {
   const discoveredShows = usePodcastStore(s => s.discoveredShows);
   const discoveredEpisodes = usePodcastStore(s => s.discoveredEpisodes);
 
-  // Merge local mock shows with discovered (iTunes) shows for subscription list
+  // Build subscription list from discovered (iTunes) shows only
   const subscribedShows = useMemo(() => {
-    const local = podcastShows.filter(s => subscribedShowIds.includes(s.id));
-    const discovered = subscribedShowIds
-      .filter(id => !podcastShows.find(s => s.id === id))
+    return subscribedShowIds
       .map(id => discoveredShows[id])
       .filter(Boolean);
-    return [...local, ...discovered];
   }, [subscribedShowIds, discoveredShows]);
 
-  const newEpisodes = getAllNewEpisodes();
+  const newEpisodes = usePodcastStore(s => {
+    let count = 0;
+    const st = s.episodeStates;
+    for (const showId of s.subscribedShowIds) {
+      const eps = s.discoveredEpisodes[showId] || [];
+      for (const ep of eps) {
+        const epState = st[ep.id];
+        if (epState && !epState.isPlayed && !epState.completed) count++;
+      }
+    }
+    return count;
+  });
 
   const allSubscribedEpisodes = useMemo(() => {
-    // Include both local mock episodes and discovered episodes for subscribed shows
-    const local = podcastEpisodes
-      .filter(ep => subscribedShowIds.includes(ep.showId));
+    // Include discovered episodes for subscribed shows only
     const discovered: PodcastEpisode[] = [];
     for (const showId of subscribedShowIds) {
       const eps = discoveredEpisodes[showId] || [];
       discovered.push(...eps);
     }
-    return [...local, ...discovered]
+    return discovered
       .sort((a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime());
   }, [subscribedShowIds, discoveredEpisodes]);
 
@@ -199,31 +205,30 @@ export function PodcastsView() {
   }, [allSubscribedEpisodes, episodeStates, allEpisodesFilter]);
 
   const downloadedEpisodes = useMemo(() => {
-    return podcastEpisodes.filter(ep => episodeStates[ep.id]?.isDownloaded);
-  }, [episodeStates]);
+    const allEps: PodcastEpisode[] = [];
+    for (const showId of subscribedShowIds) {
+      const eps = discoveredEpisodes[showId] || [];
+      allEps.push(...eps);
+    }
+    return allEps.filter(ep => episodeStates[ep.id]?.isDownloaded);
+  }, [subscribedShowIds, discoveredEpisodes, episodeStates]);
 
   const allGenres = useMemo(() => {
-    const genres = new Set(podcastShows.map(s => s.genre));
+    const genres = new Set<string>();
+    for (const show of Object.values(discoveredShows)) {
+      if (show.genre) genres.add(show.genre);
+    }
+    for (const r of iTunesResults) {
+      if (r.genre) genres.add(r.genre);
+    }
     return ['all', ...Array.from(genres)];
-  }, []);
+  }, [discoveredShows, iTunesResults]);
 
-  const discoverShows = useMemo(() => {
-    return podcastShows.filter(s => {
-      const matchesSearch = discoverSearch.length === 0 ||
-        s.title.toLowerCase().includes(discoverSearch.toLowerCase()) ||
-        s.author.toLowerCase().includes(discoverSearch.toLowerCase());
-      const matchesGenre = discoverGenre === 'all' || s.genre === discoverGenre;
-      return matchesSearch && matchesGenre;
-    });
-  }, [discoverSearch, discoverGenre]);
+  const discoverShows: PodcastShow[] = []; // Mock shows removed; use iTunes search results instead
 
-  const newAndNoteworthy = useMemo(() => {
-    return podcastShows.filter(s => getEpisodesByShow(s.id).length > 0).slice(0, 3);
-  }, []);
+  const newAndNoteworthy: PodcastShow[] = []; // Mock shows removed
 
-  const trending = useMemo(() => {
-    return [...podcastShows].sort((a, b) => b.episodeCount - a.episodeCount).slice(0, 4);
-  }, []);
+  const trending: PodcastShow[] = []; // Mock shows removed
 
   const isCurrentlyPlaying = (episodeId: string) => {
     return isPodcastMode && currentEpisode?.id === episodeId && isPlaying;
@@ -249,7 +254,7 @@ export function PodcastsView() {
   };
 
   const renderEpisodeRow = (ep: PodcastEpisode, size: string, showActions: boolean) => {
-    const show = podcastShows.find(s => s.id === ep.showId);
+    const show = discoveredShows[ep.showId] || null;
     const state = episodeStates[ep.id];
     const active = isCurrentEpisode(ep.id);
     const playing = isCurrentlyPlaying(ep.id);
@@ -336,10 +341,10 @@ export function PodcastsView() {
   const renderShowCard = (show: PodcastShow) => {
     const isSub = subscribedShowIds.includes(show.id);
     const isDiscovered = !!discoveredShows[show.id];
-    // Get episodes: local mock or discovered RSS
+    // Get episodes from discovered RSS feeds
     const episodes = isDiscovered
       ? (discoveredEpisodes[show.id] || []).sort((a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime())
-      : getEpisodesByShow(show.id);
+      : [];
     const unplayed = episodes.filter(ep => {
       const st = episodeStates[ep.id];
       return st && !st.isPlayed && !st.completed;
@@ -433,7 +438,7 @@ export function PodcastsView() {
   const renderDiscoverShowCard = (show: PodcastShow) => {
     const isSub = subscribedShowIds.includes(show.id);
     const isExpanded = expandedShowId === show.id;
-    const episodes = getEpisodesByShow(show.id);
+    const episodes = discoveredEpisodes[show.id] || [];
     return (
       <Card
         key={show.id}
@@ -791,7 +796,7 @@ export function PodcastsView() {
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {newAndNoteworthy.map(show => {
                           const isSub = subscribedShowIds.includes(show.id);
-                          const episodes = getEpisodesByShow(show.id);
+                          const episodes = discoveredEpisodes[show.id] || [];
                           const unplayed = episodes.filter(ep => {
                             const st = episodeStates[ep.id];
                             return st && !st.isPlayed && !st.completed;
@@ -919,7 +924,7 @@ export function PodcastsView() {
                   {downloadedEpisodes
                     .sort((a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime())
                     .map(ep => {
-                      const show = podcastShows.find(s => s.id === ep.showId);
+                      const show = discoveredShows[ep.showId] || null;
                       const state = episodeStates[ep.id];
                       const active = isCurrentEpisode(ep.id);
                       const playing = isCurrentlyPlaying(ep.id);

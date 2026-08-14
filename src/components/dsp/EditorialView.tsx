@@ -35,55 +35,29 @@ export function EditorialView() {
   const [selectedCollection, setSelectedCollection] = useState<string | null>(viewParams.collectionId || null);
 
   const filteredCollections = useMemo(() => {
-    if (selectedTab === 'featured') {
-      return editorialCollections.filter(c => c.featured);
-    }
-    if (selectedTab === 'all') {
-      return editorialCollections;
-    }
-    return editorialCollections.filter(c => c.type === selectedTab);
+    return [] as EditorialCollection[];
   }, [selectedTab]);
 
   const featuredCollections = useMemo(
-    () => editorialCollections.filter(c => c.featured),
+    () => [] as EditorialCollection[],
     []
   );
 
-  const activeCollection = selectedCollection
-    ? editorialCollections.find(c => c.id === selectedCollection)
-    : null;
+  const activeCollection = null;
 
   const collectionTracks = useMemo(() => {
-    if (!activeCollection) return [];
-    return activeCollection.trackIds
-      .map(id => getTrackById(id))
-      .filter(Boolean);
-  }, [activeCollection]);
+    return [];
+  }, []);
 
   const collectionAlbums = useMemo(() => {
-    if (!activeCollection) return [];
-    return activeCollection.albumIds
-      .map(id => getAlbumById(id))
-      .filter(Boolean);
-  }, [activeCollection]);
+    return [];
+  }, []);
 
-  const playCollection = () => {
-    if (collectionTracks.length > 0) {
-      setQueue(collectionTracks, 0);
-    }
-  };
+  const playCollection = () => {};
 
-  const playTrack = (trackId: string) => {
-    const track = getTrackById(trackId);
-    if (track) play(track);
-  };
+  const playTrack = (_trackId: string) => {};
 
-  const playAlbum = (albumId: string) => {
-    const albumTracks = tracks.filter(t => t.albumId === albumId);
-    if (albumTracks.length > 0) {
-      setQueue(albumTracks, 0);
-    }
-  };
+  const playAlbum = (_albumId: string) => {};
 
   const openCollection = (id: string) => {
     setSelectedCollection(id);
@@ -268,7 +242,7 @@ export function EditorialView() {
             <h1 className="text-2xl font-bold">Editorial</h1>
             <p className="text-sm text-muted-foreground mt-1">Curated collections, guides, and staff recommendations</p>
           </div>
-          <Badge variant="secondary" className="text-xs">{editorialCollections.length} collections</Badge>
+          <Badge variant="secondary" className="text-xs">0 collections</Badge>
         </div>
 
         {/* Featured Hero Section */}

@@ -19,16 +19,16 @@ export function AlbumDetailView() {
   const { viewParams, navigate } = useUIStore();
   const { play, setQueue, activeZoneId, currentTrack, isPlaying } = usePlayerStore();
   const albumId = viewParams.albumId;
-  const album = albums.find(a => a.id === albumId);
+  const album = null;
 
   if (!album) {
     return <div className="flex items-center justify-center h-full text-muted-foreground">Album not found</div>;
   }
 
-  const albumTracks = getTracksByAlbum(album.id);
-  const totalDuration = albumTracks.reduce((sum, t) => sum + t.duration, 0);
-  const signalPath = getSignalPath(albumTracks[0]?.id || '', activeZoneId);
-  const isBitPerfect = signalPath.length > 0 && signalPath.every(s => s.isBitPerfect);
+  const albumTracks: import('@/lib/data').Track[] = [];
+  const totalDuration = 0;
+  const signalPath: import('@/lib/data').SignalPathStep[] = [];
+  const isBitPerfect = false;
 
   // Aggregate all unique credits across the album
   const albumCredits = React.useMemo(() => {

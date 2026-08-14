@@ -27,10 +27,7 @@ export function UserProfilesView() {
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
-  const recentTracks = activeProfile.recentlyPlayedIds
-    .slice(0, 5)
-    .map(id => getTrackById(id))
-    .filter(Boolean);
+  const recentTracks: import('@/lib/data').Track[] = [];
 
   return (
     <ScrollArea className="h-full">
