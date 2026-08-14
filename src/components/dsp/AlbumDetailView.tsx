@@ -3,7 +3,7 @@
 import React from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
-import { albums, tracks, getTracksByAlbum, getSignalPath, formatDuration, formatSampleRate, formatFileSize, getCoverGradient, type Track } from '@/lib/data';
+import { formatDuration, formatSampleRate, formatFileSize, getCoverGradient, type Track } from '@/lib/data';
 import { useLocalLibraryStore, type LocalTrack } from '@/store/local-library';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,23 +18,22 @@ import {
 
 export function AlbumDetailView() {
   const { viewParams, navigate } = useUIStore();
-  const { play, setQueue, activeZoneId, currentTrack, isPlaying } = usePlayerStore();
+  const { play, setQueue, currentTrack, isPlaying } = usePlayerStore();
   const localTracks = useLocalLibraryStore(s => s.tracks);
   const albumId = viewParams.albumId;
 
   // Check if this is a local/imported album (id starts with "local-album-")
   const isLocalAlbum = albumId?.startsWith('local-album-');
 
-  // Parse local album id: "local-album-{albumName}-{artistName}"
-  // Use lastIndexOf to handle album/artist names that contain hyphens
+  // Parse local album id: "local-album-{albumArtist}|||{albumName}"
   const localAlbumInfo = React.useMemo(() => {
     if (!isLocalAlbum || !albumId) return null;
     const rest = albumId.replace('local-album-', '');
-    const lastDash = rest.lastIndexOf('-');
-    if (lastDash <= 0) return null;
+    const sepIdx = rest.indexOf('|||');
+    if (sepIdx <= 0) return null;
     return {
-      albumName: rest.slice(0, lastDash),
-      artistName: rest.slice(lastDash + 1),
+      artistName: rest.slice(0, sepIdx),
+      albumName: rest.slice(sepIdx + 3),
     };
   }, [albumId, isLocalAlbum]);
 
@@ -46,7 +45,7 @@ export function AlbumDetailView() {
       .sort((a, b) => (a.discNumber - b.discNumber) || (a.trackNumber - b.trackNumber));
   }, [localTracks, localAlbumInfo]);
 
-  // Convert LocalTrack to Track format for the player
+  // Convert LocalTrack to Track format for the player (include blobUrl for playback)
   const localConvertedTracks = React.useMemo(() =>
     localAlbumTracks.map(lt => ({
       id: lt.id, title: lt.title, albumId: lt.album, albumName: lt.album,
@@ -56,6 +55,7 @@ export function AlbumDetailView() {
       bitrate: lt.bitrate, filePath: lt.filePath, fileSize: lt.fileSize,
       composers: lt.composer ? [lt.composer] : [], performers: [],
       genre: lt.genre, loved: false, playCount: 0, source: 'local' as const, isAvailable: true,
+      blobUrl: (lt as any).blobUrl as string | undefined,
     } as Track)),
     [localAlbumTracks]
   );
@@ -76,10 +76,10 @@ export function AlbumDetailView() {
     rating: 0,
   } : null;
 
-  // For local albums, show local data; for mock albums, use mock data
-  const album = isLocalAlbum ? localAlbumMeta : albums.find(a => a.id === albumId);
+  // For local albums, show local data
+  const album = isLocalAlbum ? localAlbumMeta : null;
 
-  // Not found — neither local nor mock
+  // Not found
   if (!album) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
@@ -92,10 +92,9 @@ export function AlbumDetailView() {
     );
   }
 
-  const albumTracks = isLocalAlbum ? localConvertedTracks : getTracksByAlbum(album.id);
+  const albumTracks = localConvertedTracks;
   const totalDuration = albumTracks.reduce((sum, t) => sum + t.duration, 0);
-  const signalPath = isLocalAlbum ? [] : getSignalPath(albumTracks[0]?.id || '', activeZoneId);
-  const isBitPerfect = signalPath.length > 0 && signalPath.every(s => s.isBitPerfect);
+  const isBitPerfect = false; // No signal path info for local imports
 
   // Aggregate all unique credits across the album
   const albumCredits = React.useMemo(() => {
@@ -206,25 +205,16 @@ export function AlbumDetailView() {
           </div>
         </div>
 
-        {/* Signal Path Mini */}
+        {/* Audio Format Info */}
         <Card className="bg-card border-border mb-6">
           <CardContent className="p-3">
             <div className="flex items-center gap-2 flex-wrap">
               <Gauge className="w-4 h-4 text-muted-foreground" />
-              <span className="text-xs font-medium">Signal:</span>
-              {signalPath.map((step, i) => (
-                <React.Fragment key={i}>
-                  <Badge variant="outline" className="text-[10px] font-mono">
-                    {step.label}: {step.format} {formatSampleRate(step.sampleRate)}/{step.bitDepth}bit
-                  </Badge>
-                  {i < signalPath.length - 1 && <ChevronRight className="w-3 h-3 text-muted-foreground" />}
-                </React.Fragment>
-              ))}
-              {isBitPerfect ? (
-                <Badge className="text-[10px] bg-signal-green text-white"><CheckCircle2 className="w-3 h-3 mr-0.5" /> Bit-Perfect</Badge>
-              ) : (
-                <Badge variant="outline" className="text-[10px] text-signal-amber"><Zap className="w-3 h-3 mr-0.5" /> Processing</Badge>
-              )}
+              <span className="text-xs font-medium">Source:</span>
+              <Badge variant="outline" className="text-[10px] font-mono">
+                Local File · {album.format} {formatSampleRate(album.sampleRate)}/{album.bitDepth}bit
+              </Badge>
+              <Badge variant="outline" className="text-[10px] text-signal-amber"><Zap className="w-3 h-3 mr-0.5" /> Direct Playback</Badge>
             </div>
           </CardContent>
         </Card>
