@@ -19,10 +19,10 @@ type SortKey = 'title' | 'artist' | 'year' | 'rating';
 /** Convert a LocalTrack to the Album format for display */
 function localTrackToDisplayAlbum(lt: LocalTrack): Album {
   return {
-    id: `local-album-${lt.album}-${lt.artist}`,
+    id: `local-album-${lt.albumArtist || lt.artist}|||${lt.album}`,
     title: lt.album,
     artistId: lt.artist,
-    artistName: lt.artist,
+    artistName: lt.albumArtist || lt.artist,
     imageUrl: '',
     year: lt.year,
     genre: lt.genre,

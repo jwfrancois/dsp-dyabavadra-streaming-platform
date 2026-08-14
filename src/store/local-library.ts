@@ -62,9 +62,13 @@ interface LocalLibraryState {
 
 const STORAGE_KEY = 'dsp-local-library-store';
 
-/** Strip coverArt/blobUrl/isLocal/cached from tracks before persisting to localStorage */
+/** Strip coverArt and ephemeral fields (blobUrl/isLocal/cached) from tracks before persisting to localStorage */
 function stripForStorage(tracks: LocalTrack[]): LocalTrack[] {
-  return tracks.map(({ coverArt: _ca, ...rest }) => rest as LocalTrack);
+  return tracks.map(({ coverArt: _ca, ...rest }: any) => {
+    // Also strip ephemeral fields that may have been added during import
+    const { blobUrl: _bu, isLocal: _il, cached: _ch, ...clean } = rest;
+    return { ...clean, coverArt: null } as LocalTrack;
+  });
 }
 
 /** Custom storage with SSR guards and QuotaExceeded handling */

@@ -340,3 +340,22 @@ Stage Summary:
 - 4 component files updated: BrowseArtistsView.tsx, BrowseAlbumsView.tsx, BrowseTracksView.tsx, ArtistDetailView.tsx
 - PluginManagerView.tsx and LicensingView.tsx confirmed already clean
 - Build passes cleanly (16/16 static pages generated)
+
+---
+Task ID: fix-detail-views
+Agent: main
+Task: Fix AlbumDetailView and ArtistDetailView to show imported local music instead of "not found"
+
+Work Log:
+- Investigated root cause: AlbumDetailView.tsx had `const album = null` hardcoded, immediately returning "Album not found". ArtistDetailView.tsx had the same issue.
+- Rewrote AlbumDetailView.tsx: added useLocalLibraryStore subscription, parses albumId format `local-album-{albumArtist}|||{album}`, filters localTracks by album name + artist, derives album metadata from first track, renders full track list with cover art, composers, and signal path card
+- Rewrote ArtistDetailView.tsx: added useLocalLibraryStore subscription, parses artistId format `local-artist-{name}`, filters tracks by artist/albumArtist, derives albums and genres from tracks, renders discography grid and track list with cover art
+- Fixed BrowseAlbumsView.tsx albumId format: changed from `local-album-${album}-${artist}` (breaks with hyphens in names) to `local-album-${albumArtist}|||${album}` (matches the dedup key format)
+- Fixed stripForStorage in local-library.ts: now strips blobUrl, isLocal, and cached in addition to coverArt before persisting to localStorage (these are ephemeral/derived)
+- Build passes cleanly
+
+Stage Summary:
+- AlbumDetailView now shows all tracks from the local library for the selected album with cover art, metadata, and playback
+- ArtistDetailView now shows discography, all tracks, genres, and composers derived from local library
+- Album IDs use ||| separator to handle names with hyphens correctly
+- localStorage no longer persists ephemeral blob URLs
