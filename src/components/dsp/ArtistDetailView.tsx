@@ -61,23 +61,8 @@ export function ArtistDetailView() {
     return Array.from(compMap.entries()).sort((a, b) => b[1] - a[1]);
   }, [artistTracks]);
 
-  // "Appears on" — find compilation/other albums where this artist appears as performer (not primary artist)
-  const appearsOn = React.useMemo(() => {
-    const albumIds = new Set<string>();
-    for (const track of tracks) {
-      if (track.artistId !== artist.id) {
-        for (const perf of track.performers) {
-          if (perf.name === artist.name) {
-            albumIds.add(track.albumId);
-          }
-        }
-      }
-    }
-    return Array.from(albumIds).map(id => {
-      const found = albums.find(a => a.id === id);
-      return found ? { ...found } : null;
-    }).filter((a): a is NonNullable<typeof a> => a !== null);
-  }, [artist.name]);
+  // "Appears on" — not available after mock data removal
+  const appearsOn: import('@/lib/data').Album[] = [];
 
   const playAll = () => {
     const allTracks = artistTracks.sort((a, b) => {
@@ -177,7 +162,7 @@ export function ArtistDetailView() {
                     variant="default"
                     size="icon"
                     className="absolute bottom-2 right-2 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-all translate-y-1 group-hover:translate-y-0"
-                    onClick={(e) => { e.stopPropagation(); const albumTracks = tracks.filter(t => t.albumId === album.id).sort((a, b) => a.trackNumber - b.trackNumber); if (albumTracks.length > 0) setQueue(albumTracks, 0); }}
+                    onClick={(e) => { e.stopPropagation(); const albumTracks = artistTracks.filter(t => t.albumId === album.id).sort((a, b) => a.trackNumber - b.trackNumber); if (albumTracks.length > 0) setQueue(albumTracks, 0); }}
                   >
                     <Play className="w-3.5 h-3.5 ml-0.5" />
                   </Button>

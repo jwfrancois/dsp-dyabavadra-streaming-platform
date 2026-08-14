@@ -28,15 +28,9 @@ export function BrowseArtistsView() {
     return [...names].sort();
   }, [localTracks]);
 
-  // Merge with mock artists
+  // Build artist list from local tracks only (mock data removed)
   const allArtists = React.useMemo(() => {
-    if (!showLocal) return artists;
-    const mockNames = new Set(artists.map(a => a.name.toLowerCase()));
-    const uniqueLocalNames = localArtistNames.filter(
-      name => !mockNames.has(name.toLowerCase())
-    );
-    // Create synthetic artist entries for local-only artists
-    const localArtistEntries = uniqueLocalNames.map(name => ({
+    const localArtistEntries = localArtistNames.map(name => ({
       id: `local-artist-${name}`,
       name,
       imageUrl: '',
@@ -48,8 +42,8 @@ export function BrowseArtistsView() {
       trackCount: localTracks.filter(lt => lt.artist === name || lt.albumArtist === name).length,
       albumCount: [...new Set(localTracks.filter(lt => lt.artist === name || lt.albumArtist === name).map(lt => lt.album))].length,
     }));
-    return [...artists, ...localArtistEntries];
-  }, [artists, localArtistNames, localTracks, showLocal]);
+    return localArtistEntries;
+  }, [localArtistNames, localTracks]);
 
   const filtered = allArtists.filter(a =>
     a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -70,7 +64,7 @@ export function BrowseArtistsView() {
                 onClick={() => setShowLocal(!showLocal)}
               >
                 <HardDrive className="w-3.5 h-3.5" />
-                {showLocal ? 'Local + Mock' : 'Mock Only'}
+                Local Library
               </Button>
             )}
             <Badge variant="secondary" className="text-xs">{filtered.length} artists</Badge>
@@ -90,18 +84,14 @@ export function BrowseArtistsView() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
           {filtered.map(artist => {
             const isLocal = artist.id.startsWith('local-artist-');
-            const albumCount = isLocal
-              ? [...new Set(localTracks.filter(lt => lt.artist === artist.name || lt.albumArtist === artist.name).map(lt => lt.album))].length
-              : 0;
+            const albumCount = [...new Set(localTracks.filter(lt => lt.artist === artist.name || lt.albumArtist === artist.name).map(lt => lt.album))].length;
 
             return (
               <div
                 key={artist.id}
                 className="group text-center cursor-pointer"
                 onClick={() => {
-                  if (!isLocal) {
-                    navigate('artist-detail', { artistId: artist.id });
-                  }
+                  navigate('artist-detail', { artistId: artist.id });
                 }}
               >
                 <div className={`w-full aspect-square rounded-full bg-gradient-to-br ${getCoverGradient(artist.id)} mx-auto mb-3 cover-art-hover shadow-xl ring-2 ring-transparent group-hover:ring-primary/30 transition-all flex items-center justify-center`}>
@@ -113,11 +103,9 @@ export function BrowseArtistsView() {
                   {artist.genres.slice(0, 2).map(g => (
                     <Badge key={g} variant="secondary" className="text-[10px] px-1.5 py-0">{g}</Badge>
                   ))}
-                  {isLocal && (
-                    <Badge variant="outline" className="text-[9px] px-1 h-4">
-                      <HardDrive className="w-2.5 h-2.5 mr-0.5" /> Local
-                    </Badge>
-                  )}
+                  <Badge variant="outline" className="text-[9px] px-1 h-4">
+                    <HardDrive className="w-2.5 h-2.5 mr-0.5" /> Local
+                  </Badge>
                 </div>
               </div>
             );

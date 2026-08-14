@@ -58,15 +58,10 @@ export function BrowseTracksView() {
   const [filterFormat, setFilterFormat] = React.useState('all');
   const [showLocal, setShowLocal] = React.useState(true);
 
-  // Merge local tracks with mock tracks
+  // Build track list from local tracks only (mock data removed)
   const allTracks = React.useMemo(() => {
-    if (!showLocal) return tracks;
-    const mockIds = new Set(tracks.map(t => t.id));
-    const uniqueLocalTracks = localTracks
-      .filter(lt => !mockIds.has(lt.id))
-      .map(localTrackToTrack);
-    return [...tracks, ...uniqueLocalTracks];
-  }, [tracks, localTracks, showLocal]);
+    return localTracks.map(localTrackToTrack);
+  }, [localTracks]);
 
   const allGenres = Array.from(new Set(allTracks.map(t => t.genre))).sort();
   const allFormats = Array.from(new Set(allTracks.map(t => t.format))).sort();
@@ -92,8 +87,6 @@ export function BrowseTracksView() {
     }
   });
 
-  const isLocalTrack = (id: string) => !id.startsWith('track-');
-
   return (
     <ScrollArea className="h-full">
       <div className="p-6 max-w-7xl mx-auto">
@@ -108,7 +101,7 @@ export function BrowseTracksView() {
                 onClick={() => setShowLocal(!showLocal)}
               >
                 <HardDrive className="w-3.5 h-3.5" />
-                {showLocal ? 'Local + Mock' : 'Mock Only'}
+                Local Library
               </Button>
             )}
             <Badge variant="secondary" className="text-xs">{filtered.length} tracks</Badge>
@@ -172,11 +165,8 @@ export function BrowseTracksView() {
             </TableHeader>
             <TableBody>
               {filtered.map((track, index) => {
-                const isLocal = isLocalTrack(track.id);
                 // Find cover art from local tracks
-                const localCover = isLocal
-                  ? localTracks.find(lt => lt.id === track.id)?.coverArt
-                  : null;
+                const localCover = localTracks.find(lt => lt.id === track.id)?.coverArt;
 
                 return (
                   <TableRow
@@ -202,9 +192,7 @@ export function BrowseTracksView() {
                     <TableCell>
                       <div className="flex items-center gap-1.5">
                         <p className="text-sm font-medium truncate">{track.title}</p>
-                        {isLocal && (
-                          <HardDrive className="w-3 h-3 text-muted-foreground/50 flex-shrink-0" />
-                        )}
+                        <HardDrive className="w-3 h-3 text-muted-foreground/50 flex-shrink-0" />
                       </div>
                       <p className="text-xs text-muted-foreground truncate">{track.artistName}</p>
                     </TableCell>
@@ -213,9 +201,7 @@ export function BrowseTracksView() {
                         className="text-xs text-muted-foreground truncate cursor-pointer hover:text-primary transition-colors"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (!isLocal) {
-                            navigate('album-detail', { albumId: track.albumId });
-                          }
+                          navigate('album-detail', { albumId: track.albumId });
                         }}
                       >
                         {track.albumName}
@@ -248,10 +234,10 @@ export function BrowseTracksView() {
                             <Heart className="w-4 h-4 mr-2" /> {track.loved ? 'Unlove' : 'Love'}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); if (!isLocal) navigate('album-detail', { albumId: track.albumId }); }}>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate('album-detail', { albumId: track.albumId }); }}>
                             View Album
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); if (!isLocal) navigate('artist-detail', { artistId: track.artistId }); }}>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate('artist-detail', { artistId: track.artistId }); }}>
                             View Artist
                           </DropdownMenuItem>
                         </DropdownMenuContent>

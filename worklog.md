@@ -316,3 +316,27 @@ Stage Summary:
 - `.map()/.filter()/.reduce()/.sort()` calls replaced with empty arrays or `0`
 - Conditional rendering changed to always-false (`false &&`)
 - No new lint errors introduced
+
+---
+Task ID: mock-cleanup-round4
+Agent: main
+Task: Fix remaining 5 runtime ReferenceErrors (artists, albums, tracks, plugins, licensingItems) after mock data removal
+
+Work Log:
+- Systematically grepped all .tsx files in src/components/dsp/ for bare identifier references to artists, albums, tracks, plugins, licensingItems
+- Found 4 problematic files: BrowseArtistsView.tsx, BrowseAlbumsView.tsx, BrowseTracksView.tsx, ArtistDetailView.tsx
+- PluginManagerView.tsx and LicensingView.tsx were already using empty arrays — no issues
+- Fixed BrowseArtistsView.tsx: replaced mock `artists` array references with local-only artist derivation, removed showLocal toggle (always shows local), made all artists clickable
+- Fixed BrowseAlbumsView.tsx: replaced mock `albums` array with local-only albums, removed isLocalAlbum/playAlbum dead code, fixed onClick to always navigate and play local tracks
+- Fixed BrowseTracksView.tsx: replaced mock `tracks` array with local-only track mapping, removed isLocalTrack dead code, all tracks now show HardDrive icon and navigate to album/artist directly
+- Fixed ArtistDetailView.tsx: replaced bare `tracks`/`albums` references in appearsOn useMemo with empty array, fixed discography play button to use artistTracks instead of bare tracks
+- Fixed syntax error in BrowseAlbumsView.tsx where removing else clause broke JSX brace structure
+- Cleaned up BrowseAlbumsView.tsx: removed dangling isLocalAlbum function, fixed ternary expression for localCover
+- Cleaned up BrowseTracksView.tsx: removed isLocalTrack function, inlined localCover lookup, removed conditional isLocal rendering
+- Build passed successfully with no errors
+
+Stage Summary:
+- All 5 remaining ReferenceErrors (artists, albums, tracks, plugins, licensingItems) are now fixed
+- 4 component files updated: BrowseArtistsView.tsx, BrowseAlbumsView.tsx, BrowseTracksView.tsx, ArtistDetailView.tsx
+- PluginManagerView.tsx and LicensingView.tsx confirmed already clean
+- Build passes cleanly (16/16 static pages generated)

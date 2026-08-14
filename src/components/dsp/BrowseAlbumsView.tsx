@@ -47,7 +47,7 @@ export function BrowseAlbumsView() {
   const [filterGenre, setFilterGenre] = React.useState('all');
   const [showLocal, setShowLocal] = React.useState(true);
 
-  // Merge local albums with mock albums
+  // Build album list from local tracks only (mock data removed)
   const localAlbums = React.useMemo(() => {
     const albumMap = new Map<string, { lt: LocalTrack; key: string }>();
     for (const lt of localTracks) {
@@ -60,14 +60,8 @@ export function BrowseAlbumsView() {
   }, [localTracks]);
 
   const allAlbums = React.useMemo(() => {
-    if (!showLocal) return albums;
-    // Deduplicate: if a mock album has the same title+artist, prefer mock
-    const mockKeys = new Set(albums.map(a => `${a.artistName}|||${a.title}`.toLowerCase()));
-    const uniqueLocal = localAlbums.filter(
-      la => !mockKeys.has(`${la.artistName}|||${la.title}`.toLowerCase())
-    );
-    return [...albums, ...uniqueLocal];
-  }, [albums, localAlbums, showLocal]);
+    return localAlbums;
+  }, [localAlbums]);
 
   const allGenres = Array.from(new Set(allAlbums.map(a => a.genre))).sort();
 
@@ -90,12 +84,6 @@ export function BrowseAlbumsView() {
     }
   });
 
-  const playAlbum = (_albumId: string) => {
-    // Mock tracks removed — no-op
-  };
-
-  const isLocalAlbum = (id: string) => id.startsWith('local-album-');
-
   return (
     <ScrollArea className="h-full">
       <div className="p-6 max-w-7xl mx-auto">
@@ -110,7 +98,7 @@ export function BrowseAlbumsView() {
                 onClick={() => setShowLocal(!showLocal)}
               >
                 <HardDrive className="w-3.5 h-3.5" />
-                {showLocal ? 'Local + Mock' : 'Mock Only'}
+                Local Library
               </Button>
             )}
             <Badge variant="secondary" className="text-xs">{filtered.length} albums</Badge>
@@ -154,20 +142,15 @@ export function BrowseAlbumsView() {
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           {filtered.map(album => {
-            const isLocal = isLocalAlbum(album.id);
             // Find cover art from local tracks if available
-            const localCover = isLocal
-              ? localTracks.find(lt => lt.album === album.title && lt.artist === album.artistName)?.coverArt
-              : null;
+            const localCover = localTracks.find(lt => lt.album === album.title && lt.artist === album.artistName)?.coverArt;
 
             return (
               <div
                 key={album.id}
                 className="group cursor-pointer"
                 onClick={() => {
-                  if (!isLocal) {
-                    navigate('album-detail', { albumId: album.id });
-                  }
+                  navigate('album-detail', { albumId: album.id });
                 }}
               >
                 <div className="relative mb-2">
@@ -184,25 +167,21 @@ export function BrowseAlbumsView() {
                     className="absolute bottom-2 right-2 h-9 w-9 rounded-full opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 shadow-lg"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (isLocal) {
-                        // Play local album tracks
-                        const albumLtTracks = localTracks
-                          .filter(lt => lt.album === album.title && lt.artist === album.artistName)
-                          .sort((a, b) => a.trackNumber - b.trackNumber);
-                        if (albumLtTracks.length > 0) {
-                          const queue = albumLtTracks.map(lt => ({
-                            id: lt.id, title: lt.title, albumId: lt.album, albumName: lt.album,
-                            artistId: lt.artist, artistName: lt.artist, trackNumber: lt.trackNumber,
-                            discNumber: lt.discNumber, duration: lt.duration, format: lt.format,
-                            bitDepth: lt.bitDepth, sampleRate: lt.sampleRate, channels: lt.channels,
-                            bitrate: lt.bitrate, filePath: lt.filePath, fileSize: lt.fileSize,
-                            composers: lt.composer ? [lt.composer] : [], performers: [],
-                            genre: lt.genre, loved: false, playCount: 0, source: 'local' as const, isAvailable: true,
-                          }));
-                          setQueue(queue, 0);
-                        }
-                      } else {
-                        playAlbum(album.id);
+                      // Play local album tracks
+                      const albumLtTracks = localTracks
+                        .filter(lt => lt.album === album.title && lt.artist === album.artistName)
+                        .sort((a, b) => a.trackNumber - b.trackNumber);
+                      if (albumLtTracks.length > 0) {
+                        const queue = albumLtTracks.map(lt => ({
+                          id: lt.id, title: lt.title, albumId: lt.album, albumName: lt.album,
+                          artistId: lt.artist, artistName: lt.artist, trackNumber: lt.trackNumber,
+                          discNumber: lt.discNumber, duration: lt.duration, format: lt.format,
+                          bitDepth: lt.bitDepth, sampleRate: lt.sampleRate, channels: lt.channels,
+                          bitrate: lt.bitrate, filePath: lt.filePath, fileSize: lt.fileSize,
+                          composers: lt.composer ? [lt.composer] : [], performers: [],
+                          genre: lt.genre, loved: false, playCount: 0, source: 'local' as const, isAvailable: true,
+                        }));
+                        setQueue(queue, 0);
                       }
                     }}
                   >
@@ -213,11 +192,9 @@ export function BrowseAlbumsView() {
                       <Star className="w-2.5 h-2.5 mr-0.5" /> {album.rating}
                     </Badge>
                   )}
-                  {isLocal && (
-                    <Badge variant="outline" className="absolute top-2 right-2 text-[9px] h-4 px-1 bg-black/60 text-white border-0">
-                      <HardDrive className="w-2.5 h-2.5 mr-0.5" /> Local
-                    </Badge>
-                  )}
+                  <Badge variant="outline" className="absolute top-2 right-2 text-[9px] h-4 px-1 bg-black/60 text-white border-0">
+                    <HardDrive className="w-2.5 h-2.5 mr-0.5" /> Local
+                  </Badge>
                   <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Badge variant="secondary" className="text-[9px] px-1 py-0 bg-black/60 text-white border-0">
                       {album.format} {formatSampleRate(album.sampleRate)}
