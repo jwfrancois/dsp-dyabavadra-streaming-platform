@@ -1,0 +1,1352 @@
+src/components/dsp/SearchView.tsx-16-  const { navigate, searchQuery, setSearchQuery } = useUIStore();
+src/components/dsp/SearchView.tsx-17-  const { play, setQueue } = usePlayerStore();
+src/components/dsp/SearchView.tsx:18:  const { tracks: localTracks, searchTracks } = useLocalLibraryStore();
+src/components/dsp/SearchView.tsx-19-  const [localQuery, setLocalQuery] = React.useState(searchQuery);
+src/components/dsp/SearchView.tsx-20-
+--
+src/components/dsp/SearchView.tsx-30-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+src/components/dsp/SearchView.tsx-31-          <Input
+src/components/dsp/SearchView.tsx:32:            placeholder="Search tracks, artists, albums..."
+src/components/dsp/SearchView.tsx-33-            value={localQuery}
+src/components/dsp/SearchView.tsx-34-            onChange={(e) => { setLocalQuery(e.target.value); setSearchQuery(e.target.value); }}
+--
+src/components/dsp/SearchView.tsx-81-                      bitDepth: track.bitDepth, sampleRate: track.sampleRate, channels: track.channels,
+src/components/dsp/SearchView.tsx-82-                      bitrate: track.bitrate, filePath: track.filePath, fileSize: track.fileSize,
+src/components/dsp/SearchView.tsx:83:                      composers: [track.composer], performers: [], genre: track.genre,
+src/components/dsp/SearchView.tsx-84-                      loved: false, playCount: 0, source: 'local', isAvailable: true,
+src/components/dsp/SearchView.tsx-85-                    };
+--
+src/components/dsp/SearchView.tsx-90-                      bitDepth: r.bitDepth, sampleRate: r.sampleRate, channels: r.channels,
+src/components/dsp/SearchView.tsx-91-                      bitrate: r.bitrate, filePath: r.filePath, fileSize: r.fileSize,
+src/components/dsp/SearchView.tsx:92:                      composers: [r.composer], performers: [], genre: r.genre,
+src/components/dsp/SearchView.tsx-93-                      loved: false, playCount: 0, source: 'local', isAvailable: true,
+src/components/dsp/SearchView.tsx-94-                    })), results.indexOf(track));
+--
+src/components/dsp/NowPlayingView.tsx-101-            <Slider value={[isMuted ? 0 : volume]} min={0} max={100} step={1} onValueChange={(v) => setVolume(v[0])} className="w-40" />
+src/components/dsp/NowPlayingView.tsx-102-            {activeZone && (
+src/components/dsp/NowPlayingView.tsx:103:              <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground" onClick={() => navigate('zones')}>
+src/components/dsp/NowPlayingView.tsx-104-                <Gauge className="w-3.5 h-3.5" /> {activeZone.name}
+src/components/dsp/NowPlayingView.tsx-105-              </Button>
+--
+src/components/dsp/ZonesView.tsx-33-          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+src/components/dsp/ZonesView.tsx-34-            <Speaker className="w-16 h-16 mb-4 opacity-30" />
+src/components/dsp/ZonesView.tsx:35:            <p className="text-lg font-medium">No zones configured</p>
+src/components/dsp/ZonesView.tsx:36:            <p className="text-sm">Add output endpoints to create playback zones.</p>
+src/components/dsp/ZonesView.tsx-37-          </div>
+src/components/dsp/ZonesView.tsx-38-        ) : (
+--
+src/components/dsp/WorkDetailView.tsx-46-
+src/components/dsp/WorkDetailView.tsx-47-  const handlePlayRecording = (recording: WorkRecording) => {
+src/components/dsp/WorkDetailView.tsx:48:    // Find tracks in the library that belong to this recording's album
+src/components/dsp/WorkDetailView.tsx-49-    const albumTracks: any[] = [];
+src/components/dsp/WorkDetailView.tsx-50-    if (albumTracks.length > 0) {
+--
+src/components/dsp/QueueDrawer.tsx-65-          <div>
+src/components/dsp/QueueDrawer.tsx-66-            <h2 className="text-sm font-semibold">Queue</h2>
+src/components/dsp/QueueDrawer.tsx:67:            <p className="text-[11px] text-muted-foreground">{queue.length} tracks · {formatDuration(queue.reduce((s, t) => s + t.duration, 0))}</p>
+src/components/dsp/QueueDrawer.tsx-68-          </div>
+src/components/dsp/QueueDrawer.tsx-69-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setQueueDrawerOpen(false)}>
+--
+src/components/dsp/PodcastsView.tsx-215-
+src/components/dsp/PodcastsView.tsx-216-  const allGenres = useMemo(() => {
+src/components/dsp/PodcastsView.tsx:217:    const genres = new Set<string>();
+src/components/dsp/PodcastsView.tsx-218-    for (const show of Object.values(discoveredShows)) {
+src/components/dsp/PodcastsView.tsx:219:      if (show.genre) genres.add(show.genre);
+src/components/dsp/PodcastsView.tsx-220-    }
+src/components/dsp/PodcastsView.tsx-221-    for (const r of iTunesResults) {
+src/components/dsp/PodcastsView.tsx:222:      if (r.genre) genres.add(r.genre);
+src/components/dsp/PodcastsView.tsx-223-    }
+src/components/dsp/PodcastsView.tsx:224:    return ['all', ...Array.from(genres)];
+src/components/dsp/PodcastsView.tsx-225-  }, [discoveredShows, iTunesResults]);
+src/components/dsp/PodcastsView.tsx-226-
+--
+src/components/dsp/PerformerDetailView.tsx-30-    if (!performerName) return [];
+src/components/dsp/PerformerDetailView.tsx-31-
+src/components/dsp/PerformerDetailView.tsx:32:    // Mock tracks removed — performer search is no longer available
+src/components/dsp/PerformerDetailView.tsx-33-    const results: PerformerCredit[] = [];
+src/components/dsp/PerformerDetailView.tsx-34-
+--
+src/components/dsp/PerformerDetailView.tsx-39-    const albumMap = new Map<string, Album>();
+src/components/dsp/PerformerDetailView.tsx-40-    for (const credit of credits) {
+src/components/dsp/PerformerDetailView.tsx:41:      const album = albums.find((a) => a.id === credit.track.albumId);
+src/components/dsp/PerformerDetailView.tsx-42-      if (album && !albumMap.has(album.id)) {
+src/components/dsp/PerformerDetailView.tsx-43-        albumMap.set(album.id, album);
+--
+src/components/dsp/PerformerDetailView.tsx-54-        (p) => p.name.toLowerCase() !== performerName?.toLowerCase()
+src/components/dsp/PerformerDetailView.tsx-55-      );
+src/components/dsp/PerformerDetailView.tsx:56:      const otherComposers = credit.track.composers.filter(
+src/components/dsp/PerformerDetailView.tsx-57-        (c) => c.toLowerCase() !== performerName?.toLowerCase()
+src/components/dsp/PerformerDetailView.tsx-58-      );
+--
+src/components/dsp/SettingsView.tsx-21-  const [streamingLinked, setStreamingLinked] = React.useState(true);
+src/components/dsp/SettingsView.tsx-22-
+src/components/dsp/SettingsView.tsx:23:  const storageLocations = [
+src/components/dsp/SettingsView.tsx:24:    { name: 'Music Library (NAS)', path: '/nas/music', size: '2.4 TB', tracks: 12450, icon: HardDrive },
+src/components/dsp/SettingsView.tsx:25:    { name: 'Local SSD Cache', path: '/local/music', size: '256 GB', tracks: 3200, icon: Database },
+src/components/dsp/SettingsView.tsx:26:    { name: 'External Drive', path: '/Volumes/External', size: '1.2 TB', tracks: 8900, icon: HardDrive },
+src/components/dsp/SettingsView.tsx-27-  ];
+src/components/dsp/SettingsView.tsx-28-
+--
+src/components/dsp/SettingsView.tsx-51-              <div className="flex items-center justify-between p-2 rounded bg-surface/50">
+src/components/dsp/SettingsView.tsx-52-                <span className="text-xs text-muted-foreground">Database</span>
+src/components/dsp/SettingsView.tsx:53:                <span className="text-xs font-mono">24,550 tracks</span>
+src/components/dsp/SettingsView.tsx-54-              </div>
+src/components/dsp/SettingsView.tsx-55-              <div className="flex items-center justify-between p-2 rounded bg-surface/50">
+--
+src/components/dsp/SettingsView.tsx-70-              {[
+src/components/dsp/SettingsView.tsx-71-                { label: 'Bit-Perfect Playback', desc: 'Pass audio to DAC without resampling', value: bitPerfect, onChange: setBitPerfect },
+src/components/dsp/SettingsView.tsx:72:                { label: 'Gapless Playback', desc: 'Seamless transitions between tracks', value: gapless, onChange: setGapless },
+src/components/dsp/SettingsView.tsx-73-                { label: 'Local-Only Mode', desc: 'Disable streaming, play local files only', value: localMode, onChange: setLocalMode },
+src/components/dsp/SettingsView.tsx-74-              ].map(item => (
+--
+src/components/dsp/SettingsView.tsx-97-            </div>
+src/components/dsp/SettingsView.tsx-98-            <div className="space-y-2">
+src/components/dsp/SettingsView.tsx:99:              {storageLocations.map(loc => (
+src/components/dsp/SettingsView.tsx-100-                <div key={loc.name} className="flex items-center gap-3 p-2.5 rounded-lg bg-surface/50">
+src/components/dsp/SettingsView.tsx-101-                  <loc.icon className="w-5 h-5 text-muted-foreground" />
+--
+src/components/dsp/SettingsView.tsx-105-                  </div>
+src/components/dsp/SettingsView.tsx-106-                  <div className="text-right flex-shrink-0">
+src/components/dsp/SettingsView.tsx:107:                    <p className="text-xs font-medium">{loc.tracks.toLocaleString()} tracks</p>
+src/components/dsp/SettingsView.tsx-108-                    <p className="text-[11px] text-muted-foreground">{loc.size}</p>
+src/components/dsp/SettingsView.tsx-109-                  </div>
+--
+src/components/dsp/EditorialView.tsx-113-                </span>
+src/components/dsp/EditorialView.tsx-114-                <span className="flex items-center gap-1.5">
+src/components/dsp/EditorialView.tsx:115:                  <Music className="w-4 h-4" /> {activeCollection.trackIds.length} tracks
+src/components/dsp/EditorialView.tsx-116-                </span>
+src/components/dsp/EditorialView.tsx-117-                <span className="flex items-center gap-1.5">
+src/components/dsp/EditorialView.tsx:118:                  <Disc3 className="w-4 h-4" /> {activeCollection.albumIds.length} albums
+src/components/dsp/EditorialView.tsx-119-                </span>
+src/components/dsp/EditorialView.tsx-120-              </div>
+--
+src/components/dsp/EditorialView.tsx-137-
+src/components/dsp/EditorialView.tsx-138-          {/* Tags */}
+src/components/dsp/EditorialView.tsx:139:          {activeCollection.tags.length > 0 && (
+src/components/dsp/EditorialView.tsx-140-            <section className="mb-8">
+src/components/dsp/EditorialView.tsx-141-              <div className="flex flex-wrap gap-2">
+src/components/dsp/EditorialView.tsx:142:                {activeCollection.tags.map(tag => (
+src/components/dsp/EditorialView.tsx-143-                  <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+src/components/dsp/EditorialView.tsx-144-                ))}
+--
+src/components/dsp/EditorialView.tsx-347-                      </div>
+src/components/dsp/EditorialView.tsx-348-                      <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground">
+src/components/dsp/EditorialView.tsx:349:                        <span className="flex items-center gap-1"><Music className="w-3 h-3" /> {col.trackIds.length} tracks</span>
+src/components/dsp/EditorialView.tsx:350:                        <span className="flex items-center gap-1"><Disc3 className="w-3 h-3" /> {col.albumIds.length} albums</span>
+src/components/dsp/EditorialView.tsx-351-                      </div>
+src/components/dsp/EditorialView.tsx-352-                    </div>
+--
+src/components/dsp/ZonePicker.tsx-114-        {zonesList.length === 0 ? (
+src/components/dsp/ZonePicker.tsx-115-          <div className="p-6 text-center text-muted-foreground text-sm">
+src/components/dsp/ZonePicker.tsx:116:            No zones configured
+src/components/dsp/ZonePicker.tsx-117-          </div>
+src/components/dsp/ZonePicker.tsx-118-        ) : zonesList.map((zone: any, idx: number) => {
+--
+src/components/dsp/ZonePicker.tsx-264-          className="h-8 w-8 flex-shrink-0"
+src/components/dsp/ZonePicker.tsx-265-          onClick={() => {
+src/components/dsp/ZonePicker.tsx:266:            // Expand to full zones view
+src/components/dsp/ZonePicker.tsx-267-            setZonePickerOpen(false);
+src/components/dsp/ZonePicker.tsx-268-          }}
+--
+src/components/dsp/LicensingView.tsx-259-
+src/components/dsp/LicensingView.tsx-260-export function LicensingView() {
+src/components/dsp/LicensingView.tsx:261:  const criticalItems = licensingItems.filter(i => i.urgency === 'critical');
+src/components/dsp/LicensingView.tsx:262:  const resolvedCount = licensingItems.filter(i => i.resolved).length;
+src/components/dsp/LicensingView.tsx:263:  const totalCount = licensingItems.length;
+src/components/dsp/LicensingView.tsx-264-  const unresolvedCount = totalCount - resolvedCount;
+src/components/dsp/LicensingView.tsx-265-  const progressPercent = Math.round((resolvedCount / totalCount) * 100);
+src/components/dsp/LicensingView.tsx-266-
+src/components/dsp/LicensingView.tsx:267:  const clearCount = licensingItems.filter(i => i.status === 'clear').length;
+src/components/dsp/LicensingView.tsx:268:  const needsAgreementCount = licensingItems.filter(i => i.status === 'needs-agreement').length;
+src/components/dsp/LicensingView.tsx:269:  const needsLicenseCount = licensingItems.filter(i => i.status === 'needs-license').length;
+src/components/dsp/LicensingView.tsx:270:  const attributionCount = licensingItems.filter(i => i.status === 'attribution-required').length;
+src/components/dsp/LicensingView.tsx-271-
+src/components/dsp/LicensingView.tsx-272-  return (
+--
+src/components/dsp/LicensingView.tsx-354-          </h2>
+src/components/dsp/LicensingView.tsx-355-          <div className="space-y-3">
+src/components/dsp/LicensingView.tsx:356:            {licensingItems.map(item => (
+src/components/dsp/LicensingView.tsx-357-              <DependencyCard key={item.id} item={item} />
+src/components/dsp/LicensingView.tsx-358-            ))}
+--
+src/components/dsp/DSPConfigView.tsx-293-            <div className="flex gap-2 flex-wrap">
+src/components/dsp/DSPConfigView.tsx-294-              {zonesList.length === 0 ? (
+src/components/dsp/DSPConfigView.tsx:295:                <span className="text-xs text-muted-foreground">No zones configured</span>
+src/components/dsp/DSPConfigView.tsx-296-              ) : (
+src/components/dsp/DSPConfigView.tsx-297-              zonesList.map((zone: any) => (
+--
+src/components/dsp/DSPConfigView.tsx-717-                  />
+src/components/dsp/DSPConfigView.tsx-718-                  <p className="text-xs text-muted-foreground mt-1">
+src/components/dsp/DSPConfigView.tsx:719:                    Time for volume transitions between tracks or seeking. 0 = instant.
+src/components/dsp/DSPConfigView.tsx-720-                  </p>
+src/components/dsp/DSPConfigView.tsx-721-                </div>
+--
+src/components/dsp/StreamingView.tsx-30-export function StreamingView() {
+src/components/dsp/StreamingView.tsx-31-  const {
+src/components/dsp/StreamingView.tsx:32:    services, streamingTracks, isOfflineMode,
+src/components/dsp/StreamingView.tsx-33-    linkService, unlinkService, setOfflineMode, getLinkedServices,
+src/components/dsp/StreamingView.tsx-34-  } = useStreamingStore();
+--
+src/components/dsp/StreamingView.tsx-37-
+src/components/dsp/StreamingView.tsx-38-  const linkedServices = getLinkedServices();
+src/components/dsp/StreamingView.tsx:39:  const regionRestrictedTracks = streamingTracks.filter(t => t.isRegionRestricted);
+src/components/dsp/StreamingView.tsx-40-
+src/components/dsp/StreamingView.tsx-41-  const handleConnect = (serviceId: string) => {
+--
+src/components/dsp/Sidebar.tsx-23-const navItems: Array<{ icon: typeof Home; label: string; view: string; badge?: string }> = [
+src/components/dsp/Sidebar.tsx-24-  { icon: Home, label: 'Home', view: 'home' as const },
+src/components/dsp/Sidebar.tsx:25:  { icon: LayoutGrid, label: 'Artists', view: 'browse-artists' as const },
+src/components/dsp/Sidebar.tsx:26:  { icon: Disc3, label: 'Albums', view: 'browse-albums' as const },
+src/components/dsp/Sidebar.tsx:27:  { icon: Music, label: 'Tracks', view: 'browse-tracks' as const },
+src/components/dsp/Sidebar.tsx:28:  { icon: Radio, label: 'Genres', view: 'browse-genres' as const },
+src/components/dsp/Sidebar.tsx:29:  { icon: ListMusic, label: 'Playlists', view: 'browse-playlists' as const },
+src/components/dsp/Sidebar.tsx-30-  { icon: Podcast, label: 'Podcasts', view: 'podcasts' as const, badge: 'podcast' as const },
+src/components/dsp/Sidebar.tsx-31-];
+--
+src/components/dsp/Sidebar.tsx-44-  { icon: Activity, label: 'Health / NFR', view: 'system-health' as const },
+src/components/dsp/Sidebar.tsx-45-  { icon: Shield, label: 'Security', view: 'security' as const },
+src/components/dsp/Sidebar.tsx:46:  { icon: Puzzle, label: 'Plugins', view: 'plugins' as const },
+src/components/dsp/Sidebar.tsx-47-  { icon: Scale, label: 'Licensing', view: 'licensing' as const },
+src/components/dsp/Sidebar.tsx-48-];
+--
+src/components/dsp/Sidebar.tsx-53-  { icon: Clock, label: 'History', view: 'play-history' as const },
+src/components/dsp/Sidebar.tsx-54-  { icon: User, label: 'Profiles', view: 'profiles' as const },
+src/components/dsp/Sidebar.tsx:55:  { icon: Speaker, label: 'Zones', view: 'zones' as const },
+src/components/dsp/Sidebar.tsx-56-  { icon: Globe, label: 'Streaming', view: 'streaming' as const },
+src/components/dsp/Sidebar.tsx-57-  { icon: Search, label: 'Search', view: 'search' as const },
+--
+src/components/dsp/Sidebar.tsx-265-                  Active Zones
+src/components/dsp/Sidebar.tsx-266-                </p>
+src/components/dsp/Sidebar.tsx:267:                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => navigate('zones')}>
+src/components/dsp/Sidebar.tsx-268-                  <Settings className="w-3 h-3" />
+src/components/dsp/Sidebar.tsx-269-                </Button>
+src/components/dsp/Sidebar.tsx-270-              </div>
+src/components/dsp/Sidebar.tsx-271-              <div className="flex flex-wrap gap-1.5">
+src/components/dsp/Sidebar.tsx:272:                {/* No zones configured */}
+src/components/dsp/Sidebar.tsx-273-              </div>
+src/components/dsp/Sidebar.tsx-274-            </div>
+--
+src/components/dsp/GenreDetailView.tsx-85-    <ScrollArea className="h-full">
+src/components/dsp/GenreDetailView.tsx-86-      <div className="max-w-5xl mx-auto p-6">
+src/components/dsp/GenreDetailView.tsx:87:        <Button variant="ghost" size="sm" className="mb-4 text-muted-foreground" onClick={() => navigate('browse-genres')}>
+src/components/dsp/GenreDetailView.tsx-88-          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Genres
+src/components/dsp/GenreDetailView.tsx-89-        </Button>
+--
+src/components/dsp/GenreDetailView.tsx-148-            </h2>
+src/components/dsp/GenreDetailView.tsx-149-            <p className="text-sm text-muted-foreground leading-relaxed max-w-3xl">
+src/components/dsp/GenreDetailView.tsx:150:              {genreDetail?.description || `Explore the ${genreName} collection in your library. Browse ${trackCount} tracks across ${albumCount} albums from ${artistCount} artists.`}
+src/components/dsp/GenreDetailView.tsx-151-            </p>
+src/components/dsp/GenreDetailView.tsx-152-          </section>
+--
+src/components/dsp/GenreDetailView.tsx-286-        )}
+src/components/dsp/GenreDetailView.tsx-287-
+src/components/dsp/GenreDetailView.tsx:288:        {/* Fallback: Top tracks when no genreDetail */}
+src/components/dsp/GenreDetailView.tsx-289-        {!genreDetail && genreTracks.length > 0 && (
+src/components/dsp/GenreDetailView.tsx-290-          <section className="mb-8">
+--
+src/components/dsp/LibraryManagementView.tsx-73-};
+src/components/dsp/LibraryManagementView.tsx-74-
+src/components/dsp/LibraryManagementView.tsx:75:type BrowseLocalView = 'artists' | 'albums' | 'tracks';
+src/components/dsp/LibraryManagementView.tsx-76-type BreadcrumbItem = { label: string; onClick: () => void };
+src/components/dsp/LibraryManagementView.tsx-77-
+--
+src/components/dsp/LibraryManagementView.tsx-98-    filePath: lt.filePath,
+src/components/dsp/LibraryManagementView.tsx-99-    fileSize: lt.fileSize,
+src/components/dsp/LibraryManagementView.tsx:100:    composers: lt.composer ? [lt.composer] : [],
+src/components/dsp/LibraryManagementView.tsx-101-    performers: [],
+src/components/dsp/LibraryManagementView.tsx-102-    genre: lt.genre,
+--
+src/components/dsp/LibraryManagementView.tsx-142-            </h1>
+src/components/dsp/LibraryManagementView.tsx-143-            <p className="text-sm text-muted-foreground mt-1">
+src/components/dsp/LibraryManagementView.tsx:144:              {stats.totalTracks.toLocaleString()} tracks across {stats.locationCount} locations
+src/components/dsp/LibraryManagementView.tsx:145:              {tracks.length > 0 && (
+src/components/dsp/LibraryManagementView.tsx:146:                <span className="text-primary ml-1">(+ {tracks.length.toLocaleString()} local)</span>
+src/components/dsp/LibraryManagementView.tsx-147-              )}
+src/components/dsp/LibraryManagementView.tsx-148-              {stats.offlineLocations > 0 && (
+--
+src/components/dsp/LibraryManagementView.tsx-192-                <div className="p-2 rounded-lg bg-signal-amber/10"><Heart className="w-4 h-4 text-signal-amber" /></div>
+src/components/dsp/LibraryManagementView.tsx-193-                <div>
+src/components/dsp/LibraryManagementView.tsx:194:                  <p className="text-lg font-bold">{tracks.filter(t => t.loved).length}</p>
+src/components/dsp/LibraryManagementView.tsx-195-                  <p className="text-[10px] text-muted-foreground">Loved Tracks</p>
+src/components/dsp/LibraryManagementView.tsx-196-                </div>
+--
+src/components/dsp/LibraryManagementView.tsx-203-                <div className="p-2 rounded-lg bg-purple-500/10"><BarChart3 className="w-4 h-4 text-purple-400" /></div>
+src/components/dsp/LibraryManagementView.tsx-204-                <div>
+src/components/dsp/LibraryManagementView.tsx:205:                  <p className="text-lg font-bold">{tracks.reduce((s, t) => s + t.playCount, 0).toLocaleString()}</p>
+src/components/dsp/LibraryManagementView.tsx-206-                  <p className="text-[10px] text-muted-foreground">Total Plays</p>
+src/components/dsp/LibraryManagementView.tsx-207-                </div>
+--
+src/components/dsp/LibraryManagementView.tsx-222-            <TabsTrigger value="metadata" className="text-xs gap-1.5"><Edit3 className="w-3.5 h-3.5" /> Metadata</TabsTrigger>
+src/components/dsp/LibraryManagementView.tsx-223-            <TabsTrigger value="dedup" className="text-xs gap-1.5"><Layers className="w-3.5 h-3.5" /> Dedup</TabsTrigger>
+src/components/dsp/LibraryManagementView.tsx:224:            <TabsTrigger value="playlists" className="text-xs gap-1.5"><ListMusic className="w-3.5 h-3.5" /> Playlists</TabsTrigger>
+src/components/dsp/LibraryManagementView.tsx:225:            <TabsTrigger value="tags" className="text-xs gap-1.5"><Tag className="w-3.5 h-3.5" /> Tags</TabsTrigger>
+src/components/dsp/LibraryManagementView.tsx-226-            <TabsTrigger value="history" className="text-xs gap-1.5"><History className="w-3.5 h-3.5" /> History</TabsTrigger>
+src/components/dsp/LibraryManagementView.tsx-227-            <TabsTrigger value="backup" className="text-xs gap-1.5"><Archive className="w-3.5 h-3.5" /> Backup</TabsTrigger>
+--
+src/components/dsp/LibraryManagementView.tsx-268-
+src/components/dsp/LibraryManagementView.tsx-269-          {/* ═══ PLAYLISTS TAB ═══ */}
+src/components/dsp/LibraryManagementView.tsx:270:          <TabsContent value="playlists" className="space-y-6 mt-6">
+src/components/dsp/LibraryManagementView.tsx-271-            <PlaylistsPanel play={play} />
+src/components/dsp/LibraryManagementView.tsx-272-          </TabsContent>
+src/components/dsp/LibraryManagementView.tsx-273-
+src/components/dsp/LibraryManagementView.tsx-274-          {/* ═══ TAGS & COLLECTIONS TAB ═══ */}
+src/components/dsp/LibraryManagementView.tsx:275:          <TabsContent value="tags" className="space-y-6 mt-6">
+src/components/dsp/LibraryManagementView.tsx-276-            <TagsCollectionsPanel store={store} />
+src/components/dsp/LibraryManagementView.tsx-277-          </TabsContent>
+--
+src/components/dsp/LibraryManagementView.tsx-298-function BrowseLocalPanel() {
+src/components/dsp/LibraryManagementView.tsx-299-  const localStore = useLocalLibraryStore();
+src/components/dsp/LibraryManagementView.tsx:300:  const [view, setView] = React.useState<BrowseLocalView>('artists');
+src/components/dsp/LibraryManagementView.tsx-301-  const [searchQuery, setSearchQuery] = React.useState('');
+src/components/dsp/LibraryManagementView.tsx-302-
+--
+src/components/dsp/LibraryManagementView.tsx-305-  const [selectedAlbum, setSelectedAlbum] = React.useState<string | null>(null);
+src/components/dsp/LibraryManagementView.tsx-306-
+src/components/dsp/LibraryManagementView.tsx:307:  // Filter only browser-imported tracks (isLocal === true)
+src/components/dsp/LibraryManagementView.tsx:308:  const allLocalTracks = localStore.tracks.filter((t: any) => t.isLocal);
+src/components/dsp/LibraryManagementView.tsx-309-
+src/components/dsp/LibraryManagementView.tsx:310:  // Derive artists / albums only from local tracks
+src/components/dsp/LibraryManagementView.tsx-311-  const localArtists = React.useMemo(() => {
+src/components/dsp/LibraryManagementView.tsx-312-    const set = new Set<string>();
+--
+src/components/dsp/LibraryManagementView.tsx-346-
+src/components/dsp/LibraryManagementView.tsx-347-  // Derived data based on navigation state
+src/components/dsp/LibraryManagementView.tsx:348:  const breadcrumbs: BreadcrumbItem[] = [{ label: 'Artists', onClick: () => { setSelectedArtist(null); setSelectedAlbum(null); setView('artists'); } }];
+src/components/dsp/LibraryManagementView.tsx-349-
+src/components/dsp/LibraryManagementView.tsx-350-  let displayedArtists = allArtists;
+--
+src/components/dsp/LibraryManagementView.tsx-392-  }
+src/components/dsp/LibraryManagementView.tsx-393-
+src/components/dsp/LibraryManagementView.tsx:394:  const showArtistsView = !selectedArtist && !selectedAlbum && view === 'artists' && !searchQuery.trim();
+src/components/dsp/LibraryManagementView.tsx:395:  const showAlbumsView = (selectedArtist || view === 'albums') && !selectedAlbum && !searchQuery.trim();
+src/components/dsp/LibraryManagementView.tsx:396:  const showTracksView = selectedAlbum || view === 'tracks' || searchQuery.trim();
+src/components/dsp/LibraryManagementView.tsx-397-
+src/components/dsp/LibraryManagementView.tsx-398-  return (
+--
+src/components/dsp/LibraryManagementView.tsx-410-        </div>
+src/components/dsp/LibraryManagementView.tsx-411-        <div className="flex items-center bg-surface rounded-lg p-0.5">
+src/components/dsp/LibraryManagementView.tsx:412:          {([['artists', User, 'Artists'], ['albums', Disc3, 'Albums'], ['tracks', Music2, 'Tracks']] as const).map(([key, Icon, label]) => (
+src/components/dsp/LibraryManagementView.tsx-413-            <Button
+src/components/dsp/LibraryManagementView.tsx-414-              key={key}
+--
+src/components/dsp/LibraryManagementView.tsx-461-          </div>
+src/components/dsp/LibraryManagementView.tsx-462-          {displayedArtists.length === 0 ? (
+src/components/dsp/LibraryManagementView.tsx:463:            <p className="text-xs text-muted-foreground py-8 text-center">No artists found.</p>
+src/components/dsp/LibraryManagementView.tsx-464-          ) : (
+src/components/dsp/LibraryManagementView.tsx-465-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+--
+src/components/dsp/LibraryManagementView.tsx-471-                    key={artist}
+src/components/dsp/LibraryManagementView.tsx-472-                    className="bg-card border-border hover:border-primary/30 cursor-pointer transition-all group"
+src/components/dsp/LibraryManagementView.tsx:473:                    onClick={() => { setSelectedArtist(artist); setSelectedAlbum(null); setView('albums'); }}
+src/components/dsp/LibraryManagementView.tsx-474-                  >
+src/components/dsp/LibraryManagementView.tsx-475-                    <CardContent className="p-4 text-center">
+--
+src/components/dsp/LibraryManagementView.tsx-478-                      </div>
+src/components/dsp/LibraryManagementView.tsx-479-                      <p className="text-xs font-medium truncate">{artist}</p>
+src/components/dsp/LibraryManagementView.tsx:480:                      <p className="text-[10px] text-muted-foreground mt-0.5">{artistAlbums.length} album{artistAlbums.length !== 1 ? 's' : ''} · {artistTrackCount} tracks</p>
+src/components/dsp/LibraryManagementView.tsx-481-                    </CardContent>
+src/components/dsp/LibraryManagementView.tsx-482-                  </Card>
+--
+src/components/dsp/LibraryManagementView.tsx-495-          </div>
+src/components/dsp/LibraryManagementView.tsx-496-          {displayedAlbums.length === 0 ? (
+src/components/dsp/LibraryManagementView.tsx:497:            <p className="text-xs text-muted-foreground py-8 text-center">No albums found.</p>
+src/components/dsp/LibraryManagementView.tsx-498-          ) : (
+src/components/dsp/LibraryManagementView.tsx-499-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+--
+src/components/dsp/LibraryManagementView.tsx-531-                      <p className="text-[11px] text-muted-foreground truncate">{album.artist}</p>
+src/components/dsp/LibraryManagementView.tsx-532-                      <div className="flex items-center gap-2 mt-1.5">
+src/components/dsp/LibraryManagementView.tsx:533:                        <span className="text-[10px] text-muted-foreground">{album.trackCount} tracks</span>
+src/components/dsp/LibraryManagementView.tsx-534-                        {firstTrack?.year && (
+src/components/dsp/LibraryManagementView.tsx-535-                          <>
+--
+src/components/dsp/LibraryManagementView.tsx-588-                      <TableRow>
+src/components/dsp/LibraryManagementView.tsx-589-                        <TableCell colSpan={10} className="text-center text-xs text-muted-foreground py-8">
+src/components/dsp/LibraryManagementView.tsx:590:                          {searchQuery.trim() ? 'No tracks match your search.' : 'No tracks found.'}
+src/components/dsp/LibraryManagementView.tsx-591-                        </TableCell>
+src/components/dsp/LibraryManagementView.tsx-592-                      </TableRow>
+--
+src/components/dsp/LibraryManagementView.tsx-665-  const [directoryInput, setDirectoryInput] = React.useState('');
+src/components/dsp/LibraryManagementView.tsx-666-
+src/components/dsp/LibraryManagementView.tsx:667:  const { tracks, isScanning, scanProgress, scanError, directories, lastScanTime } = localStore;
+src/components/dsp/LibraryManagementView.tsx-668-
+src/components/dsp/LibraryManagementView.tsx-669-  const handleScan = React.useCallback(async () => {
+--
+src/components/dsp/LibraryManagementView.tsx-680-
+src/components/dsp/LibraryManagementView.tsx-681-  // Compute scan stats
+src/components/dsp/LibraryManagementView.tsx:682:  const totalDuration = tracks.reduce((s, t) => s + t.duration, 0);
+src/components/dsp/LibraryManagementView.tsx-683-  const formatBreakdown = React.useMemo(() => {
+src/components/dsp/LibraryManagementView.tsx-684-    const counts: Record<string, number> = {};
+src/components/dsp/LibraryManagementView.tsx:685:    tracks.forEach(t => {
+src/components/dsp/LibraryManagementView.tsx-686-      const fmt = t.format.toUpperCase();
+src/components/dsp/LibraryManagementView.tsx-687-      counts[fmt] = (counts[fmt] || 0) + 1;
+src/components/dsp/LibraryManagementView.tsx-688-    });
+src/components/dsp/LibraryManagementView.tsx-689-    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+src/components/dsp/LibraryManagementView.tsx:690:  }, [tracks]);
+src/components/dsp/LibraryManagementView.tsx-691-
+src/components/dsp/LibraryManagementView.tsx:692:  const avgSampleRate = tracks.length > 0
+src/components/dsp/LibraryManagementView.tsx:693:    ? Math.round(tracks.reduce((s, t) => s + t.sampleRate, 0) / tracks.length)
+src/components/dsp/LibraryManagementView.tsx-694-    : 0;
+src/components/dsp/LibraryManagementView.tsx:695:  const avgBitDepth = tracks.length > 0
+src/components/dsp/LibraryManagementView.tsx:696:    ? (tracks.reduce((s, t) => s + t.bitDepth, 0) / tracks.length).toFixed(1)
+src/components/dsp/LibraryManagementView.tsx-697-    : '0';
+src/components/dsp/LibraryManagementView.tsx-698-
+--
+src/components/dsp/LibraryManagementView.tsx-767-
+src/components/dsp/LibraryManagementView.tsx-768-          {/* Last Scan Completion */}
+src/components/dsp/LibraryManagementView.tsx:769:          {!isScanning && lastScanTime && tracks.length > 0 && (
+src/components/dsp/LibraryManagementView.tsx-770-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+src/components/dsp/LibraryManagementView.tsx-771-              <CheckCircle2 className="w-3.5 h-3.5 text-signal-green" />
+src/components/dsp/LibraryManagementView.tsx:772:              <span>Last scan completed at {new Date(lastScanTime).toLocaleString()} — {tracks.length} tracks indexed</span>
+src/components/dsp/LibraryManagementView.tsx-773-            </div>
+src/components/dsp/LibraryManagementView.tsx-774-          )}
+--
+src/components/dsp/LibraryManagementView.tsx-817-
+src/components/dsp/LibraryManagementView.tsx-818-      {/* Scan Results / Library Stats */}
+src/components/dsp/LibraryManagementView.tsx:819:      {tracks.length > 0 && (
+src/components/dsp/LibraryManagementView.tsx-820-        <>
+src/components/dsp/LibraryManagementView.tsx-821-          {/* Overview Stats */}
+--
+src/components/dsp/LibraryManagementView.tsx-830-                <div className="p-3 rounded-lg bg-surface/50">
+src/components/dsp/LibraryManagementView.tsx-831-                  <p className="text-[10px] text-muted-foreground">Total Tracks</p>
+src/components/dsp/LibraryManagementView.tsx:832:                  <p className="text-lg font-bold">{tracks.length.toLocaleString()}</p>
+src/components/dsp/LibraryManagementView.tsx-833-                </div>
+src/components/dsp/LibraryManagementView.tsx-834-                <div className="p-3 rounded-lg bg-surface/50">
+--
+src/components/dsp/LibraryManagementView.tsx-870-                    <Button
+src/components/dsp/LibraryManagementView.tsx-871-                      size="sm" variant="ghost" className="h-6 text-[10px]"
+src/components/dsp/LibraryManagementView.tsx:872:                      onClick={() => playLocalTracks(tracks.slice(0, 20))}
+src/components/dsp/LibraryManagementView.tsx-873-                    >
+src/components/dsp/LibraryManagementView.tsx-874-                      <Play className="w-3 h-3 mr-0.5" /> Play First 20
+--
+src/components/dsp/LibraryManagementView.tsx-876-                    <Button
+src/components/dsp/LibraryManagementView.tsx-877-                      size="sm" variant="ghost" className="h-6 text-[10px] text-destructive hover:text-destructive"
+src/components/dsp/LibraryManagementView.tsx:878:                      onClick={() => { if (confirm('Clear all scanned tracks? This cannot be undone.')) localStore.clearLibrary(); }}
+src/components/dsp/LibraryManagementView.tsx-879-                    >
+src/components/dsp/LibraryManagementView.tsx-880-                      <Trash2 className="w-3 h-3 mr-0.5" /> Clear
+--
+src/components/dsp/LibraryManagementView.tsx-884-                <ScrollArea className="max-h-[300px]">
+src/components/dsp/LibraryManagementView.tsx-885-                  <div className="space-y-1">
+src/components/dsp/LibraryManagementView.tsx:886:                    {tracks.slice(0, 50).map((track, i) => (
+src/components/dsp/LibraryManagementView.tsx-887-                      <div
+src/components/dsp/LibraryManagementView.tsx-888-                        key={track.id}
+--
+src/components/dsp/LibraryManagementView.tsx-954-  const [importStats, setImportStats] = React.useState<ImportStats | null>(null);
+src/components/dsp/LibraryManagementView.tsx-955-  const [error, setError] = React.useState<string | null>(null);
+src/components/dsp/LibraryManagementView.tsx:956:  const [importView, setImportView] = React.useState<'albums' | 'tracks'>('albums');
+src/components/dsp/LibraryManagementView.tsx-957-  const [expandedAlbums, setExpandedAlbums] = React.useState<Set<string>>(new Set());
+src/components/dsp/LibraryManagementView.tsx-958-
+src/components/dsp/LibraryManagementView.tsx:959:  // Count locally-imported tracks (isLocal === true)
+src/components/dsp/LibraryManagementView.tsx:960:  const localTracks = localStore.tracks.filter((t: any) => t.isLocal);
+src/components/dsp/LibraryManagementView.tsx-961-  const localImportCount = localTracks.length;
+src/components/dsp/LibraryManagementView.tsx-962-
+src/components/dsp/LibraryManagementView.tsx:963:  // Group local tracks by album for album view
+src/components/dsp/LibraryManagementView.tsx-964-  const albumGroups = React.useMemo(() => {
+src/components/dsp/LibraryManagementView.tsx:965:    const map = new Map<string, { album: string; albumArtist: string; artist: string; year: number; coverArt: string | null; tracks: typeof localTracks }>();
+src/components/dsp/LibraryManagementView.tsx-966-    for (const t of localTracks) {
+src/components/dsp/LibraryManagementView.tsx-967-      const key = `${t.albumArtist || t.artist}|||${t.album}`;
+src/components/dsp/LibraryManagementView.tsx-968-      let group = map.get(key);
+src/components/dsp/LibraryManagementView.tsx-969-      if (!group) {
+src/components/dsp/LibraryManagementView.tsx:970:        group = { album: t.album, albumArtist: t.albumArtist || t.artist, artist: t.artist, year: t.year, coverArt: t.coverArt, tracks: [] };
+src/components/dsp/LibraryManagementView.tsx-971-        map.set(key, group);
+src/components/dsp/LibraryManagementView.tsx-972-      }
+src/components/dsp/LibraryManagementView.tsx:973:      group.tracks.push(t);
+src/components/dsp/LibraryManagementView.tsx-974-    }
+src/components/dsp/LibraryManagementView.tsx:975:    // Sort tracks within each album by disc number then track number
+src/components/dsp/LibraryManagementView.tsx-976-    for (const group of map.values()) {
+src/components/dsp/LibraryManagementView.tsx:977:      group.tracks.sort((a, b) => (a.discNumber - b.discNumber) || (a.trackNumber - b.trackNumber));
+src/components/dsp/LibraryManagementView.tsx-978-    }
+src/components/dsp/LibraryManagementView.tsx-979-    return Array.from(map.values()).sort((a, b) => a.album.localeCompare(b.album));
+--
+src/components/dsp/LibraryManagementView.tsx-997-  }, []);
+src/components/dsp/LibraryManagementView.tsx-998-
+src/components/dsp/LibraryManagementView.tsx:999:  const handleImportTracks = React.useCallback(async (tracks: import("@/lib/client-scanner").ScannedTrack[]) => {
+src/components/dsp/LibraryManagementView.tsx:1000:    if (tracks.length === 0) return;
+src/components/dsp/LibraryManagementView.tsx-1001-
+src/components/dsp/LibraryManagementView.tsx-1002-    // Convert ScannedTrack to LocalTrack format for the store
+src/components/dsp/LibraryManagementView.tsx:1003:    const newTracks = tracks.map(t => ({
+src/components/dsp/LibraryManagementView.tsx-1004-      id: t.id,
+src/components/dsp/LibraryManagementView.tsx-1005-      title: t.title,
+--
+src/components/dsp/LibraryManagementView.tsx-1026-    }));
+src/components/dsp/LibraryManagementView.tsx-1027-
+src/components/dsp/LibraryManagementView.tsx:1028:    // Merge with existing tracks (by ID)
+src/components/dsp/LibraryManagementView.tsx:1029:    const existingIds = new Set(localStore.tracks.map((t: any) => t.id));
+src/components/dsp/LibraryManagementView.tsx-1030-    const toAdd = newTracks.filter(t => !existingIds.has(t.id));
+src/components/dsp/LibraryManagementView.tsx-1031-
+src/components/dsp/LibraryManagementView.tsx-1032-    if (toAdd.length > 0) {
+src/components/dsp/LibraryManagementView.tsx-1033-      useLocalLibraryStore.setState({
+src/components/dsp/LibraryManagementView.tsx:1034:        tracks: [...localStore.tracks, ...toAdd] as any,
+src/components/dsp/LibraryManagementView.tsx-1035-        lastScanTime: new Date().toISOString(),
+src/components/dsp/LibraryManagementView.tsx-1036-        directories: [...localStore.directories, 'Browser Import'].filter((v, i, a) => a.indexOf(v) === i),
+--
+src/components/dsp/LibraryManagementView.tsx-1038-    }
+src/components/dsp/LibraryManagementView.tsx-1039-
+src/components/dsp/LibraryManagementView.tsx:1040:    const totalSize = tracks.reduce((s, t) => s + t.fileSize, 0);
+src/components/dsp/LibraryManagementView.tsx-1041-    setImportStats({
+src/components/dsp/LibraryManagementView.tsx:1042:      totalFiles: progress?.total || tracks.length,
+src/components/dsp/LibraryManagementView.tsx:1043:      scannedFiles: tracks.length,
+src/components/dsp/LibraryManagementView.tsx:1044:      failedFiles: (progress?.total || tracks.length) - tracks.length,
+src/components/dsp/LibraryManagementView.tsx-1045-      totalSize,
+src/components/dsp/LibraryManagementView.tsx-1046-      cacheSize: totalSize,
+--
+src/components/dsp/LibraryManagementView.tsx-1058-    try {
+src/components/dsp/LibraryManagementView.tsx-1059-      const { scanFolder } = await import("@/lib/client-scanner");
+src/components/dsp/LibraryManagementView.tsx:1060:      const tracks = await scanFolder({
+src/components/dsp/LibraryManagementView.tsx-1061-        cacheAudio: true,
+src/components/dsp/LibraryManagementView.tsx-1062-        onProgress: setProgress,
+src/components/dsp/LibraryManagementView.tsx-1063-      });
+src/components/dsp/LibraryManagementView.tsx:1064:      await handleImportTracks(tracks);
+src/components/dsp/LibraryManagementView.tsx-1065-    } catch (err) {
+src/components/dsp/LibraryManagementView.tsx-1066-      setError(err instanceof Error ? err.message : 'Failed to scan folder');
+--
+src/components/dsp/LibraryManagementView.tsx-1076-    try {
+src/components/dsp/LibraryManagementView.tsx-1077-      const { scanSelectedFiles } = await import("@/lib/client-scanner");
+src/components/dsp/LibraryManagementView.tsx:1078:      const tracks = await scanSelectedFiles({
+src/components/dsp/LibraryManagementView.tsx-1079-        cacheAudio: true,
+src/components/dsp/LibraryManagementView.tsx-1080-        onProgress: setProgress,
+src/components/dsp/LibraryManagementView.tsx-1081-      });
+src/components/dsp/LibraryManagementView.tsx:1082:      await handleImportTracks(tracks);
+src/components/dsp/LibraryManagementView.tsx-1083-    } catch (err) {
+src/components/dsp/LibraryManagementView.tsx-1084-      setError(err instanceof Error ? err.message : 'Failed to scan files');
+--
+src/components/dsp/LibraryManagementView.tsx-1146-
+src/components/dsp/LibraryManagementView.tsx-1147-      const { scanFiles } = await import("@/lib/client-scanner");
+src/components/dsp/LibraryManagementView.tsx:1148:      const tracks = await scanFiles(files, {
+src/components/dsp/LibraryManagementView.tsx-1149-        cacheAudio: true,
+src/components/dsp/LibraryManagementView.tsx-1150-        onProgress: setProgress,
+src/components/dsp/LibraryManagementView.tsx-1151-      });
+src/components/dsp/LibraryManagementView.tsx:1152:      await handleImportTracks(tracks);
+src/components/dsp/LibraryManagementView.tsx-1153-    } catch (err) {
+src/components/dsp/LibraryManagementView.tsx-1154-      setError(err instanceof Error ? err.message : 'Failed to process dropped files');
+--
+src/components/dsp/LibraryManagementView.tsx-1158-
+src/components/dsp/LibraryManagementView.tsx-1159-  const handleClearLocal = React.useCallback(() => {
+src/components/dsp/LibraryManagementView.tsx:1160:    const remaining = localStore.tracks.filter((t: any) => !t.isLocal);
+src/components/dsp/LibraryManagementView.tsx:1161:    useLocalLibraryStore.setState({ tracks: remaining as any });
+src/components/dsp/LibraryManagementView.tsx-1162-  }, [localStore]);
+src/components/dsp/LibraryManagementView.tsx-1163-
+--
+src/components/dsp/LibraryManagementView.tsx-1181-                Select your <span className="text-foreground font-medium">root music folder</span> (e.g. &quot;My Music&quot;) and DSP will
+src/components/dsp/LibraryManagementView.tsx-1182-                automatically scan <span className="text-foreground font-medium">all subfolders</span> including every album.
+src/components/dsp/LibraryManagementView.tsx:1183:                Metadata (tags, cover art, audio quality) is scanned directly in your browser.
+src/components/dsp/LibraryManagementView.tsx-1184-                No files are uploaded to any server.
+src/components/dsp/LibraryManagementView.tsx-1185-              </p>
+src/components/dsp/LibraryManagementView.tsx-1186-              {localImportCount > 0 && (
+src/components/dsp/LibraryManagementView.tsx-1187-                <p className="text-primary font-medium">
+src/components/dsp/LibraryManagementView.tsx:1188:                  {localImportCount} tracks in {albumGroups.length} albums imported
+src/components/dsp/LibraryManagementView.tsx-1189-                </p>
+src/components/dsp/LibraryManagementView.tsx-1190-              )}
+--
+src/components/dsp/LibraryManagementView.tsx-1216-                      <Progress value={(progress.current / progress.total) * 100} className="h-2" />
+src/components/dsp/LibraryManagementView.tsx-1217-                      <p className="text-[11px] text-muted-foreground mt-1.5">
+src/components/dsp/LibraryManagementView.tsx:1218:                        {progress.current} / {progress.total} files &mdash; {progress.tracksFound} tracks found
+src/components/dsp/LibraryManagementView.tsx-1219-                      </p>
+src/components/dsp/LibraryManagementView.tsx-1220-                    </div>
+--
+src/components/dsp/LibraryManagementView.tsx-1228-                  <p className="text-sm font-medium">Drag &amp; drop your music folder here</p>
+src/components/dsp/LibraryManagementView.tsx-1229-                  <p className="text-xs text-muted-foreground mt-1">
+src/components/dsp/LibraryManagementView.tsx:1230:                    Select your root music folder to scan all albums at once
+src/components/dsp/LibraryManagementView.tsx-1231-                  </p>
+src/components/dsp/LibraryManagementView.tsx-1232-                </div>
+--
+src/components/dsp/LibraryManagementView.tsx-1249-          )}
+src/components/dsp/LibraryManagementView.tsx-1250-          <p className="text-[10px] text-muted-foreground text-center mt-2">
+src/components/dsp/LibraryManagementView.tsx:1251:            Tip: Pick your top-level music folder to import all albums at once. Subfolders are scanned recursively.
+src/components/dsp/LibraryManagementView.tsx-1252-          </p>
+src/components/dsp/LibraryManagementView.tsx-1253-
+--
+src/components/dsp/LibraryManagementView.tsx-1302-            <div className="flex items-center justify-between">
+src/components/dsp/LibraryManagementView.tsx-1303-              <CardTitle className="text-sm flex items-center gap-2">
+src/components/dsp/LibraryManagementView.tsx:1304:                <Music2 className="w-4 h-4 text-primary" /> Imported Music ({albumGroups.length} albums, {localImportCount} tracks)
+src/components/dsp/LibraryManagementView.tsx-1305-              </CardTitle>
+src/components/dsp/LibraryManagementView.tsx-1306-              <div className="flex items-center gap-2">
+--
+src/components/dsp/LibraryManagementView.tsx-1308-                <div className="flex items-center bg-surface rounded-md p-0.5">
+src/components/dsp/LibraryManagementView.tsx-1309-                  <Button
+src/components/dsp/LibraryManagementView.tsx:1310:                    variant={importView === 'albums' ? 'default' : 'ghost'}
+src/components/dsp/LibraryManagementView.tsx-1311-                    size="sm"
+src/components/dsp/LibraryManagementView.tsx-1312-                    className="h-7 w-7 p-0 rounded-md"
+src/components/dsp/LibraryManagementView.tsx:1313:                    onClick={() => setImportView('albums')}
+src/components/dsp/LibraryManagementView.tsx-1314-                    title="Album view"
+src/components/dsp/LibraryManagementView.tsx-1315-                  >
+--
+src/components/dsp/LibraryManagementView.tsx-1317-                  </Button>
+src/components/dsp/LibraryManagementView.tsx-1318-                  <Button
+src/components/dsp/LibraryManagementView.tsx:1319:                    variant={importView === 'tracks' ? 'default' : 'ghost'}
+src/components/dsp/LibraryManagementView.tsx-1320-                    size="sm"
+src/components/dsp/LibraryManagementView.tsx-1321-                    className="h-7 w-7 p-0 rounded-md"
+src/components/dsp/LibraryManagementView.tsx:1322:                    onClick={() => setImportView('tracks')}
+src/components/dsp/LibraryManagementView.tsx-1323-                    title="Track list view"
+src/components/dsp/LibraryManagementView.tsx-1324-                  >
+--
+src/components/dsp/LibraryManagementView.tsx-1338-          </CardHeader>
+src/components/dsp/LibraryManagementView.tsx-1339-          <CardContent>
+src/components/dsp/LibraryManagementView.tsx:1340:            {importView === 'albums' ? (
+src/components/dsp/LibraryManagementView.tsx-1341-              /* ── Album-grouped view ── */
+src/components/dsp/LibraryManagementView.tsx-1342-              <ScrollArea className="max-h-[500px]">
+--
+src/components/dsp/LibraryManagementView.tsx-1357-                    const key = `${group.albumArtist}|||${group.album}`;
+src/components/dsp/LibraryManagementView.tsx-1358-                    const isExpanded = expandedAlbums.has(key);
+src/components/dsp/LibraryManagementView.tsx:1359:                    const albumDuration = group.tracks.reduce((s, t) => s + t.duration, 0);
+src/components/dsp/LibraryManagementView.tsx-1360-                    return (
+src/components/dsp/LibraryManagementView.tsx-1361-                      <div key={key} className="rounded-lg border border-border overflow-hidden">
+--
+src/components/dsp/LibraryManagementView.tsx-1377-                            <p className="text-[10px] text-muted-foreground truncate">{group.albumArtist}</p>
+src/components/dsp/LibraryManagementView.tsx-1378-                          </div>
+src/components/dsp/LibraryManagementView.tsx:1379:                          <Badge variant="outline" className="text-[9px] h-5 font-mono">{group.tracks.length} tracks</Badge>
+src/components/dsp/LibraryManagementView.tsx-1380-                          <span className="text-[10px] text-muted-foreground">{formatDuration(albumDuration)}</span>
+src/components/dsp/LibraryManagementView.tsx-1381-                          <Button
+--
+src/components/dsp/LibraryManagementView.tsx-1383-                            size="icon"
+src/components/dsp/LibraryManagementView.tsx-1384-                            className="h-7 w-7 opacity-0 group-hover:opacity-100"
+src/components/dsp/LibraryManagementView.tsx:1385:                            onClick={(e) => { e.stopPropagation(); playLocalTracks(group.tracks); }}
+src/components/dsp/LibraryManagementView.tsx-1386-                          >
+src/components/dsp/LibraryManagementView.tsx-1387-                            <Play className="w-3 h-3" />
+--
+src/components/dsp/LibraryManagementView.tsx-1391-                        {isExpanded && (
+src/components/dsp/LibraryManagementView.tsx-1392-                          <div className="border-t border-border/50">
+src/components/dsp/LibraryManagementView.tsx:1393:                            {group.tracks.map((track, i) => (
+src/components/dsp/LibraryManagementView.tsx-1394-                              <div
+src/components/dsp/LibraryManagementView.tsx-1395-                                key={track.id}
+--
+src/components/dsp/LibraryManagementView.tsx-1618-// ═══════════════════════════════════════════════════════════
+src/components/dsp/LibraryManagementView.tsx-1619-
+src/components/dsp/LibraryManagementView.tsx:1620:function SourcesPanel({ store, play }: { store: ReturnType<typeof useLibraryStore>; play: (track?: typeof tracks[0]) => void }) {
+src/components/dsp/LibraryManagementView.tsx-1621-  const [showAddDialog, setShowAddDialog] = React.useState(false);
+src/components/dsp/LibraryManagementView.tsx-1622-  const [newName, setNewName] = React.useState('');
+--
+src/components/dsp/LibraryManagementView.tsx-1664-                    <p className="text-xs font-mono text-muted-foreground truncate">{loc.path}</p>
+src/components/dsp/LibraryManagementView.tsx-1665-                    <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
+src/components/dsp/LibraryManagementView.tsx:1666:                      <span className="flex items-center gap-1"><Music2 className="w-3 h-3" />{loc.trackCount.toLocaleString()} tracks</span>
+src/components/dsp/LibraryManagementView.tsx-1667-                      <span className="flex items-center gap-1"><Database className="w-3 h-3" />{formatStorageSize(loc.totalSize)}</span>
+src/components/dsp/LibraryManagementView.tsx-1668-                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Scanned {formatRelativeTime(loc.lastScan)}</span>
+--
+src/components/dsp/LibraryManagementView.tsx-1713-        </div>
+src/components/dsp/LibraryManagementView.tsx-1714-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+src/components/dsp/LibraryManagementView.tsx:1715:          {streamingAccounts.map(acc => (
+src/components/dsp/LibraryManagementView.tsx-1716-            <Card key={acc.id} className={`bg-card border ${acc.connected ? 'border-border' : 'border-muted-foreground/20 opacity-60'}`}>
+src/components/dsp/LibraryManagementView.tsx-1717-              <CardContent className="p-4">
+--
+src/components/dsp/LibraryManagementView.tsx-1729-                        <span>{acc.qualityTier}</span>
+src/components/dsp/LibraryManagementView.tsx-1730-                        <span>·</span>
+src/components/dsp/LibraryManagementView.tsx:1731:                        <span>{acc.linkedTrackCount.toLocaleString()} linked tracks</span>
+src/components/dsp/LibraryManagementView.tsx-1732-                        <span>·</span>
+src/components/dsp/LibraryManagementView.tsx-1733-                        <span>Synced {formatRelativeTime(acc.lastSynced)}</span>
+--
+src/components/dsp/LibraryManagementView.tsx-1765-    idle: 'Idle',
+src/components/dsp/LibraryManagementView.tsx-1766-    discovering: 'Discovering files...',
+src/components/dsp/LibraryManagementView.tsx:1767:    'reading-tags': 'Reading embedded tags...',
+src/components/dsp/LibraryManagementView.tsx-1768-    fingerprinting: 'Acoustic fingerprinting...',
+src/components/dsp/LibraryManagementView.tsx-1769-    deduplicating: 'Checking for duplicates...',
+--
+src/components/dsp/LibraryManagementView.tsx-1902-            <div>
+src/components/dsp/LibraryManagementView.tsx-1903-              <p className="text-xs font-medium">Folder Structure Heuristics</p>
+src/components/dsp/LibraryManagementView.tsx:1904:              <p className="text-[11px] text-muted-foreground">Infer artist/album from folder paths when tags are missing</p>
+src/components/dsp/LibraryManagementView.tsx-1905-            </div>
+src/components/dsp/LibraryManagementView.tsx-1906-            <Switch defaultChecked />
+--
+src/components/dsp/LibraryManagementView.tsx-1910-            <div>
+src/components/dsp/LibraryManagementView.tsx-1911-              <p className="text-xs font-medium">Offline Storage Handling</p>
+src/components/dsp/LibraryManagementView.tsx:1912:              <p className="text-[11px] text-muted-foreground">Keep indexing offline locations; mark tracks as unavailable</p>
+src/components/dsp/LibraryManagementView.tsx-1913-            </div>
+src/components/dsp/LibraryManagementView.tsx-1914-            <Switch defaultChecked />
+--
+src/components/dsp/LibraryManagementView.tsx-1924-// ═══════════════════════════════════════════════════════════
+src/components/dsp/LibraryManagementView.tsx-1925-
+src/components/dsp/LibraryManagementView.tsx:1926:function MetadataPanel({ store, play }: { store: ReturnType<typeof useLibraryStore>; play: (track?: typeof tracks[0]) => void }) {
+src/components/dsp/LibraryManagementView.tsx-1927-  const [selectedTrackId, setSelectedTrackId] = React.useState<string | null>(null);
+src/components/dsp/LibraryManagementView.tsx:1928:  const selectedTrack = selectedTrackId ? tracks.find(t => t.id === selectedTrackId) : null;
+src/components/dsp/LibraryManagementView.tsx-1929-
+src/components/dsp/LibraryManagementView.tsx-1930-  return (
+--
+src/components/dsp/LibraryManagementView.tsx-1939-              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+src/components/dsp/LibraryManagementView.tsx-1940-                DSP indexes your files in place without copying them. When you edit metadata here, changes are stored
+src/components/dsp/LibraryManagementView.tsx:1941:                in the database and optionally written back to the file&apos;s embedded tags (ID3v2, Vorbis Comments, FLAC metadata).
+src/components/dsp/LibraryManagementView.tsx-1942-                Edits persist across rescans — moved or renamed files are matched by acoustic fingerprint so your corrections
+src/components/dsp/LibraryManagementView.tsx-1943-                are never lost. Select a track below to view or edit its full metadata.
+--
+src/components/dsp/LibraryManagementView.tsx-1965-            </TableHeader>
+src/components/dsp/LibraryManagementView.tsx-1966-            <TableBody>
+src/components/dsp/LibraryManagementView.tsx:1967:              {tracks.slice(0, 15).map(track => (
+src/components/dsp/LibraryManagementView.tsx-1968-                <TableRow key={track.id} className="cursor-pointer hover:bg-accent/20" onClick={() => setSelectedTrackId(track.id)}>
+src/components/dsp/LibraryManagementView.tsx-1969-                  <TableCell className="text-xs font-medium">{track.title}</TableCell>
+--
+src/components/dsp/LibraryManagementView.tsx-2021-              <div className="flex justify-between col-span-2"><span className="text-muted-foreground">File Path:</span><span className="font-mono text-[10px] truncate ml-2">{selectedTrack.filePath}</span></div>
+src/components/dsp/LibraryManagementView.tsx-2022-              <div className="flex justify-between"><span className="text-muted-foreground">Source:</span><Badge variant="outline" className="text-[9px]">{selectedTrack.source}</Badge></div>
+src/components/dsp/LibraryManagementView.tsx:2023:              {selectedTrack.composers.length > 0 && (
+src/components/dsp/LibraryManagementView.tsx:2024:                <div className="flex justify-between"><span className="text-muted-foreground">Composers:</span><span>{selectedTrack.composers.join(', ')}</span></div>
+src/components/dsp/LibraryManagementView.tsx-2025-              )}
+src/components/dsp/LibraryManagementView.tsx-2026-              <div className="flex justify-between"><span className="text-muted-foreground">Play Count:</span><span className="font-mono">{selectedTrack.playCount}</span></div>
+--
+src/components/dsp/LibraryManagementView.tsx-2114-        <Card className="bg-card border-border">
+src/components/dsp/LibraryManagementView.tsx-2115-          <CardContent className="p-3 text-center">
+src/components/dsp/LibraryManagementView.tsx:2116:            <p className="text-2xl font-bold">{streamingAccounts.filter(a => a.connected).reduce((s, a) => s + a.linkedTrackCount, 0).toLocaleString()}</p>
+src/components/dsp/LibraryManagementView.tsx-2117-            <p className="text-[10px] text-muted-foreground">Streaming Links</p>
+src/components/dsp/LibraryManagementView.tsx-2118-          </CardContent>
+--
+src/components/dsp/LibraryManagementView.tsx-2147-              <div className="space-y-1">
+src/components/dsp/LibraryManagementView.tsx-2148-                {group.trackIds.map((trackId, i) => {
+src/components/dsp/LibraryManagementView.tsx:2149:                  const t = tracks.find(tr => tr.id === trackId);
+src/components/dsp/LibraryManagementView.tsx-2150-                  if (!t) return null;
+src/components/dsp/LibraryManagementView.tsx-2151-                  const isPreferred = trackId === group.preferredId;
+--
+src/components/dsp/LibraryManagementView.tsx-2173-// ═══════════════════════════════════════════════════════════
+src/components/dsp/LibraryManagementView.tsx-2174-
+src/components/dsp/LibraryManagementView.tsx:2175:function PlaylistsPanel({ play }: { play: (track?: typeof tracks[0]) => void }) {
+src/components/dsp/LibraryManagementView.tsx-2176-  const [showCreateDialog, setShowCreateDialog] = React.useState(false);
+src/components/dsp/LibraryManagementView.tsx-2177-  const [newPlaylistName, setNewPlaylistName] = React.useState('');
+--
+src/components/dsp/LibraryManagementView.tsx-2180-    <div className="space-y-6">
+src/components/dsp/LibraryManagementView.tsx-2181-      <div className="flex items-center justify-between">
+src/components/dsp/LibraryManagementView.tsx:2182:        <h2 className="text-sm font-semibold">Playlists ({playlists.length})</h2>
+src/components/dsp/LibraryManagementView.tsx-2183-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+src/components/dsp/LibraryManagementView.tsx-2184-          <DialogTrigger asChild>
+--
+src/components/dsp/LibraryManagementView.tsx-2199-
+src/components/dsp/LibraryManagementView.tsx-2200-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+src/components/dsp/LibraryManagementView.tsx:2201:        {playlists.map(pl => (
+src/components/dsp/LibraryManagementView.tsx-2202-          <Card key={pl.id} className="bg-card border-border hover:border-muted-foreground/20 cursor-pointer transition-all group">
+src/components/dsp/LibraryManagementView.tsx-2203-            <CardContent className="p-4">
+--
+src/components/dsp/LibraryManagementView.tsx-2206-                <div className="flex-1 min-w-0">
+src/components/dsp/LibraryManagementView.tsx-2207-                  <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{pl.name}</p>
+src/components/dsp/LibraryManagementView.tsx:2208:                  <p className="text-[11px] text-muted-foreground">{pl.trackCount} tracks · {formatDuration(pl.duration)}</p>
+src/components/dsp/LibraryManagementView.tsx-2209-                  {pl.description && <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{pl.description}</p>}
+src/components/dsp/LibraryManagementView.tsx-2210-                </div>
+--
+src/components/dsp/LibraryManagementView.tsx-2239-              <h3 className="text-sm font-semibold">About Playlists</h3>
+src/components/dsp/LibraryManagementView.tsx-2240-              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+src/components/dsp/LibraryManagementView.tsx:2241:                DSP playlists can contain both local files and streaming tracks from connected services (Tidal, Qobuz).
+src/components/dsp/LibraryManagementView.tsx-2242-                Playlists are stored in the library database and can be exported for backup. When a local file becomes
+src/components/dsp/LibraryManagementView.tsx:2243:                unavailable, DSP automatically falls back to the streaming version if a link exists. Smart playlists
+src/components/dsp/LibraryManagementView.tsx-2244-                can be created in the Tags & Collections tab using rule-based filters.
+src/components/dsp/LibraryManagementView.tsx-2245-              </p>
+--
+src/components/dsp/LibraryManagementView.tsx-2262-      <div>
+src/components/dsp/LibraryManagementView.tsx-2263-        <div className="flex items-center justify-between mb-3">
+src/components/dsp/LibraryManagementView.tsx:2264:          <h2 className="text-sm font-semibold">Tags ({store.tags.length})</h2>
+src/components/dsp/LibraryManagementView.tsx-2265-          <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs"><Plus className="w-3.5 h-3.5" /> New Tag</Button>
+src/components/dsp/LibraryManagementView.tsx-2266-        </div>
+src/components/dsp/LibraryManagementView.tsx-2267-        <div className="flex flex-wrap gap-2">
+src/components/dsp/LibraryManagementView.tsx:2268:          {store.tags.map(tag => (
+src/components/dsp/LibraryManagementView.tsx-2269-            <Badge
+src/components/dsp/LibraryManagementView.tsx-2270-              key={tag.id}
+--
+src/components/dsp/LibraryManagementView.tsx-2285-      <div>
+src/components/dsp/LibraryManagementView.tsx-2286-        <div className="flex items-center justify-between mb-3">
+src/components/dsp/LibraryManagementView.tsx:2287:          <h2 className="text-sm font-semibold">Bookmarks ({store.bookmarks.length})</h2>
+src/components/dsp/LibraryManagementView.tsx-2288-        </div>
+src/components/dsp/LibraryManagementView.tsx-2289-        <div className="space-y-1">
+src/components/dsp/LibraryManagementView.tsx:2290:          {store.bookmarks.map(bm => {
+src/components/dsp/LibraryManagementView.tsx:2291:            const track = tracks.find(t => t.id === bm.trackId);
+src/components/dsp/LibraryManagementView.tsx-2292-            if (!track) return null;
+src/components/dsp/LibraryManagementView.tsx-2293-            return (
+--
+src/components/dsp/LibraryManagementView.tsx-2336-                  <div className="text-right flex-shrink-0">
+src/components/dsp/LibraryManagementView.tsx-2337-                    <p className="text-lg font-bold">{col.trackCount}</p>
+src/components/dsp/LibraryManagementView.tsx:2338:                    <p className="text-[10px] text-muted-foreground">tracks</p>
+src/components/dsp/LibraryManagementView.tsx-2339-                  </div>
+src/components/dsp/LibraryManagementView.tsx-2340-                </div>
+--
+src/components/dsp/LibraryManagementView.tsx-2352-// ═══════════════════════════════════════════════════════════
+src/components/dsp/LibraryManagementView.tsx-2353-
+src/components/dsp/LibraryManagementView.tsx:2354:function HistoryStatsPanel({ store, play }: { store: ReturnType<typeof useLibraryStore>; play: (track?: typeof tracks[0]) => void }) {
+src/components/dsp/LibraryManagementView.tsx-2355-  const onThisDay = getOnThisDay();
+src/components/dsp/LibraryManagementView.tsx:2356:  const topTracks = [...tracks].sort((a, b) => b.playCount - a.playCount).slice(0, 10);
+src/components/dsp/LibraryManagementView.tsx:2357:  const totalPlayTime = tracks.reduce((s, t) => s + t.playCount * t.duration, 0);
+src/components/dsp/LibraryManagementView.tsx-2358-
+src/components/dsp/LibraryManagementView.tsx-2359-  return (
+--
+src/components/dsp/LibraryManagementView.tsx-2377-              <Heart className="w-4 h-4 text-red-500" />
+src/components/dsp/LibraryManagementView.tsx-2378-              <div>
+src/components/dsp/LibraryManagementView.tsx:2379:                <p className="text-sm font-bold">{tracks.filter(t => t.loved).length}</p>
+src/components/dsp/LibraryManagementView.tsx-2380-                <p className="text-[10px] text-muted-foreground">Loved Tracks</p>
+src/components/dsp/LibraryManagementView.tsx-2381-              </div>
+--
+src/components/dsp/LibraryManagementView.tsx-2469-          <div className="space-y-1">
+src/components/dsp/LibraryManagementView.tsx-2470-            {store.history.slice(0, 20).map(entry => {
+src/components/dsp/LibraryManagementView.tsx:2471:              const track = tracks.find(t => t.id === entry.trackId);
+src/components/dsp/LibraryManagementView.tsx-2472-              if (!track) return null;
+src/components/dsp/LibraryManagementView.tsx-2473-              return (
+--
+src/components/dsp/LibraryManagementView.tsx-2507-              <h3 className="text-sm font-semibold">Library Backup & Restore</h3>
+src/components/dsp/LibraryManagementView.tsx-2508-              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+src/components/dsp/LibraryManagementView.tsx:2509:                Your DSP library database contains all metadata edits, playlists, tags, bookmarks, play history,
+src/components/dsp/LibraryManagementView.tsx-2510-                and settings — but not the audio files themselves (DSP indexes in place). Export a backup to
+src/components/dsp/LibraryManagementView.tsx-2511-                preserve your library state independently of the audio files. You can restore this backup on
+--
+src/components/dsp/LibraryManagementView.tsx-2528-            <div className="p-2 rounded bg-surface/50">
+src/components/dsp/LibraryManagementView.tsx-2529-              <p className="text-xs text-muted-foreground">Tracks</p>
+src/components/dsp/LibraryManagementView.tsx:2530:              <p className="text-sm font-bold">{tracks.length}</p>
+src/components/dsp/LibraryManagementView.tsx-2531-            </div>
+src/components/dsp/LibraryManagementView.tsx-2532-            <div className="p-2 rounded bg-surface/50">
+src/components/dsp/LibraryManagementView.tsx-2533-              <p className="text-xs text-muted-foreground">Albums</p>
+src/components/dsp/LibraryManagementView.tsx:2534:              <p className="text-sm font-bold">{albums.length}</p>
+src/components/dsp/LibraryManagementView.tsx-2535-            </div>
+src/components/dsp/LibraryManagementView.tsx-2536-            <div className="p-2 rounded bg-surface/50">
+src/components/dsp/LibraryManagementView.tsx-2537-              <p className="text-xs text-muted-foreground">Playlists</p>
+src/components/dsp/LibraryManagementView.tsx:2538:              <p className="text-sm font-bold">{playlists.length}</p>
+src/components/dsp/LibraryManagementView.tsx-2539-            </div>
+src/components/dsp/LibraryManagementView.tsx-2540-            <div className="p-2 rounded bg-surface/50">
+src/components/dsp/LibraryManagementView.tsx-2541-              <p className="text-xs text-muted-foreground">History</p>
+src/components/dsp/LibraryManagementView.tsx:2542:              <p className="text-sm font-bold">{playHistory.length}</p>
+src/components/dsp/LibraryManagementView.tsx-2543-            </div>
+src/components/dsp/LibraryManagementView.tsx-2544-          </div>
+--
+src/components/dsp/LibraryManagementView.tsx-2592-            </div>
+src/components/dsp/LibraryManagementView.tsx-2593-            <div className="flex items-center justify-between">
+src/components/dsp/LibraryManagementView.tsx:2594:              <span className="text-[11px] text-muted-foreground">Replace playlists</span>
+src/components/dsp/LibraryManagementView.tsx-2595-              <Switch />
+src/components/dsp/LibraryManagementView.tsx-2596-            </div>
+--
+src/components/dsp/RadioView.tsx-516-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+src/components/dsp/RadioView.tsx-517-          <Input
+src/components/dsp/RadioView.tsx:518:            placeholder="Search stations by name, genre, country, or tags..."
+src/components/dsp/RadioView.tsx-519-            value={localSearch}
+src/components/dsp/RadioView.tsx-520-            onChange={(e) => handleSearchChange(e.target.value)}
+--
+src/components/dsp/ComposerDetailView.tsx-141-
+src/components/dsp/ComposerDetailView.tsx-142-          {composerWorks.length === 0 ? (
+src/components/dsp/ComposerDetailView.tsx:143:            <p className="text-sm text-muted-foreground">No works in the catalog for this composer.</p>
+src/components/dsp/ComposerDetailView.tsx-144-          ) : (
+src/components/dsp/ComposerDetailView.tsx-145-            <div className="space-y-2">
+--
+src/components/dsp/SystemHealthView.tsx-143-
+src/components/dsp/SystemHealthView.tsx-144-const systemLogs = [
+src/components/dsp/SystemHealthView.tsx:145:  { time: '14:32:05', message: 'Library scan complete: 3 new tracks found', level: 'info' as const },
+src/components/dsp/SystemHealthView.tsx-146-  { time: '14:28:17', message: 'Zone sync recalibrated', level: 'info' as const },
+src/components/dsp/SystemHealthView.tsx-147-  { time: '14:15:00', message: 'TIDAL library synced', level: 'info' as const },
+--
+src/components/dsp/SystemHealthView.tsx-155-  const core = useSystemStore(s => s.core);
+src/components/dsp/SystemHealthView.tsx-156-
+src/components/dsp/SystemHealthView.tsx:157:  const cpuUsage = core.machineInfo?.cpuUsage ?? coreStatus.machineInfo.cpuUsage;
+src/components/dsp/SystemHealthView.tsx:158:  const memUsed = core.machineInfo?.memoryUsed ?? coreStatus.machineInfo.memoryUsed;
+src/components/dsp/SystemHealthView.tsx:159:  const memTotal = core.machineInfo?.memoryTotal ?? coreStatus.machineInfo.memoryTotal;
+src/components/dsp/SystemHealthView.tsx-160-  const memPct = Math.round((memUsed / memTotal) * 100);
+src/components/dsp/SystemHealthView.tsx-161-  const memHeadroom = ((memTotal - memUsed) / 1073741824).toFixed(1);
+src/components/dsp/SystemHealthView.tsx-162-
+src/components/dsp/SystemHealthView.tsx:163:  const audioEngine = core.audioEngine ?? coreStatus.audioEngine;
+src/components/dsp/SystemHealthView.tsx:164:  const storageLocations = core.storageLocations ?? coreStatus.storageLocations;
+src/components/dsp/SystemHealthView.tsx:165:  const libraryStats = core.libraryStats ?? coreStatus.libraryStats;
+src/components/dsp/SystemHealthView.tsx:166:  const uptime = core.uptime ?? coreStatus.uptime;
+src/components/dsp/SystemHealthView.tsx-167-
+src/components/dsp/SystemHealthView.tsx-168-  return (
+--
+src/components/dsp/SystemHealthView.tsx-390-              </div>
+src/components/dsp/SystemHealthView.tsx-391-              <span className="font-mono text-emerald-400 font-medium">
+src/components/dsp/SystemHealthView.tsx:392:                {libraryStats.totalTracks.toLocaleString()} / 100,000 tracks
+src/components/dsp/SystemHealthView.tsx-393-              </span>
+src/components/dsp/SystemHealthView.tsx-394-            </div>
+--
+src/components/dsp/SystemHealthView.tsx-449-            </div>
+src/components/dsp/SystemHealthView.tsx-450-            <div className="space-y-2">
+src/components/dsp/SystemHealthView.tsx:451:              {storageLocations.map(loc => {
+src/components/dsp/SystemHealthView.tsx-452-                const usedPct = Math.round((loc.usedSpace / loc.totalSpace) * 100);
+src/components/dsp/SystemHealthView.tsx-453-                return (
+--
+src/components/dsp/BrowseAlbumsView.tsx-27-    year: lt.year,
+src/components/dsp/BrowseAlbumsView.tsx-28-    genre: lt.genre,
+src/components/dsp/BrowseAlbumsView.tsx:29:    tracks: [],
+src/components/dsp/BrowseAlbumsView.tsx-30-    duration: lt.duration,
+src/components/dsp/BrowseAlbumsView.tsx-31-    format: lt.format,
+--
+src/components/dsp/BrowseAlbumsView.tsx-42-  const { navigate } = useUIStore();
+src/components/dsp/BrowseAlbumsView.tsx-43-  const { setQueue } = usePlayerStore();
+src/components/dsp/BrowseAlbumsView.tsx:44:  const localTracks = useLocalLibraryStore(s => s.tracks);
+src/components/dsp/BrowseAlbumsView.tsx-45-  const [searchQuery, setSearchQuery] = React.useState('');
+src/components/dsp/BrowseAlbumsView.tsx-46-  const [sortBy, setSortBy] = React.useState<SortKey>('year');
+--
+src/components/dsp/BrowseAlbumsView.tsx-48-  const [showLocal, setShowLocal] = React.useState(true);
+src/components/dsp/BrowseAlbumsView.tsx-49-
+src/components/dsp/BrowseAlbumsView.tsx:50:  // Merge local albums with mock albums
+src/components/dsp/BrowseAlbumsView.tsx-51-  const localAlbums = React.useMemo(() => {
+src/components/dsp/BrowseAlbumsView.tsx-52-    const albumMap = new Map<string, { lt: LocalTrack; key: string }>();
+--
+src/components/dsp/BrowseAlbumsView.tsx-61-
+src/components/dsp/BrowseAlbumsView.tsx-62-  const allAlbums = React.useMemo(() => {
+src/components/dsp/BrowseAlbumsView.tsx:63:    if (!showLocal) return albums;
+src/components/dsp/BrowseAlbumsView.tsx-64-    // Deduplicate: if a mock album has the same title+artist, prefer mock
+src/components/dsp/BrowseAlbumsView.tsx:65:    const mockKeys = new Set(albums.map(a => `${a.artistName}|||${a.title}`.toLowerCase()));
+src/components/dsp/BrowseAlbumsView.tsx-66-    const uniqueLocal = localAlbums.filter(
+src/components/dsp/BrowseAlbumsView.tsx-67-      la => !mockKeys.has(`${la.artistName}|||${la.title}`.toLowerCase())
+src/components/dsp/BrowseAlbumsView.tsx-68-    );
+src/components/dsp/BrowseAlbumsView.tsx:69:    return [...albums, ...uniqueLocal];
+src/components/dsp/BrowseAlbumsView.tsx:70:  }, [albums, localAlbums, showLocal]);
+src/components/dsp/BrowseAlbumsView.tsx-71-
+src/components/dsp/BrowseAlbumsView.tsx-72-  const allGenres = Array.from(new Set(allAlbums.map(a => a.genre))).sort();
+--
+src/components/dsp/BrowseAlbumsView.tsx-92-
+src/components/dsp/BrowseAlbumsView.tsx-93-  const playAlbum = (_albumId: string) => {
+src/components/dsp/BrowseAlbumsView.tsx:94:    // Mock tracks removed — no-op
+src/components/dsp/BrowseAlbumsView.tsx-95-  };
+src/components/dsp/BrowseAlbumsView.tsx-96-
+--
+src/components/dsp/BrowseAlbumsView.tsx-114-              </Button>
+src/components/dsp/BrowseAlbumsView.tsx-115-            )}
+src/components/dsp/BrowseAlbumsView.tsx:116:            <Badge variant="secondary" className="text-xs">{filtered.length} albums</Badge>
+src/components/dsp/BrowseAlbumsView.tsx-117-          </div>
+src/components/dsp/BrowseAlbumsView.tsx-118-        </div>
+--
+src/components/dsp/BrowseAlbumsView.tsx-122-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+src/components/dsp/BrowseAlbumsView.tsx-123-            <Input
+src/components/dsp/BrowseAlbumsView.tsx:124:              placeholder="Search albums..."
+src/components/dsp/BrowseAlbumsView.tsx-125-              value={searchQuery}
+src/components/dsp/BrowseAlbumsView.tsx-126-              onChange={(e) => setSearchQuery(e.target.value)}
+--
+src/components/dsp/BrowseAlbumsView.tsx-156-          {filtered.map(album => {
+src/components/dsp/BrowseAlbumsView.tsx-157-            const isLocal = isLocalAlbum(album.id);
+src/components/dsp/BrowseAlbumsView.tsx:158:            // Find cover art from local tracks if available
+src/components/dsp/BrowseAlbumsView.tsx-159-            const localCover = isLocal
+src/components/dsp/BrowseAlbumsView.tsx-160-              ? localTracks.find(lt => lt.album === album.title && lt.artist === album.artistName)?.coverArt
+--
+src/components/dsp/BrowseAlbumsView.tsx-186-                      e.stopPropagation();
+src/components/dsp/BrowseAlbumsView.tsx-187-                      if (isLocal) {
+src/components/dsp/BrowseAlbumsView.tsx:188:                        // Play local album tracks
+src/components/dsp/BrowseAlbumsView.tsx-189-                        const albumLtTracks = localTracks
+src/components/dsp/BrowseAlbumsView.tsx-190-                          .filter(lt => lt.album === album.title && lt.artist === album.artistName)
+--
+src/components/dsp/BrowseAlbumsView.tsx-197-                            bitDepth: lt.bitDepth, sampleRate: lt.sampleRate, channels: lt.channels,
+src/components/dsp/BrowseAlbumsView.tsx-198-                            bitrate: lt.bitrate, filePath: lt.filePath, fileSize: lt.fileSize,
+src/components/dsp/BrowseAlbumsView.tsx:199:                            composers: lt.composer ? [lt.composer] : [], performers: [],
+src/components/dsp/BrowseAlbumsView.tsx-200-                            genre: lt.genre, loved: false, playCount: 0, source: 'local' as const, isAvailable: true,
+src/components/dsp/BrowseAlbumsView.tsx-201-                          }));
+--
+src/components/dsp/AlbumDetailView.tsx-49-  }, [albumTracks]);
+src/components/dsp/AlbumDetailView.tsx-50-
+src/components/dsp/AlbumDetailView.tsx:51:  // Aggregate all composers
+src/components/dsp/AlbumDetailView.tsx-52-  const albumComposers = React.useMemo(() => {
+src/components/dsp/AlbumDetailView.tsx-53-    const compMap = new Map<string, number>();
+src/components/dsp/AlbumDetailView.tsx-54-    for (const track of albumTracks) {
+src/components/dsp/AlbumDetailView.tsx:55:      for (const comp of track.composers) {
+src/components/dsp/AlbumDetailView.tsx-56-        compMap.set(comp, (compMap.get(comp) || 0) + 1);
+src/components/dsp/AlbumDetailView.tsx-57-      }
+--
+src/components/dsp/AlbumDetailView.tsx-67-    <ScrollArea className="h-full">
+src/components/dsp/AlbumDetailView.tsx-68-      <div className="max-w-5xl mx-auto p-6">
+src/components/dsp/AlbumDetailView.tsx:69:        <Button variant="ghost" size="sm" className="mb-4 text-muted-foreground" onClick={() => navigate('browse-albums')}>
+src/components/dsp/AlbumDetailView.tsx-70-          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Albums
+src/components/dsp/AlbumDetailView.tsx-71-        </Button>
+--
+src/components/dsp/AlbumDetailView.tsx-110-
+src/components/dsp/AlbumDetailView.tsx-111-            <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+src/components/dsp/AlbumDetailView.tsx:112:              <span>{albumTracks.length} tracks</span>
+src/components/dsp/AlbumDetailView.tsx-113-              <span>·</span>
+src/components/dsp/AlbumDetailView.tsx-114-              <span>{formatDuration(totalDuration)}</span>
+--
+src/components/dsp/AlbumDetailView.tsx-186-                      <Badge variant="outline" className="text-[9px] px-1 py-0">{track.source.toUpperCase()}</Badge>
+src/components/dsp/AlbumDetailView.tsx-187-                    )}
+src/components/dsp/AlbumDetailView.tsx:188:                    {track.composers.length > 0 && (
+src/components/dsp/AlbumDetailView.tsx-189-                      <span className="text-[11px] text-muted-foreground">
+src/components/dsp/AlbumDetailView.tsx:190:                        {track.composers.join(', ')}
+src/components/dsp/AlbumDetailView.tsx-191-                      </span>
+src/components/dsp/AlbumDetailView.tsx-192-                    )}
+--
+src/components/dsp/BrowsePlaylistsView.tsx-24-        <div className="text-center py-12">
+src/components/dsp/BrowsePlaylistsView.tsx-25-          <ListMusic className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+src/components/dsp/BrowsePlaylistsView.tsx:26:          <p className="text-lg text-muted-foreground">No playlists yet</p>
+src/components/dsp/BrowsePlaylistsView.tsx:27:          <p className="text-sm text-muted-foreground mt-1">Create playlists from your imported music library</p>
+src/components/dsp/BrowsePlaylistsView.tsx-28-        </div>
+src/components/dsp/BrowsePlaylistsView.tsx-29-      </div>
+--
+src/components/dsp/SystemArchitectureView.tsx-95-
+src/components/dsp/SystemArchitectureView.tsx-96-export function SystemArchitectureView() {
+src/components/dsp/SystemArchitectureView.tsx:97:  const coreStatus = useSystemStore((s) => s.coreStatus);
+src/components/dsp/SystemArchitectureView.tsx-98-
+src/components/dsp/SystemArchitectureView.tsx:99:  if (!coreStatus) {
+src/components/dsp/SystemArchitectureView.tsx-100-    return (
+src/components/dsp/SystemArchitectureView.tsx-101-      <div className="max-w-6xl mx-auto p-6 flex items-center justify-center min-h-[60vh]">
+--
+src/components/dsp/SystemArchitectureView.tsx-108-  }
+src/components/dsp/SystemArchitectureView.tsx-109-
+src/components/dsp/SystemArchitectureView.tsx:110:  const { machineInfo, audioEngine, storageLocations, networkInfo, apiInfo, streamingServices, libraryStats } = coreStatus;
+src/components/dsp/SystemArchitectureView.tsx-111-  const memPct = (machineInfo.memoryUsed / machineInfo.memoryTotal) * 100;
+src/components/dsp/SystemArchitectureView.tsx-112-
+--
+src/components/dsp/SystemArchitectureView.tsx-118-  };
+src/components/dsp/SystemArchitectureView.tsx-119-
+src/components/dsp/SystemArchitectureView.tsx:120:  const st = statusConfig[coreStatus.status] ?? statusConfig.error;
+src/components/dsp/SystemArchitectureView.tsx-121-
+src/components/dsp/SystemArchitectureView.tsx-122-  return (
+--
+src/components/dsp/SystemArchitectureView.tsx-134-                </div>
+src/components/dsp/SystemArchitectureView.tsx-135-                <div>
+src/components/dsp/SystemArchitectureView.tsx:136:                  <h3 className="font-medium text-foreground">{coreStatus.name}</h3>
+src/components/dsp/SystemArchitectureView.tsx-137-                  <div className="flex items-center gap-3 mt-1.5">
+src/components/dsp/SystemArchitectureView.tsx-138-                    <Badge variant="outline" className={`text-[10px] px-2 py-0 border ${st.bgClass}`}>
+src/components/dsp/SystemArchitectureView.tsx:139:                      {coreStatus.status === 'running' && <CheckCircle2 className="h-3 w-3 mr-1" />}
+src/components/dsp/SystemArchitectureView.tsx:140:                      {coreStatus.status === 'starting' && <RefreshCw className="h-3 w-3 mr-1 animate-spin" />}
+src/components/dsp/SystemArchitectureView.tsx:141:                      {coreStatus.status === 'error' && <AlertTriangle className="h-3 w-3 mr-1" />}
+src/components/dsp/SystemArchitectureView.tsx-142-                      {st.label}
+src/components/dsp/SystemArchitectureView.tsx-143-                    </Badge>
+src/components/dsp/SystemArchitectureView.tsx:144:                    <span className="font-mono text-xs text-muted-foreground">v{coreStatus.version}</span>
+src/components/dsp/SystemArchitectureView.tsx-145-                  </div>
+src/components/dsp/SystemArchitectureView.tsx-146-                  <div className="flex items-center gap-1.5 mt-1.5">
+src/components/dsp/SystemArchitectureView.tsx-147-                    <Clock className="h-3 w-3 text-muted-foreground" />
+src/components/dsp/SystemArchitectureView.tsx-148-                    <span className="font-mono text-xs text-muted-foreground">
+src/components/dsp/SystemArchitectureView.tsx:149:                      Uptime: {formatUptime(coreStatus.uptime)}
+src/components/dsp/SystemArchitectureView.tsx-150-                    </span>
+src/components/dsp/SystemArchitectureView.tsx-151-                  </div>
+--
+src/components/dsp/SystemArchitectureView.tsx-202-            <SectionLabel>Audio Engine</SectionLabel>
+src/components/dsp/SystemArchitectureView.tsx-203-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+src/components/dsp/SystemArchitectureView.tsx:204:              {/* Left: status + zones + sample rate */}
+src/components/dsp/SystemArchitectureView.tsx-205-              <div className="space-y-4">
+src/components/dsp/SystemArchitectureView.tsx-206-                <div className="flex items-center gap-3">
+--
+src/components/dsp/SystemArchitectureView.tsx-208-                  <span className="text-sm font-medium text-foreground capitalize">{audioEngine.status}</span>
+src/components/dsp/SystemArchitectureView.tsx-209-                  <span className="text-xs text-muted-foreground">
+src/components/dsp/SystemArchitectureView.tsx:210:                    {audioEngine.activeZones}/{audioEngine.totalZones} zones active
+src/components/dsp/SystemArchitectureView.tsx-211-                  </span>
+src/components/dsp/SystemArchitectureView.tsx-212-                </div>
+--
+src/components/dsp/SystemArchitectureView.tsx-273-            <SectionLabel>Storage Locations</SectionLabel>
+src/components/dsp/SystemArchitectureView.tsx-274-            <div className="space-y-3">
+src/components/dsp/SystemArchitectureView.tsx:275:              {storageLocations.map((loc) => {
+src/components/dsp/SystemArchitectureView.tsx-276-                const usedPct = (loc.usedSpace / loc.totalSpace) * 100;
+src/components/dsp/SystemArchitectureView.tsx-277-                return (
+--
+src/components/dsp/SystemArchitectureView.tsx-302-                    <UsageBar value={usedPct} label={`${formatBytes(loc.usedSpace)} / ${formatBytes(loc.totalSpace)}`} />
+src/components/dsp/SystemArchitectureView.tsx-303-                    <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
+src/components/dsp/SystemArchitectureView.tsx:304:                      <span>{loc.trackCount.toLocaleString()} tracks</span>
+src/components/dsp/SystemArchitectureView.tsx:305:                      <span>{loc.albumCount.toLocaleString()} albums</span>
+src/components/dsp/SystemArchitectureView.tsx-306-                      <span className="flex items-center gap-1 ml-auto">
+src/components/dsp/SystemArchitectureView.tsx-307-                        <Clock className="h-3 w-3" />
+--
+src/components/dsp/SystemArchitectureView.tsx-367-                <div className="flex items-center justify-between text-xs text-muted-foreground">
+src/components/dsp/SystemArchitectureView.tsx-368-                  <span>Discovery Mode</span>
+src/components/dsp/SystemArchitectureView.tsx:369:                  <span className="font-mono text-foreground uppercase">{coreStatus.discoveryMode}</span>
+src/components/dsp/SystemArchitectureView.tsx-370-                </div>
+src/components/dsp/SystemArchitectureView.tsx-371-              </div>
+--
+src/components/dsp/SystemArchitectureView.tsx-411-            <SectionLabel>Streaming Services</SectionLabel>
+src/components/dsp/SystemArchitectureView.tsx-412-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+src/components/dsp/SystemArchitectureView.tsx:413:              {streamingServices.map((svc) => (
+src/components/dsp/SystemArchitectureView.tsx-414-                <div
+src/components/dsp/SystemArchitectureView.tsx-415-                  key={svc.id}
+--
+src/components/dsp/SystemArchitectureView.tsx-451-                        <div className="flex justify-between">
+src/components/dsp/SystemArchitectureView.tsx-452-                          <span>Library Size</span>
+src/components/dsp/SystemArchitectureView.tsx:453:                          <span className="font-mono text-foreground">{svc.librarySize.toLocaleString()} tracks</span>
+src/components/dsp/SystemArchitectureView.tsx-454-                        </div>
+src/components/dsp/SystemArchitectureView.tsx-455-                      )}
+--
+src/components/dsp/BrowseArtistsView.tsx-15-  const { navigate } = useUIStore();
+src/components/dsp/BrowseArtistsView.tsx-16-  const { setQueue } = usePlayerStore();
+src/components/dsp/BrowseArtistsView.tsx:17:  const localTracks = useLocalLibraryStore(s => s.tracks);
+src/components/dsp/BrowseArtistsView.tsx-18-  const [searchQuery, setSearchQuery] = React.useState('');
+src/components/dsp/BrowseArtistsView.tsx-19-  const [showLocal, setShowLocal] = React.useState(true);
+src/components/dsp/BrowseArtistsView.tsx-20-
+src/components/dsp/BrowseArtistsView.tsx:21:  // Derive local artists from local tracks
+src/components/dsp/BrowseArtistsView.tsx-22-  const localArtistNames = React.useMemo(() => {
+src/components/dsp/BrowseArtistsView.tsx-23-    const names = new Set<string>();
+--
+src/components/dsp/BrowseArtistsView.tsx-29-  }, [localTracks]);
+src/components/dsp/BrowseArtistsView.tsx-30-
+src/components/dsp/BrowseArtistsView.tsx:31:  // Merge with mock artists
+src/components/dsp/BrowseArtistsView.tsx-32-  const allArtists = React.useMemo(() => {
+src/components/dsp/BrowseArtistsView.tsx:33:    if (!showLocal) return artists;
+src/components/dsp/BrowseArtistsView.tsx:34:    const mockNames = new Set(artists.map(a => a.name.toLowerCase()));
+src/components/dsp/BrowseArtistsView.tsx-35-    const uniqueLocalNames = localArtistNames.filter(
+src/components/dsp/BrowseArtistsView.tsx-36-      name => !mockNames.has(name.toLowerCase())
+src/components/dsp/BrowseArtistsView.tsx-37-    );
+src/components/dsp/BrowseArtistsView.tsx:38:    // Create synthetic artist entries for local-only artists
+src/components/dsp/BrowseArtistsView.tsx-39-    const localArtistEntries = uniqueLocalNames.map(name => ({
+src/components/dsp/BrowseArtistsView.tsx-40-      id: `local-artist-${name}`,
+--
+src/components/dsp/BrowseArtistsView.tsx-42-      imageUrl: '',
+src/components/dsp/BrowseArtistsView.tsx-43-      bio: '',
+src/components/dsp/BrowseArtistsView.tsx:44:      genres: [...new Set(localTracks.filter(lt => lt.artist === name || lt.albumArtist === name).map(lt => lt.genre))],
+src/components/dsp/BrowseArtistsView.tsx-45-      type: 'individual' as const,
+src/components/dsp/BrowseArtistsView.tsx-46-      similarArtists: [],
+--
+src/components/dsp/BrowseArtistsView.tsx-49-      albumCount: [...new Set(localTracks.filter(lt => lt.artist === name || lt.albumArtist === name).map(lt => lt.album))].length,
+src/components/dsp/BrowseArtistsView.tsx-50-    }));
+src/components/dsp/BrowseArtistsView.tsx:51:    return [...artists, ...localArtistEntries];
+src/components/dsp/BrowseArtistsView.tsx:52:  }, [artists, localArtistNames, localTracks, showLocal]);
+src/components/dsp/BrowseArtistsView.tsx-53-
+src/components/dsp/BrowseArtistsView.tsx-54-  const filtered = allArtists.filter(a =>
+src/components/dsp/BrowseArtistsView.tsx-55-    a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+src/components/dsp/BrowseArtistsView.tsx:56:    a.genres.some(g => g.toLowerCase().includes(searchQuery.toLowerCase()))
+src/components/dsp/BrowseArtistsView.tsx-57-  );
+src/components/dsp/BrowseArtistsView.tsx-58-
+--
+src/components/dsp/BrowseArtistsView.tsx-74-              </Button>
+src/components/dsp/BrowseArtistsView.tsx-75-            )}
+src/components/dsp/BrowseArtistsView.tsx:76:            <Badge variant="secondary" className="text-xs">{filtered.length} artists</Badge>
+src/components/dsp/BrowseArtistsView.tsx-77-          </div>
+src/components/dsp/BrowseArtistsView.tsx-78-        </div>
+--
+src/components/dsp/BrowseArtistsView.tsx-81-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+src/components/dsp/BrowseArtistsView.tsx-82-          <Input
+src/components/dsp/BrowseArtistsView.tsx:83:            placeholder="Search artists..."
+src/components/dsp/BrowseArtistsView.tsx-84-            value={searchQuery}
+src/components/dsp/BrowseArtistsView.tsx-85-            onChange={(e) => setSearchQuery(e.target.value)}
+--
+src/components/dsp/BrowseArtistsView.tsx-111-                <p className="text-xs text-muted-foreground">{albumCount} album{albumCount !== 1 ? 's' : ''}</p>
+src/components/dsp/BrowseArtistsView.tsx-112-                <div className="flex flex-wrap gap-1 justify-center mt-1.5">
+src/components/dsp/BrowseArtistsView.tsx:113:                  {artist.genres.slice(0, 2).map(g => (
+src/components/dsp/BrowseArtistsView.tsx-114-                    <Badge key={g} variant="secondary" className="text-[10px] px-1.5 py-0">{g}</Badge>
+src/components/dsp/BrowseArtistsView.tsx-115-                  ))}
+--
+src/components/dsp/BrowseTracksView.tsx-39-    filePath: lt.filePath,
+src/components/dsp/BrowseTracksView.tsx-40-    fileSize: lt.fileSize,
+src/components/dsp/BrowseTracksView.tsx:41:    composers: lt.composer ? [lt.composer] : [],
+src/components/dsp/BrowseTracksView.tsx-42-    performers: [],
+src/components/dsp/BrowseTracksView.tsx-43-    genre: lt.genre,
+--
+src/components/dsp/BrowseTracksView.tsx-52-  const { navigate } = useUIStore();
+src/components/dsp/BrowseTracksView.tsx-53-  const { play, setQueue } = usePlayerStore();
+src/components/dsp/BrowseTracksView.tsx:54:  const localTracks = useLocalLibraryStore(s => s.tracks);
+src/components/dsp/BrowseTracksView.tsx-55-  const [searchQuery, setSearchQuery] = React.useState('');
+src/components/dsp/BrowseTracksView.tsx-56-  const [sortBy, setSortBy] = React.useState<SortKey>('title');
+--
+src/components/dsp/BrowseTracksView.tsx-59-  const [showLocal, setShowLocal] = React.useState(true);
+src/components/dsp/BrowseTracksView.tsx-60-
+src/components/dsp/BrowseTracksView.tsx:61:  // Merge local tracks with mock tracks
+src/components/dsp/BrowseTracksView.tsx-62-  const allTracks = React.useMemo(() => {
+src/components/dsp/BrowseTracksView.tsx:63:    if (!showLocal) return tracks;
+src/components/dsp/BrowseTracksView.tsx:64:    const mockIds = new Set(tracks.map(t => t.id));
+src/components/dsp/BrowseTracksView.tsx-65-    const uniqueLocalTracks = localTracks
+src/components/dsp/BrowseTracksView.tsx-66-      .filter(lt => !mockIds.has(lt.id))
+src/components/dsp/BrowseTracksView.tsx-67-      .map(localTrackToTrack);
+src/components/dsp/BrowseTracksView.tsx:68:    return [...tracks, ...uniqueLocalTracks];
+src/components/dsp/BrowseTracksView.tsx:69:  }, [tracks, localTracks, showLocal]);
+src/components/dsp/BrowseTracksView.tsx-70-
+src/components/dsp/BrowseTracksView.tsx-71-  const allGenres = Array.from(new Set(allTracks.map(t => t.genre))).sort();
+--
+src/components/dsp/BrowseTracksView.tsx-112-              </Button>
+src/components/dsp/BrowseTracksView.tsx-113-            )}
+src/components/dsp/BrowseTracksView.tsx:114:            <Badge variant="secondary" className="text-xs">{filtered.length} tracks</Badge>
+src/components/dsp/BrowseTracksView.tsx-115-          </div>
+src/components/dsp/BrowseTracksView.tsx-116-        </div>
+--
+src/components/dsp/BrowseTracksView.tsx-120-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+src/components/dsp/BrowseTracksView.tsx-121-            <Input
+src/components/dsp/BrowseTracksView.tsx:122:              placeholder="Search tracks..."
+src/components/dsp/BrowseTracksView.tsx-123-              value={searchQuery}
+src/components/dsp/BrowseTracksView.tsx-124-              onChange={(e) => setSearchQuery(e.target.value)}
+--
+src/components/dsp/BrowseTracksView.tsx-174-              {filtered.map((track, index) => {
+src/components/dsp/BrowseTracksView.tsx-175-                const isLocal = isLocalTrack(track.id);
+src/components/dsp/BrowseTracksView.tsx:176:                // Find cover art from local tracks
+src/components/dsp/BrowseTracksView.tsx-177-                const localCover = isLocal
+src/components/dsp/BrowseTracksView.tsx-178-                  ? localTracks.find(lt => lt.id === track.id)?.coverArt
+--
+src/components/dsp/PluginManagerView.tsx-182-  const [activeCategory, setActiveCategory] = useState<CategoryFilter>('all');
+src/components/dsp/PluginManagerView.tsx-183-
+src/components/dsp/PluginManagerView.tsx:184:  const installedPlugins = plugins.filter(p => p.installed);
+src/components/dsp/PluginManagerView.tsx:185:  const availablePlugins = plugins.filter(p => !p.installed);
+src/components/dsp/PluginManagerView.tsx-186-
+src/components/dsp/PluginManagerView.tsx-187-  const filterByCategory = (list: DSPPlugin[]) =>
+--
+src/components/dsp/HomeView.tsx-5-import { usePlayerStore } from '@/store/player';
+src/components/dsp/HomeView.tsx-6-import { formatDuration, getCoverGradient } from '@/lib/data';
+src/components/dsp/HomeView.tsx:7:import { radioStations } from '@/lib/radio-stations';
+src/components/dsp/HomeView.tsx-8-import { useDiscoveryStore } from '@/store/discovery';
+src/components/dsp/HomeView.tsx-9-import { useLocalLibraryStore } from '@/store/local-library';
+--
+src/components/dsp/HomeView.tsx-22-  const { play, setQueue } = usePlayerStore();
+src/components/dsp/HomeView.tsx-23-
+src/components/dsp/HomeView.tsx:24:  const { tracks: localTracks, getAlbums, getArtists, getTotalSize } = useLocalLibraryStore();
+src/components/dsp/HomeView.tsx-25-  const localAlbums = getAlbums();
+src/components/dsp/HomeView.tsx-26-  const localArtists = getArtists();
+--
+src/components/dsp/HomeView.tsx-37-        trackNumber: t.trackNumber, discNumber: t.discNumber, duration: t.duration, format: t.format,
+src/components/dsp/HomeView.tsx-38-        bitDepth: t.bitDepth, sampleRate: t.sampleRate, channels: t.channels, bitrate: t.bitrate,
+src/components/dsp/HomeView.tsx:39:        filePath: t.filePath, fileSize: t.fileSize, composers: [t.composer], performers: [],
+src/components/dsp/HomeView.tsx-40-        genre: t.genre, loved: false, playCount: 0, source: 'local' as const, isAvailable: true,
+src/components/dsp/HomeView.tsx-41-      }));
+--
+src/components/dsp/HomeView.tsx-51-        trackNumber: t.trackNumber, discNumber: t.discNumber, duration: t.duration, format: t.format,
+src/components/dsp/HomeView.tsx-52-        bitDepth: t.bitDepth, sampleRate: t.sampleRate, channels: t.channels, bitrate: t.bitrate,
+src/components/dsp/HomeView.tsx:53:        filePath: t.filePath, fileSize: t.fileSize, composers: [t.composer], performers: [],
+src/components/dsp/HomeView.tsx-54-        genre: t.genre, loved: false, playCount: 0, source: 'local' as const, isAvailable: true,
+src/components/dsp/HomeView.tsx-55-      });
+--
+src/components/dsp/HomeView.tsx-68-            </div>
+src/components/dsp/HomeView.tsx-69-            <p className="text-muted-foreground max-w-lg">
+src/components/dsp/HomeView.tsx:70:              Your library has {localTracks.length} tracks across {localAlbums.length} albums by {localArtists.length} artists.
+src/components/dsp/HomeView.tsx-71-              Pick up where you left off or discover something new.
+src/components/dsp/HomeView.tsx-72-            </p>
+--
+src/components/dsp/HomeView.tsx-75-                <Play className="w-4 h-4 mr-2" /> Resume Playing
+src/components/dsp/HomeView.tsx-76-              </Button>
+src/components/dsp/HomeView.tsx:77:              <Button size="sm" variant="outline" onClick={() => navigate('browse-genres')}>
+src/components/dsp/HomeView.tsx-78-                <Sparkles className="w-4 h-4 mr-2" /> Discover
+src/components/dsp/HomeView.tsx-79-              </Button>
+--
+src/components/dsp/HomeView.tsx-92-              Recently Played
+src/components/dsp/HomeView.tsx-93-            </h2>
+src/components/dsp/HomeView.tsx:94:            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('browse-tracks')}>
+src/components/dsp/HomeView.tsx-95-              View All <ArrowRight className="w-3 h-3 ml-1" />
+src/components/dsp/HomeView.tsx-96-            </Button>
+--
+src/components/dsp/HomeView.tsx-123-              </Card>
+src/components/dsp/HomeView.tsx-124-            )) : (
+src/components/dsp/HomeView.tsx:125:              <p className="text-sm text-muted-foreground col-span-full">No tracks imported yet. Scan your music library to get started.</p>
+src/components/dsp/HomeView.tsx-126-            )}
+src/components/dsp/HomeView.tsx-127-          </div>
+--
+src/components/dsp/HomeView.tsx-135-              { label: 'Albums', value: localAlbums.length.toString(), icon: Headphones, color: 'text-signal-green' },
+src/components/dsp/HomeView.tsx-136-              { label: 'Artists', value: localArtists.length.toString(), icon: Star, color: 'text-gold' },
+src/components/dsp/HomeView.tsx:137:              { label: 'Radio', value: radioStations.length.toString(), icon: Calendar, color: 'text-signal-amber' },
+src/components/dsp/HomeView.tsx-138-            ].map(stat => (
+src/components/dsp/HomeView.tsx-139-              <Card key={stat.label} className="bg-card border-border">
+--
+src/components/dsp/HomeView.tsx-159-              New Releases
+src/components/dsp/HomeView.tsx-160-            </h2>
+src/components/dsp/HomeView.tsx:161:            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('browse-albums')}>
+src/components/dsp/HomeView.tsx-162-              View All <ArrowRight className="w-3 h-3 ml-1" />
+src/components/dsp/HomeView.tsx-163-            </Button>
+--
+src/components/dsp/HomeView.tsx-168-                key={`${album.name}-${album.artist}`}
+src/components/dsp/HomeView.tsx-169-                className="group cursor-pointer"
+src/components/dsp/HomeView.tsx:170:                onClick={() => navigate('browse-albums')}
+src/components/dsp/HomeView.tsx-171-              >
+src/components/dsp/HomeView.tsx-172-                <div className="relative mb-2">
+--
+src/components/dsp/HomeView.tsx-186-          <div className="flex items-center justify-between mb-4">
+src/components/dsp/HomeView.tsx-187-            <h2 className="text-lg font-semibold">Artists</h2>
+src/components/dsp/HomeView.tsx:188:            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('browse-artists')}>
+src/components/dsp/HomeView.tsx-189-              View All <ArrowRight className="w-3 h-3 ml-1" />
+src/components/dsp/HomeView.tsx-190-            </Button>
+--
+src/components/dsp/HomeView.tsx-195-                key={artist}
+src/components/dsp/HomeView.tsx-196-                className="group text-center cursor-pointer"
+src/components/dsp/HomeView.tsx:197:                onClick={() => navigate('browse-artists')}
+src/components/dsp/HomeView.tsx-198-              >
+src/components/dsp/HomeView.tsx-199-                <div className={`w-full aspect-square rounded-full bg-gradient-to-br ${getCoverGradient(artist)} mx-auto mb-2 cover-art-hover shadow-lg`} />
+--
+src/components/dsp/HomeView.tsx-221-          </div>
+src/components/dsp/HomeView.tsx-222-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+src/components/dsp/HomeView.tsx:223:            {radioStations.slice(0, 4).map(station => (
+src/components/dsp/HomeView.tsx-224-              <Card
+src/components/dsp/HomeView.tsx-225-                key={station.id}
+--
+src/components/dsp/ArtistDetailView.tsx-31-  const similarArtists: (import('@/lib/data').Artist | undefined)[] = [];
+src/components/dsp/ArtistDetailView.tsx-32-
+src/components/dsp/ArtistDetailView.tsx:33:  // Aggregate all credits across this artist's tracks
+src/components/dsp/ArtistDetailView.tsx-34-  const allCredits = React.useMemo(() => {
+src/components/dsp/ArtistDetailView.tsx-35-    const creditMap = new Map<string, { name: string; roles: string[]; instruments: string[]; trackCount: number }>();
+--
+src/components/dsp/ArtistDetailView.tsx-51-  }, [artistTracks]);
+src/components/dsp/ArtistDetailView.tsx-52-
+src/components/dsp/ArtistDetailView.tsx:53:  // Aggregate all composers credited on this artist's tracks
+src/components/dsp/ArtistDetailView.tsx-54-  const allComposers = React.useMemo(() => {
+src/components/dsp/ArtistDetailView.tsx-55-    const compMap = new Map<string, number>();
+src/components/dsp/ArtistDetailView.tsx-56-    for (const track of artistTracks) {
+src/components/dsp/ArtistDetailView.tsx:57:      for (const comp of track.composers) {
+src/components/dsp/ArtistDetailView.tsx-58-        compMap.set(comp, (compMap.get(comp) || 0) + 1);
+src/components/dsp/ArtistDetailView.tsx-59-      }
+--
+src/components/dsp/ArtistDetailView.tsx-62-  }, [artistTracks]);
+src/components/dsp/ArtistDetailView.tsx-63-
+src/components/dsp/ArtistDetailView.tsx:64:  // "Appears on" — find compilation/other albums where this artist appears as performer (not primary artist)
+src/components/dsp/ArtistDetailView.tsx-65-  const appearsOn = React.useMemo(() => {
+src/components/dsp/ArtistDetailView.tsx-66-    const albumIds = new Set<string>();
+src/components/dsp/ArtistDetailView.tsx:67:    for (const track of tracks) {
+src/components/dsp/ArtistDetailView.tsx-68-      if (track.artistId !== artist.id) {
+src/components/dsp/ArtistDetailView.tsx-69-        for (const perf of track.performers) {
+--
+src/components/dsp/ArtistDetailView.tsx-75-    }
+src/components/dsp/ArtistDetailView.tsx-76-    return Array.from(albumIds).map(id => {
+src/components/dsp/ArtistDetailView.tsx:77:      const found = albums.find(a => a.id === id);
+src/components/dsp/ArtistDetailView.tsx-78-      return found ? { ...found } : null;
+src/components/dsp/ArtistDetailView.tsx-79-    }).filter((a): a is NonNullable<typeof a> => a !== null);
+--
+src/components/dsp/ArtistDetailView.tsx-92-    <ScrollArea className="h-full">
+src/components/dsp/ArtistDetailView.tsx-93-      <div className="max-w-5xl mx-auto p-6">
+src/components/dsp/ArtistDetailView.tsx:94:        <Button variant="ghost" size="sm" className="mb-4 text-muted-foreground" onClick={() => navigate('browse-artists')}>
+src/components/dsp/ArtistDetailView.tsx-95-          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Artists
+src/components/dsp/ArtistDetailView.tsx-96-        </Button>
+--
+src/components/dsp/ArtistDetailView.tsx-102-            <h1 className="text-3xl font-bold mb-2">{artist.name}</h1>
+src/components/dsp/ArtistDetailView.tsx-103-            <div className="flex flex-wrap gap-2 mb-4">
+src/components/dsp/ArtistDetailView.tsx:104:              {artist.genres.map(g => (
+src/components/dsp/ArtistDetailView.tsx-105-                <Badge
+src/components/dsp/ArtistDetailView.tsx-106-                  key={g}
+--
+src/components/dsp/ArtistDetailView.tsx-178-                    size="icon"
+src/components/dsp/ArtistDetailView.tsx-179-                    className="absolute bottom-2 right-2 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-all translate-y-1 group-hover:translate-y-0"
+src/components/dsp/ArtistDetailView.tsx:180:                    onClick={(e) => { e.stopPropagation(); const albumTracks = tracks.filter(t => t.albumId === album.id).sort((a, b) => a.trackNumber - b.trackNumber); if (albumTracks.length > 0) setQueue(albumTracks, 0); }}
+src/components/dsp/ArtistDetailView.tsx-181-                  >
+src/components/dsp/ArtistDetailView.tsx-182-                    <Play className="w-3.5 h-3.5 ml-0.5" />
+--
+src/components/dsp/ArtistDetailView.tsx-220-                  <p className="text-xs text-muted-foreground truncate">
+src/components/dsp/ArtistDetailView.tsx-221-                    {track.albumName}
+src/components/dsp/ArtistDetailView.tsx:222:                    {track.composers.length > 0 && ` · ${track.composers[0]}`}
+src/components/dsp/ArtistDetailView.tsx-223-                  </p>
+src/components/dsp/ArtistDetailView.tsx-224-                </div>
+--
+src/components/dsp/ArtistDetailView.tsx-248-                    <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{credit.name}</p>
+src/components/dsp/ArtistDetailView.tsx-249-                    <p className="text-xs text-muted-foreground truncate">
+src/components/dsp/ArtistDetailView.tsx:250:                      {credit.roles.join(', ')}{credit.instruments.length > 0 ? ` (${credit.instruments.join(', ')})` : ''} · {credit.trackCount} tracks
+src/components/dsp/ArtistDetailView.tsx-251-                    </p>
+src/components/dsp/ArtistDetailView.tsx-252-                  </div>
+--
+src/components/dsp/ArtistDetailView.tsx-289-                  <div className={`w-full aspect-square rounded-full bg-gradient-to-br ${getCoverGradient(a.id)} mx-auto mb-2 cover-art-hover`} />
+src/components/dsp/ArtistDetailView.tsx-290-                  <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{a.name}</p>
+src/components/dsp/ArtistDetailView.tsx:291:                  <p className="text-[11px] text-muted-foreground">{a.genres.slice(0, 2).join(', ')}</p>
+src/components/dsp/ArtistDetailView.tsx-292-                </div>
+src/components/dsp/ArtistDetailView.tsx-293-              ))}
+--
+src/components/dsp/BrowseGenresView.tsx-14-  const { navigate } = useUIStore();
+src/components/dsp/BrowseGenresView.tsx-15-  const { setQueue } = usePlayerStore();
+src/components/dsp/BrowseGenresView.tsx:16:  const localTracks = useLocalLibraryStore(s => s.tracks);
+src/components/dsp/BrowseGenresView.tsx-17-
+src/components/dsp/BrowseGenresView.tsx:18:  // Derive genres from local library
+src/components/dsp/BrowseGenresView.tsx-19-  const genreMap = React.useMemo(() => {
+src/components/dsp/BrowseGenresView.tsx-20-    const map = new Map<string, { trackCount: number; albumCount: number; artistCount: number }>();
+--
+src/components/dsp/BrowseGenresView.tsx-25-      const albumKey = `${t.album}|||${t.artist}`;
+src/components/dsp/BrowseGenresView.tsx-26-      const artistKey = t.artist;
+src/components/dsp/BrowseGenresView.tsx:27:      // Simple approximation — we can't count unique albums/artists without more state
+src/components/dsp/BrowseGenresView.tsx-28-      map.set(t.genre, existing);
+src/components/dsp/BrowseGenresView.tsx-29-    }
+--
+src/components/dsp/BrowseGenresView.tsx-64-      trackNumber: t.trackNumber, discNumber: t.discNumber, duration: t.duration, format: t.format,
+src/components/dsp/BrowseGenresView.tsx-65-      bitDepth: t.bitDepth, sampleRate: t.sampleRate, channels: t.channels, bitrate: t.bitrate,
+src/components/dsp/BrowseGenresView.tsx:66:      filePath: t.filePath, fileSize: t.fileSize, composers: [t.composer], performers: [],
+src/components/dsp/BrowseGenresView.tsx-67-      genre: t.genre, loved: false, playCount: 0, source: 'local' as const, isAvailable: true,
+src/components/dsp/BrowseGenresView.tsx-68-    }));
+--
+src/components/dsp/BrowseGenresView.tsx-75-        <div className="flex items-center justify-between mb-6">
+src/components/dsp/BrowseGenresView.tsx-76-          <h1 className="text-2xl font-bold">Genres</h1>
+src/components/dsp/BrowseGenresView.tsx:77:          <Badge variant="secondary" className="text-xs">{genresList.length} genres</Badge>
+src/components/dsp/BrowseGenresView.tsx-78-        </div>
+src/components/dsp/BrowseGenresView.tsx-79-
+--
+src/components/dsp/BrowseGenresView.tsx-81-          <div className="text-center py-12">
+src/components/dsp/BrowseGenresView.tsx-82-            <Music className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+src/components/dsp/BrowseGenresView.tsx:83:            <p className="text-lg text-muted-foreground">No genres found</p>
+src/components/dsp/BrowseGenresView.tsx-84-            <p className="text-sm text-muted-foreground mt-1">Import music to see genre categories</p>
+src/components/dsp/BrowseGenresView.tsx-85-          </div>
+--
+src/components/dsp/BrowseGenresView.tsx-98-                    </div>
+src/components/dsp/BrowseGenresView.tsx-99-                    <Badge variant="secondary" className="text-[10px] bg-white/10 text-white/80 border-white/10">
+src/components/dsp/BrowseGenresView.tsx:100:                      {genre.trackCount} tracks
+src/components/dsp/BrowseGenresView.tsx-101-                    </Badge>
+src/components/dsp/BrowseGenresView.tsx-102-                  </div>
+src/components/dsp/BrowseGenresView.tsx-103-                  <h3 className="text-lg font-bold text-white mb-2">{genre.name}</h3>
+src/components/dsp/BrowseGenresView.tsx-104-                  <div className="flex gap-3 text-xs text-white/60">
+src/components/dsp/BrowseGenresView.tsx:105:                    <span className="flex items-center gap-1"><Disc3 className="w-3 h-3" />~{genre.albumCount} albums</span>
+src/components/dsp/BrowseGenresView.tsx-106-                  </div>
+src/components/dsp/BrowseGenresView.tsx-107-                </CardContent>
+--
+src/components/dsp/PlayerBar.tsx-91-            <Slider value={[isMuted ? 0 : volume]} min={0} max={100} step={1} onValueChange={handleVolumeChange} className="w-20" />
+src/components/dsp/PlayerBar.tsx-92-          </div>
+src/components/dsp/PlayerBar.tsx:93:          {activeZone && <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground" onClick={() => navigate('zones')}><Gauge className="w-3.5 h-3.5" /><span className="hidden sm:inline">{activeZone.name}</span></Button>}
+src/components/dsp/PlayerBar.tsx-94-          <Button variant={queueDrawerOpen ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8" onClick={toggleQueueDrawer}><ListMusic className="w-4 h-4" /></Button>
+src/components/dsp/PlayerBar.tsx-95-        </div>
+--
+src/components/dsp/PlayerBar.tsx-247-              size="sm"
+src/components/dsp/PlayerBar.tsx-248-              className="h-7 gap-1 text-xs text-muted-foreground"
+src/components/dsp/PlayerBar.tsx:249:              onClick={() => navigate('zones')}
+src/components/dsp/PlayerBar.tsx-250-            >
+src/components/dsp/PlayerBar.tsx-251-              <Gauge className="w-3.5 h-3.5" />
+--
+src/components/dsp/PlayerBar.tsx-400-            size="sm"
+src/components/dsp/PlayerBar.tsx-401-            className="h-7 gap-1 text-xs text-muted-foreground"
+src/components/dsp/PlayerBar.tsx:402:            onClick={() => navigate('zones')}
+src/components/dsp/PlayerBar.tsx-403-          >
+src/components/dsp/PlayerBar.tsx-404-            <Gauge className="w-3.5 h-3.5" />
