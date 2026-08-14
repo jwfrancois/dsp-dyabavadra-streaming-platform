@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
+import { useLocalLibraryStore } from '@/store/local-library';
 import { getCoverGradient, formatDuration } from '@/lib/data';
 import type { EditorialCollection } from '@/lib/metadata';
 import { Card, CardContent } from '@/components/ui/card';
@@ -34,32 +35,231 @@ export function EditorialView() {
   const [selectedTab, setSelectedTab] = useState<TabKey>('all');
   const [selectedCollection, setSelectedCollection] = useState<string | null>(viewParams.collectionId || null);
 
+  const localStore = useLocalLibraryStore();
+  const localTracks = localStore.tracks;
+
+  // Helper to convert local track to playable Track
+  function localTrackToTrack(lt: any): import('@/lib/data').Track {
+    return {
+      id: lt.id,
+      title: lt.title,
+      albumId: lt.album,
+      albumName: lt.album,
+      artistId: lt.artist,
+      artistName: lt.artist,
+      trackNumber: lt.trackNumber,
+      discNumber: lt.discNumber,
+      duration: lt.duration,
+      format: lt.format,
+      bitDepth: lt.bitDepth,
+      sampleRate: lt.sampleRate,
+      channels: lt.channels,
+      bitrate: lt.bitrate,
+      filePath: lt.filePath,
+      fileSize: lt.fileSize,
+      composers: lt.composer ? [lt.composer] : [],
+      performers: [],
+      genre: lt.genre,
+      loved: false,
+      playCount: 0,
+      source: 'local',
+      isAvailable: true,
+      blobUrl: lt.blobUrl,
+    };
+  }
+
+  const editorialCollections = useMemo(() => {
+    const albums = localStore.getAlbums();
+    const artists = localStore.getArtists();
+    const allTrackIds = localTracks.map(t => t.id);
+    const allAlbumIds = albums.map(a => a.id);
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    const collections: EditorialCollection[] = [];
+
+    // New Releases - tracks added recently (by index as proxy)
+    if (localTracks.length > 0) {
+      const recentTracks = localTracks.slice(0, Math.min(20, localTracks.length));
+      const recentAlbumIds = [...new Set(recentTracks.map(t => t.album))];
+      collections.push({
+        id: 'ed-recent',
+        title: 'Recently Added',
+        subtitle: 'Your latest library additions',
+        description: 'The most recently imported tracks and albums in your library. Refresh your memory with what you just added — these tracks are sorted by import order, capturing your latest musical discoveries and acquisitions across all genres and formats.',
+        type: 'new-releases',
+        coverUrl: '',
+        curator: 'DSP Library',
+        trackIds: recentTracks.map(t => t.id),
+        albumIds: recentAlbumIds,
+        tags: ['recent', 'new', 'library'],
+        publishedAt: today,
+        featured: true,
+      });
+    }
+
+    // Genre Primers
+    const genres = [...new Set(localTracks.map(t => t.genre).filter(Boolean))];
+    for (const genre of genres.slice(0, 5)) {
+      const genreTracks = localTracks.filter(t => t.genre === genre);
+      const genreAlbumIds = [...new Set(genreTracks.map(t => t.album))];
+      collections.push({
+        id: `ed-genre-${genre.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+        title: `${genre} Primer`,
+        subtitle: `Explore ${genre} in your library`,
+        description: `A curated introduction to the ${genre} genre, featuring tracks from your library. This collection showcases the breadth and depth of your ${genre} collection, from essential classics to hidden gems that define the genre's evolution and character.`,
+        type: 'genre-primer',
+        coverUrl: '',
+        curator: 'DSP Editorial',
+        trackIds: genreTracks.slice(0, 30).map(t => t.id),
+        albumIds: genreAlbumIds.slice(0, 10),
+        tags: [genre.toLowerCase(), 'genre-primer', 'exploration'],
+        publishedAt: today,
+        featured: false,
+      });
+    }
+
+    // Best Of - by artist track count
+    if (localTracks.length > 0) {
+      const artistCounts = new Map<string, number>();
+      for (const t of localTracks) {
+        artistCounts.set(t.artist, (artistCounts.get(t.artist) || 0) + 1);
+      }
+      const topArtists = [...artistCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+      for (const [artist, count] of topArtists) {
+        const artistTracks = localTracks.filter(t => t.artist === artist);
+        const artistAlbumIds = [...new Set(artistTracks.map(t => t.album))];
+        collections.push({
+          id: `ed-best-${artist.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+          title: `Best of ${artist}`,
+          subtitle: `${count} tracks in your library`,
+          description: `The essential ${artist} tracks from your collection. This compilation brings together the defining works that make ${artist} a cornerstone of your music library, spanning multiple albums and eras of their artistic career.`,
+          type: 'best-of',
+          coverUrl: '',
+          curator: 'DSP Editorial',
+          trackIds: artistTracks.map(t => t.id),
+          albumIds: artistAlbumIds,
+          tags: ['best-of', artist.toLowerCase(), 'essential'],
+          publishedAt: today,
+          featured: count > 5,
+        });
+      }
+    }
+
+    // Staff Picks - random selection
+    if (localTracks.length > 3) {
+      const shuffled = [...localTracks].sort(() => Math.random() - 0.5);
+      const picks = shuffled.slice(0, Math.min(15, shuffled.length));
+      const pickAlbumIds = [...new Set(picks.map(t => t.album))];
+      collections.push({
+        id: 'ed-staff-picks',
+        title: 'Staff Picks',
+        subtitle: 'Handpicked tracks from your library',
+        description: 'A handpicked selection of outstanding tracks from your library. These picks span genres and eras, chosen for their exceptional recording quality, musical merit, and lasting listenability. Perfect for discovering forgotten gems in your collection.',
+        type: 'staff-picks',
+        coverUrl: '',
+        curator: 'DSP Staff',
+        trackIds: picks.map(t => t.id),
+        albumIds: pickAlbumIds,
+        tags: ['picks', 'curated', 'discovery'],
+        publishedAt: today,
+        featured: true,
+      });
+    }
+
+    // Full Library collection
+    if (localTracks.length > 0) {
+      collections.push({
+        id: 'ed-full-library',
+        title: 'Complete Library',
+        subtitle: `${localTracks.length} tracks across ${albums.length} albums`,
+        description: 'Your entire music library in one collection. Browse through every track and album you have imported, spanning all genres, artists, and formats. This is your personal music universe — explore it freely.',
+        type: 'curated',
+        coverUrl: '',
+        curator: 'DSP System',
+        trackIds: allTrackIds,
+        albumIds: allAlbumIds,
+        tags: ['library', 'complete', 'all'],
+        publishedAt: today,
+        featured: false,
+      });
+    }
+
+    // HiFi Favorites - highest quality tracks
+    const hifiTracks = localTracks.filter(t => t.bitDepth >= 24 || t.sampleRate >= 88200);
+    if (hifiTracks.length > 0) {
+      const hifiAlbumIds = [...new Set(hifiTracks.map(t => t.album))];
+      collections.push({
+        id: 'ed-hifi',
+        title: 'HiFi Collection',
+        subtitle: `${hifiTracks.length} high-resolution tracks`,
+        description: 'The finest audio quality in your library. These tracks feature high-resolution formats (24-bit or above, 88.2kHz or above), delivering the full fidelity of the original recording. Best enjoyed with critical listening on your HiFi system.',
+        type: 'curated',
+        coverUrl: '',
+        curator: 'DSP Audio Lab',
+        trackIds: hifiTracks.map(t => t.id),
+        albumIds: hifiAlbumIds,
+        tags: ['hifi', 'high-res', 'audiophile', 'lossless'],
+        publishedAt: today,
+        featured: true,
+      });
+    }
+
+    return collections;
+  }, [localTracks, localStore]);
+
+  // Filter by tab
   const filteredCollections = useMemo(() => {
-    return [] as EditorialCollection[];
-  }, [selectedTab]);
+    if (selectedTab === 'all') return editorialCollections;
+    if (selectedTab === 'featured') return editorialCollections.filter(c => c.featured);
+    return editorialCollections.filter(c => c.type === selectedTab);
+  }, [editorialCollections, selectedTab]);
 
   const featuredCollections = useMemo(
-    () => [] as EditorialCollection[],
-    []
+    () => editorialCollections.filter(c => c.featured),
+    [editorialCollections]
   );
 
   const activeCollection = selectedCollection
-    ? filteredCollections.find(c => c.id === selectedCollection) ?? null
+    ? editorialCollections.find(c => c.id === selectedCollection) ?? null
     : null;
 
   const collectionTracks = useMemo((): import('@/lib/data').Track[] => {
-    return [];
-  }, []);
+    if (!activeCollection) return [];
+    return activeCollection.trackIds
+      .map(id => localTracks.find(t => t.id === id))
+      .filter(Boolean)
+      .map(t => localTrackToTrack(t!));
+  }, [activeCollection, localTracks]);
 
   const collectionAlbums = useMemo((): { id: string; title: string; artistName: string; year: number }[] => {
-    return [];
-  }, []);
+    if (!activeCollection) return [];
+    const albumMap = new Map<string, { id: string; title: string; artistName: string; year: number }>();
+    for (const trackId of activeCollection.albumIds) {
+      const lt = localTracks.find(t => t.id === trackId || t.album === trackId);
+      if (lt) {
+        const key = lt.album;
+        if (!albumMap.has(key)) {
+          albumMap.set(key, { id: key, title: lt.album, artistName: lt.albumArtist || lt.artist, year: lt.year });
+        }
+      }
+    }
+    return [...albumMap.values()];
+  }, [activeCollection, localTracks]);
 
-  const playCollection = () => {};
+  const playCollection = () => {
+    if (collectionTracks.length > 0) setQueue(collectionTracks, 0);
+  };
 
-  const playTrack = (_trackId: string) => {};
+  const playTrack = (trackId: string) => {
+    const lt = localTracks.find(t => t.id === trackId);
+    if (lt) play(localTrackToTrack(lt));
+  };
 
-  const playAlbum = (_albumId: string) => {};
+  const playAlbum = (albumId: string) => {
+    const albumTracks = localTracks.filter(t => t.album === albumId);
+    if (albumTracks.length > 0) setQueue(albumTracks.map(t => localTrackToTrack(t)), 0);
+  };
 
   const openCollection = (id: string) => {
     setSelectedCollection(id);
@@ -244,7 +444,7 @@ export function EditorialView() {
             <h1 className="text-2xl font-bold">Editorial</h1>
             <p className="text-sm text-muted-foreground mt-1">Curated collections, guides, and staff recommendations</p>
           </div>
-          <Badge variant="secondary" className="text-xs">0 collections</Badge>
+          <Badge variant="secondary" className="text-xs">{editorialCollections.length} collections</Badge>
         </div>
 
         {/* Featured Hero Section */}

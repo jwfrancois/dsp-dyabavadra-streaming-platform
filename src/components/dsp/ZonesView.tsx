@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { usePlayerStore } from '@/store/player';
+import { useDSPEngineStore } from '@/store/dsp-engine';
 import { formatSampleRate, getCoverGradient } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,23 @@ import {
 export function ZonesView() {
   const { activeZoneId, setActiveZone, isPlaying } = usePlayerStore();
 
-  const zonesList: any[] = [];
+  const dspEngine = useDSPEngineStore();
+  const zonesList: any[] = React.useMemo(() => {
+    const zoneIds = Object.keys(dspEngine.zoneConfigs);
+    if (zoneIds.length === 0) {
+      return [
+        { id: 'zone-1', name: 'Main Listening Room', endpoints: [{ id: 'ep-1', name: 'USB DAC (Main)', dac: 'ESS Sabre ES9038Q2M', status: 'online' }], isGroup: false, isPlaying: false, volume: 75, isMuted: false, isOnline: true },
+        { id: 'zone-2', name: 'Study', endpoints: [{ id: 'ep-2', name: 'Bluetooth Speaker', dac: 'Built-in', status: 'standby' }], isGroup: false, isPlaying: false, volume: 50, isMuted: false, isOnline: true },
+        { id: 'zone-3', name: 'Kitchen', endpoints: [{ id: 'ep-3', name: 'Kitchen Speaker', dac: 'Built-in', status: 'online' }], isGroup: false, isPlaying: false, volume: 40, isMuted: false, isOnline: true },
+      ];
+    }
+    return zoneIds.map(id => ({
+      id,
+      name: id === 'zone-1' ? 'Main Listening Room' : id === 'zone-2' ? 'Study' : `Zone ${id.replace('zone-', '')}`,
+      endpoints: [{ id: `ep-${id}`, name: 'Default Output', dac: 'Built-in DAC', status: 'online' as const }],
+      isGroup: false, isPlaying: false, volume: 75, isMuted: false, isOnline: true,
+    }));
+  }, [dspEngine.zoneConfigs]);
 
   return (
     <ScrollArea className="h-full">
@@ -39,7 +56,7 @@ export function ZonesView() {
         <div className="grid md:grid-cols-2 gap-4">
           {zonesList.map((zone: any) => {
             const isActive = zone.id === activeZoneId;
-            const currentTrack = zone.currentTrackId ? undefined : null;
+            const currentTrack = zone.currentTrackId ? null : null;
 
             return (
               <Card

@@ -80,8 +80,30 @@ export function DSPConfigView() {
     'auto' as const,
   );
 
-  const selectedZone = undefined as any;
-  const zonesList: any[] = [];
+  // Replace zonesList with actual zone data from the DSP store
+  const zonesList = React.useMemo(() => {
+    const zoneIds = Object.keys(engine.zoneConfigs);
+    return zoneIds.length > 0 ? zoneIds.map(id => ({
+      id,
+      name: id === 'zone-1' ? 'Main Listening Room' : id === 'zone-2' ? 'Study' : id === 'zone-3' ? 'Kitchen' : `Zone ${id.replace('zone-', '')}`,
+      endpoints: [{ dac: id === 'zone-1' ? 'ESS Sabre ES9038Q2M' : 'Built-in DAC', name: id === 'zone-1' ? 'USB DAC (Main)' : 'Default Output', status: 'online' as const, clockSource: 'internal' as const, maxSampleRate: 384000, latencyMs: 1.2 }],
+      outputFormat: 'PCM',
+      sampleRate: 44100,
+      bitDepth: 32,
+      dspEnabled: false,
+      dspChain: [] as string[],
+      isGroup: false,
+      volume: 75,
+      volumeMode: 'hardware' as const,
+      isPlaying: false,
+      isMuted: false,
+      isOnline: true,
+      currentTrackId: undefined,
+      syncOffsetMs: 0,
+    })) : [];
+  }, [engine.zoneConfigs]);
+
+  const selectedZone = selectedZoneId ? zonesList.find(z => z.id === selectedZoneId) : zonesList[0] || null;
 
   // ─── Helpers ───
 
@@ -128,6 +150,11 @@ export function DSPConfigView() {
         [key]: { ...(mod as Record<string, unknown>), enabled: !(mod as Record<string, unknown>).enabled },
       };
     });
+    // Also persist to DSP engine store
+    const zoneId = selectedZoneId || zonesList[0]?.id;
+    if (zoneId) {
+      engine.toggleDSPModule(zoneId, key);
+    }
   };
 
   const bandTypeColor = (type: string) => {
@@ -306,6 +333,7 @@ export function DSPConfigView() {
                   }
                   onClick={() => {
                     setSelectedZoneId(zone.id);
+                    engine.selectZone(zone.id);
                     setDspConfig(zone.dspConfig ?? defaultDSPConfig);
                     setVolumeMode(zone.volumeMode ?? 'dsp');
                     setMaxVolume(zone.maxVolume ?? 85);
@@ -742,7 +770,7 @@ export function DSPConfigView() {
               )}
             </button>
 
-            {expandedSections.clock && (
+            {expandedSections.clock && selectedZone && (
               <div className="mt-4 space-y-4">
                 {/* Clock Mode */}
                 <div>
@@ -783,7 +811,7 @@ export function DSPConfigView() {
                 </div>
 
                 {/* Sync Status for Grouped Zones */}
-                {selectedZone?.isGroup && (
+                {selectedZone.isGroup && (
                   <>
                     <Separator className="bg-border" />
                     <div className="flex items-center justify-between">
@@ -803,7 +831,7 @@ export function DSPConfigView() {
                 )}
 
                 {/* Endpoint Clock Info */}
-                {selectedZone?.endpoints.map(ep => (
+                {selectedZone.endpoints.map(ep => (
                   <div key={ep.id} className="p-3 rounded-lg bg-surface/50 border border-border">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-medium text-foreground">{ep.name}</span>

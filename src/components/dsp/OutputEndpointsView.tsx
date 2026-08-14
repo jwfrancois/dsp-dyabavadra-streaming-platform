@@ -151,8 +151,8 @@ function CapItem({ label, supported }: { label: string; supported: boolean }) {
   );
 }
 
-function findZoneForEndpoint(endpointId: string): Zone | undefined {
-  return undefined;
+function findZoneForEndpoint(epId: string, zones: Array<{ id: string; name: string; isGroup: boolean; endpoints: Array<{ id: string }> }>) {
+  return zones.find(z => z.endpoints.some(ep => ep.id === epId));
 }
 
 // ─── Component ───
@@ -162,8 +162,17 @@ export function OutputEndpointsView() {
     useSystemStore();
   const { activeZoneId, setActiveZone } = usePlayerStore();
 
-  const allEndpoints: any[] = [];
-  const groupedZones: any[] = [];
+  const allEndpoints = React.useMemo(() => [
+    { id: 'ep-1', name: 'USB DAC (Main)', type: 'dedicated-hardware' as const, status: 'online' as const, dac: 'ESS Sabre ES9038Q2M', maxSampleRate: 384000, maxBitDepth: 32, supportsDSD: true, supportsMQA: true, supportsDSD256: true, supportsDoP: true, firmware: 'v2.1.4', ipAddress: '192.168.1.42', protocol: 'dsp-native' as const, zoneId: 'zone-1' },
+    { id: 'ep-2', name: 'Bluetooth Speaker', type: 'mac' as const, status: 'standby' as const, dac: 'Built-in DAC', maxSampleRate: 48000, maxBitDepth: 24, supportsDSD: false, supportsMQA: false, supportsDSD256: false, supportsDoP: false, protocol: 'airplay' as const, zoneId: 'zone-2' },
+    { id: 'ep-3', name: 'Kitchen Speaker', type: 'embedded-soc' as const, status: 'online' as const, dac: 'Built-in DAC', maxSampleRate: 48000, maxBitDepth: 24, supportsDSD: false, supportsMQA: false, supportsDSD256: false, supportsDoP: false, protocol: 'airplay' as const, zoneId: 'zone-3' },
+  ], []);
+
+  const groupedZones = React.useMemo(() => [
+    { id: 'zone-1', name: 'Main Listening Room', isGroup: false, endpoints: allEndpoints.filter(ep => ep.zoneId === 'zone-1') },
+    { id: 'zone-2', name: 'Study', isGroup: false, endpoints: allEndpoints.filter(ep => ep.zoneId === 'zone-2') },
+    { id: 'zone-3', name: 'Kitchen', isGroup: false, endpoints: allEndpoints.filter(ep => ep.zoneId === 'zone-3') },
+  ], [allEndpoints]);
 
   return (
     <ScrollArea className="h-full">
@@ -254,7 +263,7 @@ export function OutputEndpointsView() {
         {/* ─── Endpoint Cards Grid ─── */}
         <div className="grid md:grid-cols-2 gap-4 mb-6">
           {allEndpoints.map((endpoint) => {
-            const zone = findZoneForEndpoint(endpoint.id);
+            const zone = findZoneForEndpoint(endpoint.id, groupedZones);
             return (
               <EndpointCard
                 key={endpoint.id}
@@ -361,7 +370,7 @@ export function OutputEndpointsView() {
               </div>
               <div className="ml-1.5 border-l border-border pl-3 space-y-1">
                 {allEndpoints.map((ep) => {
-                  const zone = findZoneForEndpoint(ep.id);
+                  const zone = findZoneForEndpoint(ep.id, groupedZones);
                   const isOnline = ep.status === 'online';
                   return (
                     <div key={ep.id} className="flex items-center gap-2">

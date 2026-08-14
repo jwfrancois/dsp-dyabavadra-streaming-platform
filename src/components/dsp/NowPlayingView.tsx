@@ -12,12 +12,14 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
+import { useLyrics } from '@/lib/use-music-metadata';
 import {
   Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Repeat1,
   Volume2, VolumeX, Volume1, Heart, ListMusic, Share2,
-  ArrowLeft, ChevronRight, Gauge, Zap, CheckCircle2, AlertCircle,
-  Radio, Disc3, Maximize2,
+  ArrowLeft, Gauge, AlertCircle, Music,
+  Radio, Disc3,
 } from 'lucide-react';
+import { useProfilesStore } from '@/store/profiles';
 
 export function NowPlayingView() {
   const {
@@ -28,13 +30,20 @@ export function NowPlayingView() {
   } = usePlayerStore();
   const { navigate } = useUIStore();
   const { isPodcastMode, currentEpisode, playbackSpeed, cyclePlaybackSpeed } = usePodcastStore();
-  const activeZone = undefined as any;
-  const signalPath: any[] = [];
-  const isBitPerfect = signalPath.length > 0 && signalPath.every((s: any) => s.isBitPerfect);
+  const toggleLoveTrack = useProfilesStore(s => s.toggleLoveTrack);
+  const isTrackLoved = useProfilesStore(s => s.isTrackLoved);
+  const { data: lyricsData, loading: lyricsLoading } = useLyrics(currentTrack?.artistName || '', currentTrack?.title || '');
+  const activeZone = activeZoneId ? {
+    id: activeZoneId,
+    name: activeZoneId === 'zone-1' ? 'Main Listening Room' : activeZoneId === 'zone-2' ? 'Study' : `Zone ${activeZoneId}`,
+    endpoints: [{ dac: 'ESS Sabre ES9038Q2M' }],
+    dspEnabled: false,
+    dspChain: [],
+  } : null;
 
   // Podcast mode rendering
   if (isPodcastMode && currentEpisode) {
-    const show = undefined as any;
+    const show = currentEpisode ? { title: currentEpisode.showId.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) } : null;
     const dur = duration > 0 ? duration : currentEpisode.duration;
     const prog = dur > 0 ? (currentTime / dur) * 100 : 0;
 
@@ -121,8 +130,6 @@ export function NowPlayingView() {
       </div>
     );
   }
-
-  const albumTracks: any[] = [];
 
   return (
     <ScrollArea className="h-full">
@@ -214,14 +221,19 @@ export function NowPlayingView() {
 
               {/* Action Buttons */}
               <div className="flex items-center justify-center gap-2 mt-2">
-                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-muted-foreground">
-                  <Heart className={`w-4 h-4 ${currentTrack.loved ? 'fill-red-500 text-red-500' : ''}`} />
-                  {currentTrack.loved ? 'Loved' : 'Love'}
+                <Button variant="ghost" size="sm" className={`h-8 gap-1.5 ${isTrackLoved(currentTrack.id) ? 'text-red-500' : 'text-muted-foreground'}`} onClick={() => toggleLoveTrack(currentTrack.id)}>
+                  <Heart className={`w-4 h-4 ${isTrackLoved(currentTrack.id) ? 'fill-red-500 text-red-500' : ''}`} />
+                  {isTrackLoved(currentTrack.id) ? 'Loved' : 'Love'}
                 </Button>
-                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-muted-foreground">
+                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-muted-foreground" onClick={() => navigate('radio')}>
                   <Radio className="w-4 h-4" /> Radio
                 </Button>
-                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-muted-foreground">
+                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-muted-foreground" onClick={() => {
+                  const info = `🎵 ${currentTrack.title} — ${currentTrack.artistName} (${currentTrack.albumName})`;
+                  navigator.clipboard.writeText(info).then(() => {
+                    // Could add a toast notification here
+                  }).catch(() => {});
+                }}>
                   <Share2 className="w-4 h-4" /> Share
                 </Button>
               </div>
@@ -237,39 +249,12 @@ export function NowPlayingView() {
                   <h3 className="text-sm font-semibold flex items-center gap-2">
                     <Gauge className="w-4 h-4 text-primary" /> Signal Path
                   </h3>
-                  {isBitPerfect ? (
-                    <Badge className="text-[10px] bg-signal-green text-white"><CheckCircle2 className="w-3 h-3 mr-0.5" /> Bit-Perfect</Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-[10px] text-signal-amber"><AlertCircle className="w-3 h-3 mr-0.5" /> Processing</Badge>
-                  )}
+                  <Badge variant="outline" className="text-[10px] text-signal-amber"><AlertCircle className="w-3 h-3 mr-0.5" /> Processing</Badge>
                 </div>
 
                 {/* Signal path chain */}
                 <div className="space-y-2">
-                  {signalPath.map((step, i) => (
-                    <div key={i}>
-                      <div className="flex items-center gap-3 p-2.5 rounded-lg bg-surface/50">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step.isBitPerfect ? 'bg-signal-green/10' : 'bg-signal-amber/10'}`}>
-                          {step.isBitPerfect ? (
-                            <CheckCircle2 className="w-4 h-4 text-signal-green" />
-                          ) : (
-                            <Zap className="w-4 h-4 text-signal-amber" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium">{step.label}</p>
-                          <p className="text-[11px] text-muted-foreground font-mono">
-                            {step.format} · {formatSampleRate(step.sampleRate)} · {step.bitDepth}-bit
-                          </p>
-                        </div>
-                      </div>
-                      {i < signalPath.length - 1 && (
-                        <div className="flex items-center justify-center py-0.5">
-                          <ChevronRight className="w-3 h-3 text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                  <p className="text-xs text-muted-foreground text-center py-4">Signal path visualization will appear when DSP is configured.</p>
                 </div>
               </CardContent>
             </Card>
@@ -346,6 +331,31 @@ export function NowPlayingView() {
                     </div>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Lyrics */}
+            <Card className="bg-card border-border">
+              <CardContent className="p-4">
+                <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                  <Music className="w-4 h-4 text-primary" /> Lyrics
+                </h3>
+                {lyricsLoading && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    Fetching lyrics...
+                  </div>
+                )}
+                {lyricsData && !lyricsLoading ? (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground leading-relaxed">{lyricsData.preview}</p>
+                    <a href={lyricsData.fullLyricsUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                      View full lyrics on {lyricsData.sourceName}
+                    </a>
+                  </div>
+                ) : !lyricsLoading ? (
+                  <p className="text-xs text-muted-foreground">Lyrics not available for this track</p>
+                ) : null}
               </CardContent>
             </Card>
           </div>

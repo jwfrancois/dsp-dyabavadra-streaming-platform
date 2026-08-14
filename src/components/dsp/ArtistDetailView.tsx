@@ -9,9 +9,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useArtistBio, useDiscography } from '@/lib/use-music-metadata';
 import {
   Play, ArrowLeft, Clock, Heart, Mic, User,
-  Music, Star, ChevronRight, Radio, HardDrive,
+  Music, Star, ChevronRight, Radio, HardDrive, BookOpen,
 } from 'lucide-react';
 
 /** Convert a LocalTrack to the Track format for the player queue */
@@ -54,6 +55,8 @@ export function ArtistDetailView() {
     if (!artistId || !artistId.startsWith('local-artist-')) return null;
     return artistId.replace(/^local-artist-/, '');
   }, [artistId]);
+
+  const { data: artistBio, loading: bioLoading, error: bioError } = useArtistBio(artistName || '');
 
   // Get all tracks for this artist from the local library
   const artistLocalTracks = React.useMemo(() => {
@@ -225,6 +228,40 @@ export function ArtistDetailView() {
               </CardContent>
             </Card>
           ))}
+        </div>
+
+        {/* Artist Biography */}
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold mb-4">About {artistName}</h2>
+          {bioLoading && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              Fetching biography...
+            </div>
+          )}
+          {bioError && (
+            <p className="text-xs text-muted-foreground">Unable to fetch biography: {bioError}</p>
+          )}
+          {artistBio && !bioLoading && (
+            <div className="space-y-4">
+              {artistBio.summaries.map((s, i) => (
+                <Card key={i} className="bg-card border-border">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground mb-1">{s.source}</p>
+                        <h3 className="text-sm font-medium mb-2">{s.title}</h3>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{s.snippet}</p>
+                      </div>
+                      <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex-shrink-0">
+                        Read more
+                      </a>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Discography */}

@@ -389,13 +389,13 @@ export function SystemHealthView() {
                 <span>Library Size</span>
               </div>
               <span className="font-mono text-emerald-400 font-medium">
-                {libraryStats.totalTracks.toLocaleString()} / 100,000 tracks
+                {libraryStats?.totalTracks?.toLocaleString() ?? '0'} / 100,000 tracks
               </span>
             </div>
             <div className="h-2.5 rounded-full bg-emerald-500/20">
               <div
                 className="h-full rounded-full bg-emerald-500 transition-all duration-700"
-                style={{ width: `${(libraryStats.totalTracks / 100000) * 100}%` }}
+                style={{ width: `${((libraryStats?.totalTracks ?? 0) / 100000) * 100}%` }}
               />
             </div>
           </div>

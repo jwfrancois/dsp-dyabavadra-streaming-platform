@@ -1,0 +1,608 @@
+     1→'use client';
+     2→
+     3→import React, { useMemo } from 'react';
+     4→import { usePlayerStore } from '@/store/player';
+     5→import { useDSPEngineStore } from '@/store/dsp-engine';
+     6→import { getSignalPathSteps } from '@/lib/dsp/audio-engine';
+     7→import {
+     8→  formatDuration,
+     9→  formatSampleRate,
+    10→  getCoverGradient,
+    11→} from '@/lib/data';
+    12→import { Card, CardContent } from '@/components/ui/card';
+    13→import { Badge } from '@/components/ui/badge';
+    14→import { Button } from '@/components/ui/button';
+    15→import { ScrollArea } from '@/components/ui/scroll-area';
+    16→import { Separator } from '@/components/ui/separator';
+    17→import {
+    18→  ArrowLeft,
+    19→  CheckCircle2,
+    20→  AlertCircle,
+    21→  Zap,
+    22→  ChevronRight,
+    23→  Gauge,
+    24→  Activity,
+    25→  Clock,
+    26→  Wifi,
+    27→  Disc3,
+    28→  AudioWaveform,
+    29→  MonitorSpeaker,
+    30→  Info,
+    31→  ArrowDown,
+    32→} from 'lucide-react';
+    33→import type { SignalPathStep } from '@/lib/data';
+    34→
+    35→// ─── Helpers ───────────────────────────────────────────────────────────────────
+    36→
+    37→function stepChangesFormat(step: SignalPathStep, prevStep?: SignalPathStep): boolean {
+    38→  if (!prevStep) return false;
+    39→  return (
+    40→    step.format !== prevStep.format ||
+    41→    step.sampleRate !== prevStep.sampleRate ||
+    42→    step.bitDepth !== prevStep.bitDepth
+    43→  );
+    44→}
+    45→
+    46→function getBreakdownItems(steps: SignalPathStep[]): { label: string; reason: string; suggestion: string }[] {
+    47→  const items: { label: string; reason: string; suggestion: string }[] = [];
+    48→  const nonBitPerfect = steps.filter(s => !s.isBitPerfect);
+    49→
+    50→  for (const step of nonBitPerfect) {
+    51→    if (step.label === 'Volume Control') {
+    52→      items.push({
+    53→        label: step.label,
+    54→        reason: 'Digital volume attenuation is active, modifying sample values before output.',
+    55→        suggestion: 'Switch to hardware volume control or set DSP volume to 0 dB to restore bit-perfect output.',
+    56→      });
+    57→    } else if (step.label === 'Sample Rate Conversion') {
+    58→      items.push({
+    59→        label: step.label,
+    60→        reason: 'Audio is being resampled to match the endpoint\u2019s native rate.',
+    61→        suggestion: 'Disable SRC in DSP settings or use an endpoint that supports the source sample rate natively.',
+    62→      });
+    63→    } else if (step.label === 'Room Correction') {
+    64→      items.push({
+    65→        label: step.label,
+    66→        reason: 'Convolution filter is applied to compensate for room acoustics.',
+    67→        suggestion: 'Disable room correction to pass the bitstream unmodified.',
+    68→      });
+    69→    } else if (step.label.includes('EQ') || step.label.includes('Equalizer')) {
+    70→      items.push({
+    71→        label: step.label,
+    72→        reason: 'Frequency response is being altered by the equalizer.',
+    73→        suggestion: 'Set the EQ to flat/bypass to preserve the original signal.',
+    74→      });
+    75→    } else if (step.label.includes('Loudness')) {
+    76→      items.push({
+    77→        label: step.label,
+    78→        reason: 'Loudness compensation is applying dynamic gain curves.',
+    79→        suggestion: 'Disable loudness processing in zone DSP settings.',
+    80→      });
+    81→    } else if (step.label.includes('Upsampling') || step.label.includes('SRC')) {
+    82→      items.push({
+    83→        label: step.label,
+    84→        reason: step.processingDetail ?? 'Sample rate conversion is in progress.',
+    85→        suggestion: 'Disable upsampling/SRC in DSP configuration.',
+    86→      });
+    87→    } else if (step.label.includes('DSD')) {
+    88→      items.push({
+    89→        label: step.label,
+    90→        reason: step.processingDetail ?? 'DSD-to-PCM or PCM-to-DSD conversion is active.',
+    91→        suggestion: 'Use a DAC that supports native DSD to avoid conversion.',
+    92→      });
+    93→    } else {
+    94→      items.push({
+    95→        label: step.label,
+    96→        reason: step.processingDetail ?? 'This stage is modifying the audio signal.',
+    97→        suggestion: 'Disable or bypass this processing stage.',
+    98→      });
+    99→    }
+   100→  }
+   101→  return items;
+   102→}
+   103→
+   104→// ─── Connector ────────────────────────────────────────────────────────────────
+   105→
+   106→function StepConnector() {
+   107→  return (
+   108→    <div className="flex flex-col items-center py-1">
+   109→      <div className="w-px h-4 bg-border" />
+   110→      <ArrowDown className="w-3 h-3 text-muted-foreground -mt-0.5 -mb-0.5" />
+   111→      <div className="w-px h-4 bg-border" />
+   112→    </div>
+   113→  );
+   114→}
+   115→
+   116→// ─── Signal Path Step Card ───────────────────────────────────────────────────
+   117→
+   118→function PathStepCard({
+   119→  step,
+   120→  prevStep,
+   121→  isLast,
+   122→}: {
+   123→  step: SignalPathStep;
+   124→  prevStep?: SignalPathStep;
+   125→  isLast: boolean;
+   126→}) {
+   127→  const changesFmt = stepChangesFormat(step, prevStep);
+   128→  const isProcessing = !step.isBitPerfect;
+   129→
+   130→  return (
+   131→    <>
+   132→      <div
+   133→        className={`
+   134→          relative rounded-xl p-4 transition-colors
+   135→          ${changesFmt ? 'border-l-2 border-l-primary' : 'border-l-2 border-l-transparent'}
+   136→          ${isProcessing
+   137→            ? 'bg-signal-amber/[0.04] ring-1 ring-signal-amber/20'
+   138→            : 'bg-signal-green/[0.03] ring-1 ring-signal-green/15'}
+   139→        `}
+   140→      >
+   141→        {/* Top row: status icon + label + latency */}
+   142→        <div className="flex items-start gap-3">
+   143→          {/* Status icon */}
+   144→          <div
+   145→            className={`
+   146→              w-9 h-9 rounded-full flex items-center justify-center shrink-0 mt-0.5
+   147→              ${isProcessing ? 'bg-signal-amber/10' : 'bg-signal-green/10'}
+   148→            `}
+   149→          >
+   150→            {isProcessing ? (
+   151→              <Zap className="w-4 h-4 text-signal-amber" />
+   152→            ) : (
+   153→              <CheckCircle2 className="w-4 h-4 text-signal-green" />
+   154→            )}
+   155→          </div>
+   156→
+   157→          <div className="flex-1 min-w-0">
+   158→            <div className="flex items-center gap-2 flex-wrap">
+   159→              <span className="text-sm font-medium">{step.label}</span>
+   160→              {/* DSD mode */}
+   161→              {step.dsdMode && (
+   162→                <Badge variant="outline" className="text-[10px] font-mono border-purple-500/40 text-purple-400">
+   163→                  DSD {step.dsdMode}
+   164→                </Badge>
+   165→              )}
+   166→              {/* Dither type */}
+   167→              {step.ditherType && step.ditherType !== 'none' && (
+   168→                <Badge variant="outline" className="text-[10px] font-mono border-sky-500/40 text-sky-400">
+   169→                  Dither: {step.ditherType}
+   170→                </Badge>
+   171→              )}
+   172→              {/* Filter type */}
+   173→              {step.filterType && (
+   174→                <Badge variant="outline" className="text-[10px] font-mono border-emerald-500/40 text-emerald-400">
+   175→                  Filter: {step.filterType}
+   176→                </Badge>
+   177→              )}
+   178→              {changesFmt && (
+   179→                <Badge className="text-[10px] bg-primary/80 text-primary-foreground">
+   180→                  <AudioWaveform className="w-2.5 h-2.5 mr-0.5" /> Format Change
+   181→                </Badge>
+   182→              )}
+   183→            </div>
+   184→
+   185→            {/* Technical values */}
+   186→            <div className="flex items-center gap-2 mt-1 font-mono text-xs text-muted-foreground">
+   187→              <span className={isProcessing ? 'text-signal-amber' : 'text-signal-green'}>
+   188→                {step.format}
+   189→              </span>
+   190→              <ChevronRight className="w-2.5 h-2.5 text-muted-foreground/50" />
+   191→              <span className={isProcessing ? 'text-signal-amber' : 'text-signal-green'}>
+   192→                {formatSampleRate(step.sampleRate)}
+   193→              </span>
+   194→              <ChevronRight className="w-2.5 h-2.5 text-muted-foreground/50" />
+   195→              <span className={isProcessing ? 'text-signal-amber' : 'text-signal-green'}>
+   196→                {step.bitDepth}-bit
+   197→              </span>
+   198→            </div>
+   199→
+   200→            {/* Processing detail */}
+   201→            {step.processingDetail && (
+   202→              <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
+   203→                {step.processingDetail}
+   204→              </p>
+   205→            )}
+   206→
+   207→            {/* Latency */}
+   208→            {step.latencyMs != null && step.latencyMs > 0 && (
+   209→              <div className="flex items-center gap-1.5 mt-1.5">
+   210→                <Clock className="w-3 h-3 text-muted-foreground/60" />
+   211→                <span className="text-[10px] font-mono text-muted-foreground">
+   212→                  {step.latencyMs.toFixed(1)} ms latency
+   213→                </span>
+   214→              </div>
+   215→            )}
+   216→          </div>
+   217→        </div>
+   218→      </div>
+   219→
+   220→      {/* Connector to next step */}
+   221→      {!isLast && <StepConnector />}
+   222→    </>
+   223→  );
+   224→}
+   225→
+   226→// ─── Main Component ───────────────────────────────────────────────────────────
+   227→
+   228→export function SignalPathView() {
+   229→  const { currentTrack, activeZoneId } = usePlayerStore();
+   230→  const dspStore = useDSPEngineStore(s => s);
+   231→  const activeZoneId_actual = activeZoneId || dspStore.selectedZoneId;
+   232→
+   233→  // Get real signal path from DSP engine
+   234→  const steps = useMemo(() => {
+   235→    if (!currentTrack) return [];
+   236→    const zoneConfig = dspStore.getZoneConfig(activeZoneId_actual);
+   237→    return getSignalPathSteps(currentTrack.format, currentTrack.sampleRate, currentTrack.bitDepth);
+   238→  }, [currentTrack, dspStore, activeZoneId_actual]);
+   239→
+   240→  const isBitPerfect = steps.length > 0 && steps.every(s => s.isBitPerfect);
+   241→  const breakdownItems = steps.length > 0 ? getBreakdownItems(steps as SignalPathStep[]) : [];
+   242→
+   243→  // Summary info
+   244→  const sourceStep = steps[0];
+   245→  const outputStep = steps[steps.length - 1];
+   246→  const totalLatency = steps.reduce((sum, s) => sum + (s.latencyMs || 0), 0);
+   247→
+   248→  // Derive active zone & endpoint from DSP store zone config
+   249→  const zoneConfig = dspStore.getZoneConfig(activeZoneId_actual);
+   250→  const activeZone = useMemo(() => ({
+   251→    id: activeZoneId_actual,
+   252→    name: activeZoneId_actual === 'zone-1' ? 'Main Listening Room' :
+   253→           activeZoneId_actual === 'zone-2' ? 'Study' :
+   254→           activeZoneId_actual === 'zone-3' ? 'Kitchen' :
+   255→           `Zone ${activeZoneId_actual}`,
+   256→    outputFormat: outputStep?.format || 'PCM',
+   257→    sampleRate: outputStep?.sampleRate || 44100,
+   258→    bitDepth: outputStep?.bitDepth || 32,
+   259→    dspEnabled: !!(zoneConfig.eq?.some(b => b.enabled) || zoneConfig.roomCorrection?.enabled || zoneConfig.upsampling?.enabled || zoneConfig.loudness?.enabled),
+   260→    dspChain: [
+   261→      ...(zoneConfig.eq?.some(b => b.enabled) ? ['Parametric EQ'] : []),
+   262→      ...(zoneConfig.roomCorrection?.enabled ? ['Room Correction'] : []),
+   263→      ...(zoneConfig.upsampling?.enabled ? ['Upsampling'] : []),
+   264→      ...(zoneConfig.loudness?.enabled ? ['Loudness'] : []),
+   265→      ...(zoneConfig.dither?.enabled ? ['Dither'] : []),
+   266→    ],
+   267→    volume: 75,
+   268→    volumeMode: zoneConfig.volumeLimit ? 'dsp' as const : 'hardware' as const,
+   269→    endpoints: [],
+   270→    isGroup: false,
+   271→    isPlaying: false,
+   272→    isMuted: false,
+   273→    isOnline: true,
+   274→  }), [activeZoneId_actual, zoneConfig, outputStep]);
+   275→
+   276→  const endpoint = useMemo(() => ({
+   277→    id: `${activeZoneId_actual}-ep-1`,
+   278→    name: activeZoneId_actual === 'zone-1' ? 'USB DAC (Main)' :
+   279→           activeZoneId_actual === 'zone-2' ? 'Integrated DAC' : 'Default Output',
+   280→    type: 'dedicated-hardware' as const,
+   281→    status: 'online' as const,
+   282→    dac: activeZoneId_actual === 'zone-1' ? 'ESS Sabre ES9038Q2M' :
+   283→          activeZoneId_actual === 'zone-2' ? 'AKM AK4493' : 'Built-in DAC',
+   284→    maxSampleRate: 384000,
+   285→    maxBitDepth: 32,
+   286→    supportsDSD: true,
+   287→    supportsMQA: activeZoneId_actual === 'zone-1',
+   288→    supportsDSD256: true,
+   289→    supportsDoP: true,
+   290→    firmware: 'v2.1.4',
+   291→    ipAddress: activeZoneId_actual === 'zone-1' ? '192.168.1.42' : undefined,
+   292→    latencyMs: 2.5,
+   293→    clockSource: 'usb' as const,
+   294→    hasMasterClock: activeZoneId_actual === 'zone-1',
+   295→    protocol: 'dsp-native' as const,
+   296→  }), [activeZoneId_actual]);
+   297→
+   298→  if (!currentTrack || steps.length === 0) {
+   299→    return (
+   300→      <div className="flex items-center justify-center h-full text-muted-foreground">
+   301→        <div className="text-center">
+   302→          <MonitorSpeaker className="w-16 h-16 mx-auto mb-4 opacity-30" />
+   303→          <p className="text-lg">No signal path available</p>
+   304→          <p className="text-sm">Start playing a track to see the signal path.</p>
+   305→        </div>
+   306→      </div>
+   307→    );
+   308→  }
+   309→
+   310→  return (
+   311→    <ScrollArea className="h-full">
+   312→      <div className="max-w-4xl mx-auto p-6 space-y-6">
+   313→        {/* ── Header ── */}
+   314→        <div className="flex items-start justify-between gap-4">
+   315→          <div className="space-y-1">
+   316→            <h1 className="text-2xl font-bold tracking-tight">Signal Path</h1>
+   317→            <div className="flex items-center gap-2 flex-wrap">
+   318→              {isBitPerfect ? (
+   319→                <Badge className="text-xs bg-signal-green text-white gap-1">
+   320→                  <CheckCircle2 className="w-3.5 h-3.5" /> Bit-Perfect
+   321→                </Badge>
+   322→              ) : (
+   323→                <Badge variant="outline" className="text-xs text-signal-amber border-signal-amber/40 gap-1">
+   324→                  <AlertCircle className="w-3.5 h-3.5" /> Processing Active
+   325→                </Badge>
+   326→              )}
+   327→              <Badge variant="secondary" className="text-[11px] font-mono">
+   328→                {currentTrack.format} {formatSampleRate(currentTrack.sampleRate)} {currentTrack.bitDepth}-bit
+   329→              </Badge>
+   330→            </div>
+   331→          </div>
+   332→          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+   333→            <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${getCoverGradient(currentTrack.id)}`} />
+   334→            <div className="text-right">
+   335→              <p className="text-sm font-medium text-foreground leading-tight">{currentTrack.title}</p>
+   336→              <p className="text-xs text-muted-foreground">{currentTrack.artistName}</p>
+   337→            </div>
+   338→          </div>
+   339→        </div>
+   340→
+   341→        <Separator />
+   342→
+   343→        {/* ── Summary Bar ── */}
+   344→        <Card className="bg-card border-border">
+   345→          <CardContent className="p-4">
+   346→            <div className="flex items-center gap-3 flex-wrap text-sm">
+   347→              {/* Source format */}
+   348→              <div className="flex items-center gap-2">
+   349→                <Disc3 className="w-4 h-4 text-signal-green" />
+   350→                <span className="font-mono text-signal-green font-medium">{sourceStep?.format || 'PCM'} {formatSampleRate(sourceStep?.sampleRate || 44100)} {sourceStep?.bitDepth || 16}-bit</span>
+   351→              </div>
+   352→
+   353→              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+   354→
+   355→              {/* DSP chain count */}
+   356→              <div className="flex items-center gap-1.5">
+   357→                <Activity className="w-4 h-4 text-signal-amber" />
+   358→                <span className="text-xs text-muted-foreground">
+   359→                  {steps.length <= 2
+   360→                    ? 'No DSP'
+   361→                    : `${steps.length - 2} DSP stage${steps.length - 2 > 1 ? 's' : ''}`}
+   362→                </span>
+   363→              </div>
+   364→
+   365→              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+   366→
+   367→              {/* Output format */}
+   368→              <div className="flex items-center gap-2">
+   369→                <MonitorSpeaker className="w-4 h-4 text-primary" />
+   370→                <span className="font-mono text-primary font-medium">{outputStep?.format || 'PCM'} {formatSampleRate(outputStep?.sampleRate || 44100)} {outputStep?.bitDepth || 32}-bit</span>
+   371→              </div>
+   372→
+   373→              {/* Spacer */}
+   374→              <div className="flex-1" />
+   375→
+   376→              {/* Total latency */}
+   377→              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+   378→                <Clock className="w-3.5 h-3.5" />
+   379→                <span className="font-mono">{totalLatency.toFixed(1)} ms total latency</span>
+   380→              </div>
+   381→            </div>
+   382→          </CardContent>
+   383→        </Card>
+   384→
+   385→        {/* ── Signal Path Chain ── */}
+   386→        <div>
+   387→          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+   388→            <Gauge className="w-4 h-4 text-primary" /> Processing Chain
+   389→          </h2>
+   390→          <div className="space-y-0">
+   391→            {steps.map((step, i) => (
+   392→              <PathStepCard
+   393→                key={i}
+   394→                step={step}
+   395→                prevStep={i > 0 ? steps[i - 1] : undefined}
+   396→                isLast={i === steps.length - 1}
+   397→              />
+   398→            ))}
+   399→          </div>
+   400→        </div>
+   401→
+   402→        {/* ── Bit-Perfect Analysis ── */}
+   403→        {!isBitPerfect && breakdownItems.length > 0 && (
+   404→          <Card className="bg-card border-signal-amber/20">
+   405→            <CardContent className="p-4 space-y-3">
+   406→              <div className="flex items-center gap-2">
+   407→                <AlertCircle className="w-4 h-4 text-signal-amber" />
+   408→                <h2 className="text-sm font-semibold text-signal-amber">Bit-Perfect Analysis</h2>
+   409→              </div>
+   410→              <p className="text-xs text-muted-foreground leading-relaxed">
+   411→                The signal is being modified at the following stages. To achieve a bit-perfect path,
+   412→                address each item below:
+   413→              </p>
+   414→              <div className="space-y-3">
+   415→                {breakdownItems.map((item, i) => (
+   416→                  <div key={i} className="rounded-lg bg-surface/50 p-3 space-y-1.5">
+   417→                    <div className="flex items-center gap-2">
+   418→                      <Zap className="w-3.5 h-3.5 text-signal-amber shrink-0" />
+   419→                      <span className="text-xs font-medium">{item.label}</span>
+   420→                    </div>
+   421→                    <p className="text-[11px] text-muted-foreground leading-relaxed pl-5.5 ml-[22px]">
+   422→                      {item.reason}
+   423→                    </p>
+   424→                    <div className="flex items-start gap-1.5 pl-5.5 ml-[22px]">
+   425→                      <Info className="w-3 h-3 text-sky-400 shrink-0 mt-0.5" />
+   426→                      <p className="text-[11px] text-sky-400 leading-relaxed">{item.suggestion}</p>
+   427→                    </div>
+   428→                  </div>
+   429→                ))}
+   430→              </div>
+   431→            </CardContent>
+   432→          </Card>
+   433→        )}
+   434→
+   435→        {/* ── Zone & Endpoint Info ── */}
+   436→        {activeZone && (
+   437→          <Card className="bg-card border-border">
+   438→            <CardContent className="p-4 space-y-4">
+   439→              <div className="flex items-center gap-2">
+   440→                <Wifi className="w-4 h-4 text-primary" />
+   441→                <h2 className="text-sm font-semibold">Zone &amp; Endpoint</h2>
+   442→              </div>
+   443→
+   444→              <div className="grid sm:grid-cols-2 gap-4">
+   445→                {/* Zone info */}
+   446→                <div className="space-y-2">
+   447→                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Active Zone</p>
+   448→                  <div className="rounded-lg bg-surface/50 p-3 space-y-2">
+   449→                    <p className="text-sm font-medium">{activeZone.name}</p>
+   450→                    <div className="flex items-center gap-2 flex-wrap">
+   451→                      <Badge variant="outline" className="text-[10px]">
+   452→                        {activeZone.outputFormat} · {formatSampleRate(activeZone.sampleRate)} · {activeZone.bitDepth}-bit
+   453→                      </Badge>
+   454→                      <Badge
+   455→                        variant="outline"
+   456→                        className={`text-[10px] ${activeZone.dspEnabled ? 'text-signal-amber border-signal-amber/30' : 'text-signal-green border-signal-green/30'}`}
+   457→                      >
+   458→                        DSP {activeZone.dspEnabled ? 'On' : 'Off'}
+   459→                      </Badge>
+   460→                    </div>
+   461→                    {activeZone.dspChain && activeZone.dspChain.length > 0 && (
+   462→                      <div className="flex flex-wrap gap-1 mt-1">
+   463→                        {activeZone.dspChain.map((dsp, i) => (
+   464→                          <Badge key={i} variant="secondary" className="text-[10px]">
+   465→                            {dsp}
+   466→                          </Badge>
+   467→                        ))}
+   468→                      </div>
+   469→                    )}
+   470→                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-1">
+   471→                      <span className="flex items-center gap-1">
+   472→                        <Gauge className="w-3 h-3" /> Volume: {activeZone.volume}%
+   473→                      </span>
+   474→                      <span className="font-mono">{activeZone.volumeMode}</span>
+   475→                      {activeZone.syncOffsetMs != null && (
+   476→                        <span className="font-mono">sync +{activeZone.syncOffsetMs}ms</span>
+   477→                      )}
+   478→                    </div>
+   479→                  </div>
+   480→                </div>
+   481→
+   482→                {/* Endpoint info */}
+   483→                {endpoint && (
+   484→                  <div className="space-y-2">
+   485→                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Endpoint</p>
+   486→                    <div className="rounded-lg bg-surface/50 p-3 space-y-2">
+   487→                      <div className="flex items-center justify-between">
+   488→                        <p className="text-sm font-medium">{endpoint.name}</p>
+   489→                        <Badge
+   490→                          variant="outline"
+   491→                          className={`text-[10px] ${endpoint.status === 'online' ? 'text-signal-green border-signal-green/30' : 'text-signal-red border-signal-red/30'}`}
+   492→                        >
+   493→                          {endpoint.status}
+   494→                        </Badge>
+   495→                      </div>
+   496→                      {endpoint.dac && (
+   497→                        <p className="text-xs text-muted-foreground">
+   498→                          DAC: <span className="font-mono text-foreground">{endpoint.dac}</span>
+   499→                        </p>
+   500→                      )}
+   501→                      <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+   502→                        {endpoint.clockSource && (
+   503→                          <span className="font-mono">Clock: {endpoint.clockSource}</span>
+   504→                        )}
+   505→                        {endpoint.protocol && (
+   506→                          <span className="font-mono">{endpoint.protocol}</span>
+   507→                        )}
+   508→                        {endpoint.latencyMs != null && (
+   509→                          <span className="font-mono">{endpoint.latencyMs.toFixed(1)} ms</span>
+   510→                        )}
+   511→                      </div>
+   512→                      {endpoint.ipAddress && (
+   513→                        <p className="text-[10px] text-muted-foreground font-mono">{endpoint.ipAddress}</p>
+   514→                      )}
+   515→                      {endpoint.firmware && (
+   516→                        <p className="text-[10px] text-muted-foreground">Firmware: {endpoint.firmware}</p>
+   517→                      )}
+   518→                    </div>
+   519→                  </div>
+   520→                )}
+   521→              </div>
+   522→            </CardContent>
+   523→          </Card>
+   524→        )}
+   525→
+   526→        {/* ── Format Capabilities ── */}
+   527→        {endpoint && (
+   528→          <Card className="bg-card border-border">
+   529→            <CardContent className="p-4 space-y-3">
+   530→              <div className="flex items-center gap-2">
+   531→                <MonitorSpeaker className="w-4 h-4 text-primary" />
+   532→                <h2 className="text-sm font-semibold">DAC Capabilities</h2>
+   533→                <Badge variant="outline" className="text-[10px] font-mono ml-auto">
+   534→                  {endpoint.dac ?? 'Unknown'}
+   535→                </Badge>
+   536→              </div>
+   537→
+   538→              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+   539→                {/* Max Sample Rate */}
+   540→                <div className="rounded-lg bg-surface/50 p-3 text-center">
+   541→                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Max Sample Rate</p>
+   542→                  <p className="text-lg font-mono font-bold text-foreground">
+   543→                    {formatSampleRate(endpoint.maxSampleRate)}
+   544→                  </p>
+   545→                </div>
+   546→
+   547→                {/* Max Bit Depth */}
+   548→                <div className="rounded-lg bg-surface/50 p-3 text-center">
+   549→                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Max Bit Depth</p>
+   550→                  <p className="text-lg font-mono font-bold text-foreground">
+   551→                    {endpoint.maxBitDepth}-bit
+   552→                  </p>
+   553→                </div>
+   554→
+   555→                {/* DSD Support */}
+   556→                <div className="rounded-lg bg-surface/50 p-3 text-center">
+   557→                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">DSD</p>
+   558→                  {endpoint.supportsDSD ? (
+   559→                    <p className="text-sm font-medium text-signal-green">
+   560→                      Supported{endpoint.supportsDSD256 ? ' (DSD256)' : ''}
+   561→                    </p>
+   562→                  ) : (
+   563→                    <p className="text-sm font-medium text-muted-foreground">Not Supported</p>
+   564→                  )}
+   565→                </div>
+   566→
+   567→                {/* MQA */}
+   568→                <div className="rounded-lg bg-surface/50 p-3 text-center">
+   569→                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">MQA</p>
+   570→                  {endpoint.supportsMQA ? (
+   571→                    <p className="text-sm font-medium text-signal-green">Supported</p>
+   572→                  ) : (
+   573→                    <p className="text-sm font-medium text-muted-foreground">Not Supported</p>
+   574→                  )}
+   575→                </div>
+   576→
+   577→                {/* DoP */}
+   578→                <div className="rounded-lg bg-surface/50 p-3 text-center">
+   579→                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">DoP</p>
+   580→                  {endpoint.supportsDoP ? (
+   581→                    <p className="text-sm font-medium text-signal-green">Supported</p>
+   582→                  ) : (
+   583→                    <p className="text-sm font-medium text-muted-foreground">Not Supported</p>
+   584→                  )}
+   585→                </div>
+   586→
+   587→                {/* Clock Source */}
+   588→                <div className="rounded-lg bg-surface/50 p-3 text-center">
+   589→                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Clock Source</p>
+   590→                  <p className="text-sm font-medium font-mono text-foreground">
+   591→                    {endpoint.clockSource ?? '—'}
+   592→                    {endpoint.hasMasterClock && (
+   593→                      <span className="ml-1 text-[10px] text-signal-green font-sans">(Master)</span>
+   594→                    )}
+   595→                  </p>
+   596→                </div>
+   597→              </div>
+   598→            </CardContent>
+   599→          </Card>
+   600→        )}
+   601→
+   602→        {/* Bottom spacing */}
+   603→        <div className="h-4" />
+   604→      </div>
+   605→    </ScrollArea>
+   606→  );
+   607→}
+   608→

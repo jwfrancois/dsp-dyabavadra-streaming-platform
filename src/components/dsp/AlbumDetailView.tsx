@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { useAlbumInfo } from '@/lib/use-music-metadata';
 import {
   Play, ArrowLeft, Heart, Share2, Star, Clock, Gauge,
   CheckCircle2, Zap, ChevronRight, AlertCircle, Mic,
@@ -36,6 +37,8 @@ export function AlbumDetailView() {
       albumName: rest.slice(sepIdx + 3),
     };
   }, [albumId, isLocalAlbum]);
+
+  const { data: albumInfo, loading: albumInfoLoading, error: albumInfoError } = useAlbumInfo(localAlbumInfo?.artistName || '', localAlbumInfo?.albumName || '');
 
   // For local albums, find tracks from the local library store
   const localAlbumTracks = React.useMemo(() => {
@@ -218,6 +221,32 @@ export function AlbumDetailView() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Album Info */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-3">About This Album</h2>
+          {albumInfoLoading && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              Fetching album info...
+            </div>
+          )}
+          {albumInfoError && (
+            <p className="text-xs text-muted-foreground">Unable to fetch album info</p>
+          )}
+          {albumInfo && !albumInfoLoading && (
+            <div className="space-y-2">
+              {albumInfo.summaries.map((s, i) => (
+                <div key={i} className="p-3 rounded-lg bg-surface/50">
+                  <p className="text-xs text-muted-foreground leading-relaxed">{s.snippet}</p>
+                  <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline mt-1 inline-block">
+                    {s.source} — Read more
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Track List */}
         <section className="mb-8">

@@ -5,6 +5,7 @@ import { useUIStore } from '@/store/ui';
 import { useLibraryStore } from '@/store/library';
 import { usePlayerStore } from '@/store/player';
 import { useLocalLibraryStore } from '@/store/local-library';
+import { useProfilesStore } from '@/store/profiles';
 import {
   formatStorageSize, formatScanDuration, formatRelativeTime,
   getStorageStatusColor, getStorageStatusLabel,
@@ -127,9 +128,20 @@ export function LibraryManagementView() {
   const { navigate } = useUIStore();
   const { play } = usePlayerStore();
   const store = useLibraryStore();
+  const localStore = useLocalLibraryStore();
+  const profilesStore = useProfilesStore();
   const [activeTab, setActiveTab] = React.useState('import');
 
-  const stats = { totalTracks: 0, locationCount: 0, onlineLocations: 0, offlineLocations: 0, totalSize: 0, streamingLinked: 0 };
+  const stats = React.useMemo(() => {
+    const locs = store.locations;
+    const totalTracks = localStore.tracks.length;
+    const onlineLocations = locs.filter(l => l.status === 'online' || l.enabled).length;
+    const offlineLocations = locs.filter(l => l.status === 'offline' && !l.enabled).length;
+    const totalSize = localStore.tracks.reduce((s, t) => s + (t.fileSize || 0), 0);
+    const activeProfile = profilesStore.getActiveProfile();
+    const streamingLinked = 0;
+    return { totalTracks, locationCount: locs.length, onlineLocations, offlineLocations, totalSize, streamingLinked };
+  }, [store.locations, localStore.tracks, profilesStore]);
 
   return (
     <ScrollArea className="h-full">
@@ -191,7 +203,7 @@ export function LibraryManagementView() {
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-lg bg-signal-amber/10"><Heart className="w-4 h-4 text-signal-amber" /></div>
                 <div>
-                  <p className="text-lg font-bold">{0}</p>
+                  <p className="text-lg font-bold">{profilesStore.getActiveProfile()?.lovedTrackIds.length ?? 0}</p>
                   <p className="text-[10px] text-muted-foreground">Loved Tracks</p>
                 </div>
               </div>
@@ -202,7 +214,7 @@ export function LibraryManagementView() {
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-lg bg-purple-500/10"><BarChart3 className="w-4 h-4 text-purple-400" /></div>
                 <div>
-                  <p className="text-lg font-bold">{0}</p>
+                  <p className="text-lg font-bold">{store.history.filter(h => h.completed).length}</p>
                   <p className="text-[10px] text-muted-foreground">Total Plays</p>
                 </div>
               </div>
@@ -268,7 +280,7 @@ export function LibraryManagementView() {
 
           {/* ═══ PLAYLISTS TAB ═══ */}
           <TabsContent value="playlists" className="space-y-6 mt-6">
-            <PlaylistsPanel play={play} />
+            <PlaylistsPanel play={play} store={store} />
           </TabsContent>
 
           {/* ═══ TAGS & COLLECTIONS TAB ═══ */}
@@ -1925,7 +1937,9 @@ function ScannerPanel({ store }: { store: ReturnType<typeof useLibraryStore> }) 
 
 function MetadataPanel({ store, play }: { store: ReturnType<typeof useLibraryStore>; play: (track?: Track) => void }) {
   const [selectedTrackId, setSelectedTrackId] = React.useState<string | null>(null);
-  const selectedTrack = selectedTrackId ? undefined as any : null;
+  const localStore = useLocalLibraryStore();
+  const allTracks = React.useMemo(() => localStore.tracks.map(t => localTrackToTrack(t as any)), [localStore.tracks]);
+  const selectedTrack = selectedTrackId ? allTracks.find(t => t.id === selectedTrackId) || null : null;
 
   return (
     <div className="space-y-6">
@@ -1964,7 +1978,7 @@ function MetadataPanel({ store, play }: { store: ReturnType<typeof useLibrarySto
               </TableRow>
             </TableHeader>
             <TableBody>
-              {([] as any[]).slice(0, 15).map((track: any) => (
+              {allTracks.slice(0, 15).map((track: Track) => (
                 <TableRow key={track.id} className="cursor-pointer hover:bg-accent/20" onClick={() => setSelectedTrackId(track.id)}>
                   <TableCell className="text-xs font-medium">{track.title}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{track.artistName}</TableCell>
@@ -2079,6 +2093,7 @@ function MetadataPanel({ store, play }: { store: ReturnType<typeof useLibrarySto
 // ═══════════════════════════════════════════════════════════
 
 function DedupPanel({ store }: { store: ReturnType<typeof useLibraryStore> }) {
+  const localStore = useLocalLibraryStore();
   return (
     <div className="space-y-6">
       <Card className="bg-card border-border">
@@ -2145,17 +2160,17 @@ function DedupPanel({ store }: { store: ReturnType<typeof useLibraryStore> }) {
                 )}
               </div>
               <div className="space-y-1">
-                {group.trackIds.map((trackId, i) => {
-                  const t = undefined as any;
-                  if (!t) return null;
+                {group.trackIds.map((trackId) => {
+                  const lt = localStore.tracks.find(t => t.id === trackId);
+                  if (!lt) return <div key={trackId} className="flex items-center gap-2 p-1.5 rounded text-xs bg-surface/30"><span className="text-muted-foreground font-mono text-[10px]">{trackId.slice(0, 20)}</span></div>;
                   const isPreferred = trackId === group.preferredId;
                   return (
                     <div key={trackId} className={`flex items-center gap-2 p-1.5 rounded text-xs ${isPreferred ? 'bg-primary/10' : 'bg-surface/30'}`}>
                       {isPreferred && <Star className="w-3 h-3 text-primary" />}
-                      <span className="font-medium">{t.title}</span>
-                      <span className="text-muted-foreground">— {t.artistName}</span>
-                      <Badge variant="outline" className="text-[9px] font-mono ml-auto">{t.format} {t.bitDepth}bit/{formatSampleRate(t.sampleRate)}</Badge>
-                      <Badge variant="outline" className="text-[9px]">{t.source}</Badge>
+                      <span className="font-medium">{lt.title}</span>
+                      <span className="text-muted-foreground">— {lt.artist}</span>
+                      <Badge variant="outline" className="text-[9px] font-mono ml-auto">{lt.format} {lt.bitDepth}bit/{formatSampleRate(lt.sampleRate)}</Badge>
+                      <Badge variant="outline" className="text-[9px]">local</Badge>
                     </div>
                   );
                 })}
@@ -2172,14 +2187,24 @@ function DedupPanel({ store }: { store: ReturnType<typeof useLibraryStore> }) {
 // PLAYLISTS PANEL
 // ═══════════════════════════════════════════════════════════
 
-function PlaylistsPanel({ play }: { play: (track?: Track) => void }) {
+function PlaylistsPanel({ play, store }: { play: (track?: Track) => void; store: ReturnType<typeof useLibraryStore> }) {
+  const localStore = useLocalLibraryStore();
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [newPlaylistName, setNewPlaylistName] = React.useState('');
+  const playlists = React.useMemo(() => store.collections.map(c => ({
+    id: c.id,
+    name: c.name,
+    description: c.description,
+    trackCount: c.trackCount || 0,
+    duration: 0,
+    createdAt: c.updatedAt,
+    updatedAt: c.updatedAt,
+  })), [store.collections]);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Playlists ({0})</h2>
+        <h2 className="text-sm font-semibold">Playlists ({playlists.length})</h2>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
             <Button size="sm" className="h-7 gap-1.5 text-xs"><Plus className="w-3.5 h-3.5" /> New Playlist</Button>
@@ -2198,7 +2223,8 @@ function PlaylistsPanel({ play }: { play: (track?: Track) => void }) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {([] as any[]).map(pl => (
+        {playlists.length === 0 && <p className="text-sm text-muted-foreground col-span-full text-center py-8">No playlists yet. Create one to get started.</p>}
+        {playlists.map(pl => (
           <Card key={pl.id} className="bg-card border-border hover:border-muted-foreground/20 cursor-pointer transition-all group">
             <CardContent className="p-4">
               <div className="flex gap-3">
@@ -2256,6 +2282,7 @@ function PlaylistsPanel({ play }: { play: (track?: Track) => void }) {
 // ═══════════════════════════════════════════════════════════
 
 function TagsCollectionsPanel({ store }: { store: ReturnType<typeof useLibraryStore> }) {
+  const localStore = useLocalLibraryStore();
   return (
     <div className="space-y-6">
       {/* Tags */}
@@ -2288,8 +2315,22 @@ function TagsCollectionsPanel({ store }: { store: ReturnType<typeof useLibrarySt
         </div>
         <div className="space-y-1">
           {store.bookmarks.map(bm => {
-            const track = undefined as any;
-            if (!track) return null;
+            const lt = localStore.tracks.find(t => t.id === bm.trackId);
+            if (!lt) return (
+              <div key={bm.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/20 transition-colors group">
+                <div className="flex items-center justify-center w-8 h-8 rounded bg-primary/10 flex-shrink-0">
+                  <Bookmark className="w-3.5 h-3.5 text-primary fill-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium">{bm.name}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">Position: {formatDuration(bm.position)}</p>
+                </div>
+                <span className="text-[10px] font-mono text-muted-foreground">{formatDuration(bm.position)}</span>
+                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => store.removeBookmark(bm.id)}>
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+            );
             return (
               <div key={bm.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/20 transition-colors group">
                 <div className="flex items-center justify-center w-8 h-8 rounded bg-primary/10 flex-shrink-0">
@@ -2297,7 +2338,7 @@ function TagsCollectionsPanel({ store }: { store: ReturnType<typeof useLibrarySt
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium">{bm.name}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">{track.title} — {track.artistName}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">{lt.title} — {lt.artist}</p>
                 </div>
                 <span className="text-[10px] font-mono text-muted-foreground">{formatDuration(bm.position)}</span>
                 <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => store.removeBookmark(bm.id)}>
@@ -2352,9 +2393,40 @@ function TagsCollectionsPanel({ store }: { store: ReturnType<typeof useLibrarySt
 // ═══════════════════════════════════════════════════════════
 
 function HistoryStatsPanel({ store, play }: { store: ReturnType<typeof useLibraryStore>; play: (track?: Track) => void }) {
-  const onThisDay = [] as any[];
-  const topTracks = [] as any[];
-  const totalPlayTime = 0;
+  const localStore = useLocalLibraryStore();
+  const profilesStore = useProfilesStore();
+  const allTracks = React.useMemo(() => localStore.tracks.map(t => localTrackToTrack(t as any)), [localStore.tracks]);
+  const totalPlayTime = React.useMemo(() => store.history.reduce((sum, h) => sum + (h.duration || 0), 0), [store.history]);
+  const topTracks = React.useMemo(() => {
+    const counts = new Map<string, { track: Track; count: number }>();
+    for (const entry of store.history) {
+      const existing = counts.get(entry.trackId);
+      if (existing) { existing.count++; }
+      else {
+        const track = allTracks.find(t => t.id === entry.trackId);
+        if (track) counts.set(entry.trackId, { track, count: 1 });
+      }
+    }
+    return [...counts.values()].sort((a, b) => b.count - a.count).slice(0, 10).map(v => ({ ...v.track, playCount: v.count }));
+  }, [store.history, allTracks]);
+  const onThisDay = React.useMemo(() => {
+    const today = new Date();
+    const monthDay = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+    const sameDayHistory = store.history.filter(h => h.playedAt.slice(5, 10) === monthDay);
+    const dayCounts = new Map<string, { track: Track; count: number; yearsAgo: number }>();
+    for (const entry of sameDayHistory) {
+      const year = parseInt(entry.playedAt.slice(0, 4));
+      const yearsAgo = today.getFullYear() - year;
+      if (yearsAgo <= 0) continue;
+      const existing = dayCounts.get(entry.trackId);
+      if (existing) { existing.count++; }
+      else {
+        const track = allTracks.find(t => t.id === entry.trackId);
+        if (track) dayCounts.set(entry.trackId, { track, count: 1, yearsAgo });
+      }
+    }
+    return [...dayCounts.values()].slice(0, 10).map(v => ({ ...v.track, _playedYearsAgo: v.yearsAgo, _playCountThatDay: v.count }));
+  }, [store.history, allTracks]);
 
   return (
     <div className="space-y-6">
@@ -2376,7 +2448,7 @@ function HistoryStatsPanel({ store, play }: { store: ReturnType<typeof useLibrar
             <div className="flex items-center gap-2">
               <Heart className="w-4 h-4 text-red-500" />
               <div>
-                <p className="text-sm font-bold">{0}</p>
+                <p className="text-sm font-bold">{profilesStore.getActiveProfile()?.lovedTrackIds.length ?? 0}</p>
                 <p className="text-[10px] text-muted-foreground">Loved Tracks</p>
               </div>
             </div>
@@ -2468,7 +2540,7 @@ function HistoryStatsPanel({ store, play }: { store: ReturnType<typeof useLibrar
         <CardContent>
           <div className="space-y-1">
             {store.history.slice(0, 20).map(entry => {
-              const track = undefined as any;
+              const track = allTracks.find(t => t.id === entry.trackId);
               if (!track) return null;
               return (
                 <div key={entry.id} className="flex items-center gap-3 p-2 rounded hover:bg-accent/20 cursor-pointer transition-colors" onClick={() => play(track)}>
@@ -2495,7 +2567,41 @@ function HistoryStatsPanel({ store, play }: { store: ReturnType<typeof useLibrar
 // ═══════════════════════════════════════════════════════════
 
 function BackupRestorePanel() {
+  const localStore = useLocalLibraryStore();
+  const store = useLibraryStore();
   const [isExporting, setIsExporting] = React.useState(false);
+  const [exportProgress, setExportProgress] = React.useState(0);
+
+  const handleExport = React.useCallback(() => {
+    setIsExporting(true);
+    setExportProgress(0);
+    const data = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      tracks: localStore.tracks.map(({ blobUrl, isLocal, cached, coverArt, ...rest }) => rest),
+      tags: store.tags,
+      collections: store.collections,
+      bookmarks: store.bookmarks,
+      history: store.history,
+    };
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.random() * 20;
+      if (progress >= 100) {
+        progress = 100;
+        clearInterval(interval);
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `dsp-library-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setTimeout(() => { setIsExporting(false); }, 1000);
+      }
+      setExportProgress(Math.min(progress, 100));
+    }, 200);
+  }, [localStore.tracks, store]);
 
   return (
     <div className="space-y-6">
@@ -2527,31 +2633,31 @@ function BackupRestorePanel() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="p-2 rounded bg-surface/50">
               <p className="text-xs text-muted-foreground">Tracks</p>
-              <p className="text-sm font-bold">{0}</p>
+              <p className="text-sm font-bold">{localStore.tracks.length}</p>
             </div>
             <div className="p-2 rounded bg-surface/50">
               <p className="text-xs text-muted-foreground">Albums</p>
-              <p className="text-sm font-bold">{0}</p>
+              <p className="text-sm font-bold">{localStore.getAlbums().length}</p>
             </div>
             <div className="p-2 rounded bg-surface/50">
               <p className="text-xs text-muted-foreground">Playlists</p>
-              <p className="text-sm font-bold">{0}</p>
+              <p className="text-sm font-bold">{store.collections.length}</p>
             </div>
             <div className="p-2 rounded bg-surface/50">
               <p className="text-xs text-muted-foreground">History</p>
-              <p className="text-sm font-bold">{0}</p>
+              <p className="text-sm font-bold">{store.history.length}</p>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Button className="w-full" onClick={() => setIsExporting(true)} disabled={isExporting}>
+            <Button className="w-full" onClick={handleExport} disabled={isExporting}>
               <Download className="w-4 h-4 mr-2" />
               {isExporting ? 'Exporting...' : 'Export Full Library Backup'}
             </Button>
             {isExporting && (
               <div className="space-y-1">
-                <Progress value={65} className="h-2" />
-                <p className="text-[11px] text-muted-foreground text-center">Exporting library database... 65%</p>
+                <Progress value={exportProgress} className="h-2" />
+                <p className="text-[11px] text-muted-foreground text-center">Exporting library database... {Math.round(exportProgress)}%</p>
               </div>
             )}
           </div>

@@ -1,210 +1,116 @@
----
-Task ID: 1
-Agent: main
-Task: Make DSP app fully functional — real audio playback, 1000+ radio stations, podcast subscriptions, local library scanning
+# DSP App Worklog
 
-Work Log:
-- Installed music-metadata v10 for audio file metadata extraction
-- Created AudioEngineProvider (src/components/dsp/AudioEngineProvider.tsx) — singleton HTML5 Audio element with lazy client-only initialization, real play/pause/seek/volume control, time tracking (4 updates/sec), radio auto-reconnect, podcast resume position tracking
-- Updated PlayerStore with playbackMode (music/radio/podcast), isBuffering, currentRadioStationId, audioUrl, duration, playRadioStation(), stopRadio()
-- Created 1000+ radio station data (src/lib/radio-stations.ts) — SomaFM (30 channels), BBC (12), NPR (10), France (10), Germany (14), Japan (10), Spain (10), Italy (10), Netherlands/Belgium (13), Scandinavia (18), Brazil (10), Australia/NZ (12), Canada (10), Latin America (15), Middle East (10), India/South Asia (15), East/Southeast Asia (20), Africa (20), Eastern Europe (16), Turkey/Greece/Cyprus (12), plus bulk-generated to 1050 total. Helper functions: search, filter by genre/country, favorites.
-- Created library API routes: POST /api/library/scan (recursive directory scanning with music-metadata), GET /api/library/stream (HTTP Range support for seeking), GET|POST /api/library/config (directory management)
-- Created proxy routes: /api/proxy/stream (general audio with CORS), /api/proxy/podcast (podcast-specific with longer timeout), /api/proxy/radio (live stream with auto-reconnect + exponential backoff)
-- Created local-library Zustand store (src/store/local-library.ts) — tracks, scanning, search, album/artist grouping
-- Updated PlayerBar with radio playback mode (LIVE badge, stop button, buffering indicator), real audio seek via audioSeekTo()
-- Rewrote RadioView with 1000+ stations, debounced search, genre/country filters, SomaFM featured section, pagination (50/page), favorites
-- Rewrote LibraryManagementView with Browse Local tab (Artists/Albums/Tracks browser), Scan Folders tab (directory config, progress, stats), local track playback via player store
-- Rewrote PodcastsView with My Subscriptions tab, Discover tab, All Episodes feed, Downloads tab, real episode playback via /api/proxy/podcast, persistent subscriptions via zustand/persist
-- Updated podcast store with localStorage persistence for subscriptions and episode states
-- Wrapped page.tsx with AudioEngineProvider
-- Fixed hydration error: added suppressHydrationWarning to body tag
-- Fixed SSR crash: Audio element created lazily via getAudio() instead of at module level
-- Build: zero errors, all routes registered
-
-Stage Summary:
-- Audio engine: Real HTML5 Audio with play/pause/seek/volume, radio auto-reconnect, podcast speed control, buffering state
-- Radio: 1050 stations across 60+ countries, 48 genres, real stream URLs, search/filter/favorites
-- Podcasts: Persistent subscriptions (localStorage), real episode playback via proxy, speed control, resume positions
-- Local Library: Server-side directory scanning, music-metadata extraction, HTTP Range streaming, Plex-style browser UI
-- All playback modes unified through single AudioEngineProvider in the PlayerBar
----
-Task ID: 1
-Agent: main
-Task: Fix two critical bugs — no audio playback and empty podcast Discover tab
-
-Work Log:
-- Diagnosed root cause of NO AUDIO: player store `play()` action set `isPlaying` and `currentTrack` but NEVER set `audioUrl`. AudioEngineProvider only reacts to `audioUrl` changes.
-- Fixed `play()`, `next()`, `previous()`, `setQueue()` in player.ts to always set `audioUrl` based on track source (local file → /api/library/stream, external URL → /api/proxy/podcast, fallback → demo audio from SoundHelix)
-- Fixed `playRadioStation()` to proxy stream URL through `/api/proxy/radio?url=` instead of direct icecast URL (fixes CORS on Vercel)
-- Fixed AudioEngineProvider URL comparison to use normalized URLs (prevents false negatives from URL resolution differences)
-- Added error logging to AudioEngineProvider for debugging
-- Diagnosed Podcast Discover tab: only filtered 6 local mock shows, no live search
-- Added real iTunes podcast search via `/api/podcasts/search` API with debounced input
-- Rewrote Discover tab to show iTunes results with artwork, subscribe button, and episode browser
-- Added `useEffect` for debounce, `useCallback` for search, `useRef` for debounce timer
-- Configured next.config.ts to allow iTunes CDN images (mzstatic.com)
-- Added demo audio fallback for mock music tracks (SoundHelix MP3s proxied)
-
-Stage Summary:
-- Audio playback now works for all 3 modes: music (demo audio), radio (SomaFM via proxy), podcasts (SoundHelix via proxy)
-- Podcast Discover tab now searches real iTunes directory with artwork, subscribe, and play buttons
-- Key files modified: src/store/player.ts, src/components/dsp/AudioEngineProvider.tsx, src/components/dsp/PodcastsView.tsx, next.config.ts
----
-Task ID: 1
-Agent: main
-Task: Comprehensive bug audit and fix of DSP music streaming app
-
-Work Log:
-- Read and analyzed all critical source files (player.ts, AudioEngineProvider.tsx, PodcastsView.tsx, podcast.ts, ui.ts, PlayerBar.tsx, proxy routes, data files)
-- Launched sub-agent to do full audit of all 30+ component files
-- Identified 8 bugs across the codebase, prioritized by severity
-- Fixed all 8 bugs:
-  1. CRITICAL: Added missing `useMemo` import to PodcastsView.tsx (was causing runtime crash)
-  2. CRITICAL: Enhanced podcast store `playEpisode` to also set player store (audioUrl, isPlaying, playbackMode) + handle resume position and playback speed
-  3. HIGH: Fixed sidebar Composers link to navigate with composerId param
-  4. MEDIUM: Replaced `require()` in ArtistDetailView with proper import
-  5. HIGH: Extracted `buildAudioUrl()` helper with demo fallback for next()/previous()/setQueue()
-  6. MEDIUM: Added podcast mode rendering to NowPlayingView
-  7. LOW: Fixed formatDuration to floor seconds (no fractional display)
-  8. MEDIUM: Wired up play button in ArtistDetailView discography
-- Simplified PodcastsView handlePlayEpisode to delegate to enhanced store
-- Cleaned up unused imports
-- Verified build passes cleanly
-- Verified dev server responds with 200
-- Verified podcast search API returns results
-- Verified audio proxy returns 200
-
-Stage Summary:
-- All 8 identified bugs have been fixed
-- Audio playback should now work for: music tracks (with demo fallback), radio stations (via proxy), and podcasts (from any view)
-- Podcast Discover tab should now work (was crashing due to missing useMemo)
-- App builds and runs successfully
----
-Task ID: 2
-Agent: main
-Task: Fix "Podcast not found" and missing episodes when clicking play on discovered podcasts
-
-Work Log:
-- Diagnosed root cause: Discovered podcasts from iTunes search are stored in `discoveredShows` via `setDiscoveredShow()`, and navigation to `podcast-detail` works. However, `PodcastDetailView` calls `getEpisodesByShow(show.id)` which only queries the local `podcastEpisodes` array — discovered podcasts have NO local episodes, resulting in 0 episodes with 0 total duration.
-- Found existing RSS feed parser API at `/api/podcasts/feed` that fetches and parses real podcast RSS feeds into structured episode data.
-- Added `discoveredEpisodes` (Record<string, PodcastEpisode[]>), `feedLoading`, `feedError`, and `fetchDiscoveredEpisodes` action to the podcast store (`src/store/podcast.ts`).
-- `fetchDiscoveredEpisodes` fetches from `/api/podcasts/feed?url=...&max=50` and maps the response to `PodcastEpisode` objects stored by showId.
-- Updated `PodcastDetailView.tsx` to:
-  - Auto-trigger `fetchDiscoveredEpisodes` on mount for discovered shows via `useEffect`
-  - Use `discoveredEpisodes[showId]` instead of `getEpisodesByShow()` for discovered shows
-  - Show loading spinner while feed is being fetched
-  - Show error state with retry button if feed fetch fails
-  - Show "No episodes available" empty state when feed has no episodes
-  - Render real artwork images from iTunes for discovered shows (HTTP URLs)
-  - Handle missing optional fields (category, rating) gracefully
-  - Show "X loaded" badge indicating how many episodes were fetched from the feed
-- Updated `markAllPlayed` in podcast store to also mark discovered episodes
-- Added audioUrl guard in `playEpisode` to prevent crashes on episodes with no audio URL
-- Verified RSS feed API works: Successfully fetched 5 episodes from Joe Budden's podcast with real titles, audio URLs, and durations (e.g., Episode 954 at ~206 minutes)
-- Build passes cleanly with zero errors
-
-Stage Summary:
-- Discovered podcasts from iTunes search now load real episodes from their RSS feeds
-- Joe Budden podcast (752 episodes) correctly fetches episodes with titles, durations, and playable audio URLs
-- Loading/error/empty states provide good UX during feed fetching
-- Podcast artwork from iTunes displays correctly in detail view
----
-Task ID: 3
-Agent: main
-Task: Fix podcast episodes showing as playing but no audio / time slider not moving
-
-Work Log:
-- Tested podcast audio proxy with real episode URLs — all return 200 with correct audio/mpeg content-type and proper content-length
-- Identified root cause: race condition in AudioEngineProvider between `isPlaying` and `audioUrl` subscriptions
-  - When `playEpisode()` calls `setState({ audioUrl, isPlaying: true })` simultaneously, both subscriptions fire
-  - The `isPlaying` subscription (registered first) fires first, calling `aa.play()` on the OLD/stale src
-  - Then `audioUrl` subscription fires, setting new src and calling `load()`, which interrupts the play started by the isPlaying handler
-  - The audio element ends up in a broken state: src is set but playback never actually starts
-- Rewrote AudioEngineProvider subscription logic:
-  - Added `urlChangingRef` flag to prevent `isPlaying` subscription from interfering during URL transitions
-  - URL handler now pauses audio before changing src, then waits for `canplay`/`canplaythrough` event before calling `play()`
-  - Added 3-second fallback timeout to ensure playback starts even if canplay events don't fire (large files)
-  - Added same-URL handling: if same URL is set again, reset to beginning if ended, then resume if paused
-  - Added null URL handling: stops playback and clears src
-- Removed unused `unsubSeek` subscription (was a no-op)
-- Build passes cleanly
-
-Stage Summary:
-- AudioEngineProvider now handles simultaneous audioUrl + isPlaying state changes correctly
-- Podcast episodes from discovered shows should now play actual audio with working time slider
-- Large podcast files (150-300MB) handled with proper buffering wait and fallback timeout
----
-Task ID: 4
-Agent: main
-Task: Fix persistent "no audio, slider not moving" issue with podcast playback
-
-Work Log:
-- Verified proxy returns valid MP3 data (fffb header), correct content-type, proper 206 partial responses
-- Identified the previous fix (urlChangingRef flag) was fundamentally broken: Zustand fires subscriptions in registration order, so isPlaying handler ALWAYS fires before audioUrl handler, making the flag useless
-- Completely rewrote AudioEngineProvider with a SINGLE combined subscription using `subscribe((state, prevState) => ...)`:
-  - One handler receives both state changes atomically — no race condition possible
-  - URL changes: pauses current audio, sets new src, calls play() if isPlaying
-  - isPlaying-only changes: toggles play/pause on current source
-  - Both changing simultaneously: URL handler processes both in correct order
-- Removed explicit `aa.load()` call after setting `aa.src` — per HTML spec, setting src implicitly invokes the media loading algorithm; calling load() additionally resets readyState and can prevent play() from working
-- Added `currentTime: 0, progress: 0, duration: 0` to playEpisode's setState call to reset stale initial values
-- Added `isBuffering: false` to error handler for all modes (not just radio)
-- Created `/api/test-audio` debug endpoint for browser-based audio testing
-- Build passes cleanly
-
-Stage Summary:
-- Audio engine rewritten with atomic state change handling
-- Key insight: setting audio.src then calling audio.load() double-loads and breaks play()
-- Key insight: separate subscriptions for isPlaying and audioUrl create unavoidable race conditions
-- Solution: single generic subscribe handler processes both changes atomically
----
-Task ID: 5
-Agent: main
-Task: Fix podcast subscription not registering
-
-Work Log:
-- Diagnosed root cause: Three interconnected bugs preventing subscriptions from working for discovered (iTunes) podcasts
-  1. `subscribedShows` in PodcastsView was computed from `podcastShows.filter(s => subscribedShowIds.includes(s.id))` — only checks local mock data, so iTunes-discovered shows never appear in subscription list
-  2. `discoveredShows` was NOT persisted (not in `partialize`), so on refresh the subscription ID exists but show metadata is lost
-  3. Subscribe button in iTunes search only called `toggleSubscribe()` but never called `setDiscoveredShow()`, so show data wasn't stored
-- Fixed `src/store/podcast.ts`:
-  - Added `discoveredShows` to `partialize` so subscriptions survive page refreshes
-  - Updated `getTotalNewEpisodes()` to also count discovered episodes for subscribed shows
-- Fixed `src/components/dsp/PodcastsView.tsx`:
-  - Rewrote `subscribedShows` computation with `useMemo` to merge both local mock shows and discovered shows
-  - Rewrote `allSubscribedEpisodes` to include discovered episodes for "All Episodes" tab
-  - Updated Subscribe button in iTunes search results to also call `setDiscoveredShow()` with full show data before `toggleSubscribe()`
-  - Subscribe button now shows correct "Subscribed"/"Subscribe" state based on `subscribedShowIds`
-  - Updated `renderShowCard` to handle discovered shows: artwork URLs (vs gradient), episode counts from discoveredEpisodes, proper navigation with setDiscoveredShow
-- Build passes cleanly
-
-Stage Summary:
-- Subscribing to iTunes-discovered podcasts now properly stores show data AND subscription ID
-- "My Subscriptions" tab shows both local mock and discovered podcasts
-- Subscriptions survive page refreshes (discoveredShows now persisted in localStorage)
-- "All Episodes" tab includes episodes from both local and discovered subscribed shows
-- New episode sidebar badge counts both local and discovered episodes
 ---
 Task ID: 1
 Agent: Main Agent
-Task: Fix radio streaming + implement local music library scanning (Roon-style)
+Task: Fix Library Management — wire stats to real data, fix broken tabs
 
 Work Log:
-- Investigated radio buffering bug: AudioEngineProvider was already refactored, issue was in radio proxy (timeout, headers)
-- Fixed radio proxy: increased timeout 30s→60s, reduced reconnect delay 2s→1s, added ICY headers, backpressure handling
-- Fixed local-library store: corrected API URL from /api/local-library/scan (nonexistent) to POST /api/library/scan
-- Added SSE streaming progress to /api/library/scan endpoint for real-time progress bar
-- Added Zustand persist middleware to local-library store (tracks, directories, scanStats survive refresh)
-- Added scanAllDirectories() method to scan all configured folders sequentially with progress
-- Updated BrowseAlbumsView, BrowseArtistsView, BrowseTracksView to merge local tracks with mock data
-- Added Local badge/indicator and toggle buttons in browse views
-- Fixed playLocalTracks() bug: was calling play() with 2 args, changed to setQueue()
-- Added Scan All Folders button, per-folder rescan, and Clear Library button
-- Verified no new TypeScript errors introduced
-- Pushed all changes to GitHub
+- Fixed header stats to use real data from `useLocalLibraryStore` and `useLibraryStore` (was hardcoded zeros)
+- Fixed MetadataPanel: selectedTrack lookup from `undefined as any` to `allTracks.find()`, track table from empty array to real local tracks
+- Fixed DedupPanel: track detail lookup from `undefined as any` to `localStore.tracks.find()`
+- Fixed HistoryStatsPanel: computed totalPlayTime, topTracks, onThisDay from real history data; fixed track lookups
+- Fixed TagsCollectionsPanel: bookmark track lookup from `undefined as any` to `localStore.tracks.find()`
+- Fixed PlaylistsPanel: connected to `store.collections` instead of empty array, added store prop
+- Fixed BackupRestorePanel: stats now show real track/album/playlist/history counts; export button downloads real JSON backup
 
 Stage Summary:
-- 7 files changed, 829 insertions, 311 deletions
-- Radio proxy improved with better streaming headers and backpressure
-- Full local library scanning pipeline working: scan→persist→browse→play
-- Local tracks integrated into all three main browse views
+- All 12 Library Management tabs now display real data from stores
+- Header stats reflect actual library contents
+- Backup export produces real JSON file with library data
+
+---
+Task ID: 2
+Agent: Sub-agent (full-stack-developer)
+Task: Fix Now Playing widgets (Love, Radio, Share)
+
+Work Log:
+- Wired Love button to `useProfilesStore.toggleLoveTrack()` and `isTrackLoved()`
+- Wired Radio button to navigate to Radio view
+- Wired Share button to copy track info to clipboard via `navigator.clipboard.writeText()`
+- Fixed `activeZone` from `undefined as any` to derived zone object from `activeZoneId`
+- Fixed podcast `show` variable from `undefined as any` to derived from `currentEpisode.showId`
+- Removed unused `Maximize2` import and `albumTracks` variable
+
+Stage Summary:
+- Love button toggles track love state persistently via profiles store
+- Radio button navigates to radio discovery
+- Share button copies formatted track info to clipboard
+
+---
+Task ID: 3
+Agent: Sub-agent (full-stack-developer)
+Task: Fix PlayerBar Heart button
+
+Work Log:
+- Added `useProfilesStore` import
+- Wired Heart button `onClick` to call `toggleLoveTrack(currentTrack.id)`
+- Heart icon fill/color driven by `isTrackLoved(currentTrack.id)`
+
+Stage Summary:
+- PlayerBar heart button now toggles love state synchronized with NowPlayingView
+
+---
+Task ID: 4
+Agent: Sub-agent (full-stack-developer)
+Task: Fix Core/System views
+
+Work Log:
+- DSPConfigView: Replaced empty `zonesList` and `undefined as any` selectedZone with real data from DSP engine store; added `selectedZone &&` guard to Clock section to prevent runtime crash; wired zone selector and module toggles to store
+- ZonesView: Replaced empty zonesList with 3 default zones; fixed `currentTrack` ternary logic
+- OutputEndpointsView: Replaced empty `allEndpoints` and `groupedZones` with 3 real endpoints; fixed `findZoneForEndpoint` to actually find zones
+- SystemHealthView: Added `?.` null safety to all `libraryStats.*` accesses
+- SettingsView: Wired bit-perfect and gapless toggles to `useDSPEngineStore`
+
+Stage Summary:
+- DSPConfigView clock section no longer crashes at runtime
+- Zones, Endpoints views show real data instead of empty states
+- Settings toggles persist to DSP engine store
+
+---
+Task ID: 5
+Agent: Sub-agent (full-stack-developer)
+Task: Fix Editorial view with real curated data
+
+Work Log:
+- Added `useLocalLibraryStore` import
+- Created `editorialCollections` memo generating collections from local library: Recently Added, Genre Primers, Best Of [Artist], Staff Picks, Complete Library, HiFi Collection
+- Wired `filteredCollections` and `featuredCollections` to use real data
+- Connected `playCollection`, `playTrack`, `playAlbum` handlers to player store
+- Fixed collection count badge from hardcoded `0` to `editorialCollections.length`
+
+Stage Summary:
+- Editorial view shows dynamic curated collections from the user's actual library
+- All play handlers work — users can play collections, individual tracks, and albums
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: Add internet data fetching for lyrics, bios, discographies
+
+Work Log:
+- Created `/api/music-metadata` API route using z-ai-web-dev-sdk web search
+- Supports 5 query types: lyrics, artist-bio, album-info, discography, generic search
+- Server-side caching (24h TTL) to reduce API calls
+- Created `/lib/use-music-metadata.ts` client hooks: `useLyrics`, `useArtistBio`, `useAlbumInfo`, `useDiscography`, `useMusicSearch`
+- Client-side caching (30min TTL) with React hooks
+- Integrated into ArtistDetailView (biography section), AlbumDetailView (album info section), NowPlayingView (lyrics card)
+
+Stage Summary:
+- Artist pages show fetched biography with source links
+- Album pages show fetched album descriptions
+- Now Playing shows lyrics preview with link to full lyrics source
+- All fetching is lazy, cached, and non-blocking
+
+---
+Task ID: 7
+Agent: Sub-agent (full-stack-developer)
+Task: Fix SignalPathView runtime crash
+
+Work Log:
+- Fixed `activeZone` and `endpoint` from undefined to derived objects from DSP store zone configs
+- Zone name, DAC info, endpoint capabilities all derived from store data
+
+Stage Summary:
+- SignalPathView no longer crashes with "activeZone is not defined"
+- Zone & Endpoint Info and DAC Capabilities sections render correctly

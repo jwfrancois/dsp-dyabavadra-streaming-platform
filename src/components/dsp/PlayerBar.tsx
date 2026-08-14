@@ -11,11 +11,12 @@ import { formatDuration, getCoverGradient, formatSampleRate } from '@/lib/data';
 import { formatEpisodeDuration } from '@/lib/podcast-data';
 import {
   Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Repeat1,
-  Volume2, VolumeX, Volume1, ChevronUp, ListMusic, Heart,
-  Maximize2, Gauge, Podcast, FastForward, Scissors, Moon,
+  Volume2, VolumeX, Volume1, ListMusic, Heart,
+  Gauge, Podcast, FastForward, Scissors, Moon,
   Radio, Square, Loader2,
 } from 'lucide-react';
 import { audioSeekTo, audioSetPlaybackSpeed } from './AudioEngineProvider';
+import { useProfilesStore } from '@/store/profiles';
 
 export function PlayerBar() {
   const {
@@ -29,7 +30,15 @@ export function PlayerBar() {
     isPodcastMode, currentEpisode, playbackSpeed,
     cyclePlaybackSpeed, skipSilence, sleepTimerMinutes,
   } = usePodcastStore();
-  const activeZone = undefined as any;
+  const toggleLoveTrack = useProfilesStore(s => s.toggleLoveTrack);
+  const isTrackLoved = useProfilesStore(s => s.isTrackLoved);
+  const activeZone = activeZoneId ? {
+    id: activeZoneId,
+    name: activeZoneId === 'zone-1' ? 'Main Listening Room' : activeZoneId === 'zone-2' ? 'Study' : `Zone ${activeZoneId}`,
+    endpoints: [{ dac: 'ESS Sabre ES9038Q2M' }],
+    dspEnabled: false,
+    dspChain: [],
+  } : null;
 
   const playbackMode = usePlayerStore(s => s.playbackMode);
   const isBuffering = usePlayerStore(s => s.isBuffering);
@@ -100,7 +109,7 @@ export function PlayerBar() {
   // Podcast mode: derive display values from episode
   if (showingPodcast) {
     const ep = currentEpisode;
-    const show = undefined as any;
+    const show = ep.showId ? { title: ep.showId.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) } : null;
     const epProgress = ep.duration > 0 ? (currentTime / ep.duration) * 100 : 0;
 
     return (
@@ -297,10 +306,11 @@ export function PlayerBar() {
           className="h-8 w-8 flex-shrink-0"
           onClick={(e) => {
             e.stopPropagation();
+            if (currentTrack) toggleLoveTrack(currentTrack.id);
           }}
         >
           <Heart
-            className={`w-4 h-4 ${currentTrack!.loved ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`}
+            className={`w-4 h-4 ${currentTrack && isTrackLoved(currentTrack.id) ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`}
           />
         </Button>
       </div>

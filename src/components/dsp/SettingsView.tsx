@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useDSPEngineStore } from '@/store/dsp-engine';
 import { formatSampleRate } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,9 +15,10 @@ import {
 } from 'lucide-react';
 
 export function SettingsView() {
+  const dspStore = useDSPEngineStore();
   const [localMode, setLocalMode] = React.useState(true);
-  const [gapless, setGapless] = React.useState(true);
-  const [bitPerfect, setBitPerfect] = React.useState(true);
+  const [gapless, setGapless] = React.useState(dspStore.gaplessPlayback);
+  const [bitPerfect, setBitPerfect] = React.useState(dspStore.bitPerfectDefault);
   const [autoRescan, setAutoRescan] = React.useState(true);
   const [streamingLinked, setStreamingLinked] = React.useState(true);
 
@@ -68,8 +70,8 @@ export function SettingsView() {
             </h2>
             <div className="space-y-3">
               {[
-                { label: 'Bit-Perfect Playback', desc: 'Pass audio to DAC without resampling', value: bitPerfect, onChange: setBitPerfect },
-                { label: 'Gapless Playback', desc: 'Seamless transitions between tracks', value: gapless, onChange: setGapless },
+                { label: 'Bit-Perfect Playback', desc: 'Pass audio to DAC without resampling', value: bitPerfect, onChange: () => { dspStore.toggleBitPerfectDefault(); setBitPerfect(!bitPerfect); } },
+                { label: 'Gapless Playback', desc: 'Seamless transitions between tracks', value: gapless, onChange: () => { dspStore.toggleGapless(); setGapless(!gapless); } },
                 { label: 'Local-Only Mode', desc: 'Disable streaming, play local files only', value: localMode, onChange: setLocalMode },
               ].map(item => (
                 <div key={item.label} className="flex items-center justify-between">
