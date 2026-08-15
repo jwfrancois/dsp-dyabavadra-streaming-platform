@@ -1,14 +1,26 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// DSP Prisma Schema — PostgreSQL (Supabase)
+//
+// Models:
+//   User, Artist, Album, Track (relational)
+//   LibraryTrack (denormalized flat view — used for quick library queries)
+//   Zone, Playlist, PlayHistory, StorageLocation
+//   Podcast, PodcastEpisode
+//
+// Storage layout:
+//   Supabase PostgreSQL — all metadata (this schema)
+//   Supabase Storage   — audio blobs (audio bucket) + cover art (cover-art bucket)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // Supabase connection pooler bypass for migrations
 }
+
+// ─── Core Music Models ───
 
 model User {
   id        String   @id @default(cuid())
@@ -60,50 +72,96 @@ model Album {
 }
 
 model Track {
-  id          String   @id @default(cuid())
-  title       String
-  albumId     String
-  album       Album    @relation(fields: [albumId], references: [id])
-  artistId    String
-  artistName  String
-  trackNumber Int
-  discNumber  Int      @default(1)
-  duration    Int
-  format      String   @default("FLAC")
-  bitDepth    Int      @default(16)
-  sampleRate  Int      @default(44100)
-  channels    Int      @default(2)
-  bitrate     Int      @default(0)
-  filePath    String
-  fileSize    Int      @default(0)
-  composers   String?  // JSON array
-  credits     String?  // JSON array of Credit objects
-  genre       String?
-  loved       Boolean  @default(false)
-  playCount   Int      @default(0)
-  lastPlayed  DateTime?
-  source      String   @default("local")
-  isAvailable Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  title         String
+  albumId       String
+  album         Album    @relation(fields: [albumId], references: [id])
+  artistId      String
+  artistName    String
+  trackNumber   Int
+  discNumber    Int      @default(1)
+  duration      Int
+  format        String   @default("FLAC")
+  bitDepth      Int      @default(16)
+  sampleRate    Int      @default(44100)
+  channels      Int      @default(2)
+  bitrate       Int      @default(0)
+  filePath      String   // Original file path or name (for reference)
+  fileSize      Int      @default(0)
+  storagePath   String?  // Supabase Storage path: "audio/{userId}/{trackId}.{ext}"
+  storageUrl    String?  // Full CDN URL for streaming (cached from getPublicUrl)
+  composers     String?  // JSON array
+  credits       String?  // JSON array of Credit objects
+  genre         String?
+  loved         Boolean  @default(false)
+  playCount     Int      @default(0)
+  lastPlayed    DateTime?
+  source        String   @default("local") // "local" | "cloud" | "streaming"
+  isAvailable   Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([albumId])
+  @@index([artistId])
+  @@index([storagePath])
+  @@index([source])
 }
 
+// ─── Denormalized Library Track (flat view for fast queries) ───
+// This is the primary model used by the library UI.
+// It's a denormalized copy that avoids JOINs for the most common queries.
+
+model LibraryTrack {
+  id           String   @id @default(cuid())
+  title        String
+  artist       String
+  album        String
+  albumArtist  String   @default("")
+  trackNumber  Int      @default(0)
+  discNumber   Int      @default(0)
+  duration     Float    @default(0)  // seconds (float for precision)
+  format       String   @default("FLAC")
+  sampleRate   Int      @default(44100)
+  bitDepth     Int      @default(16)
+  channels     Int      @default(2)
+  bitrate      Int      @default(0)
+  filePath     String   @default("")
+  fileSize     Int      @default(0)
+  year         Int      @default(0)
+  genre        String   @default("Unknown Genre")
+  composer     String   @default("")
+  storagePath  String?  // Supabase Storage path
+  storageUrl   String?  // Full CDN URL for streaming
+  isLocal      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([artist])
+  @@index([album])
+  @@index([albumArtist])
+  @@index([genre])
+  @@index([format])
+  @@index([storagePath])
+}
+
+// ─── Playback & Zones ───
+
 model Zone {
-  id          String   @id @default(cuid())
-  name        String
-  isGroup     Boolean  @default(false)
-  isPlaying   Boolean  @default(false)
-  volume      Int      @default(50)
-  isMuted     Boolean  @default(false)
-  isOnline    Boolean  @default(true)
-  outputFormat String  @default("PCM")
-  sampleRate  Int      @default(44100)
-  bitDepth    Int      @default(16)
-  dspEnabled  Boolean  @default(false)
-  dspChain    String?  // JSON array
-  endpoints   String   // JSON array
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  isGroup      Boolean  @default(false)
+  isPlaying    Boolean  @default(false)
+  volume       Int      @default(50)
+  isMuted      Boolean  @default(false)
+  isOnline     Boolean  @default(true)
+  outputFormat String   @default("PCM")
+  sampleRate   Int      @default(44100)
+  bitDepth     Int      @default(16)
+  dspEnabled   Boolean  @default(false)
+  dspChain     String?  // JSON array
+  endpoints    String   // JSON array
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Playlist {
@@ -117,61 +175,61 @@ model Playlist {
 }
 
 model PlayHistory {
-  id        String   @id @default(cuid())
-  trackId   String
-  playedAt  DateTime @default(now())
-  userId    String?
+  id       String   @id @default(cuid())
+  trackId  String
+  playedAt DateTime @default(now())
+  userId   String?
 }
 
 model StorageLocation {
-  id        String   @id @default(cuid())
-  name      String
-  path      String
-  enabled   Boolean  @default(true)
-  lastScan  DateTime?
-  trackCount Int     @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  name       String
+  path       String
+  enabled    Boolean  @default(true)
+  lastScan   DateTime?
+  trackCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
-// ─── Podcast Models (Section 8: iTunes-Sourced) ───
+// ─── Podcast Models ───
 
 model Podcast {
-  id             String    @id @default(cuid())
-  title          String
-  author         String
-  description    String?
-  artworkUrl     String?
-  feedUrl        String    @unique
-  genre          String    @default("Podcast")
-  category       String?
-  language       String    @default("en")
-  rating         String    @default("clean")   // "clean" or "explicit"
-  itunesId       Int?
-  subscribed     Boolean   @default(false)
-  autoDownload   Boolean   @default(false)
-  autoArchive    Boolean   @default(false)      // mark episodes as archived after being played
-  keepEpisodes   Int       @default(0)          // 0 = keep all, N = keep last N played episodes
-  lastChecked    DateTime?
-  episodeCount   Int       @default(0)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  episodes       PodcastEpisode[]
+  id           String    @id @default(cuid())
+  title        String
+  author       String
+  description  String?
+  artworkUrl   String?
+  feedUrl      String    @unique
+  genre        String    @default("Podcast")
+  category     String?
+  language     String    @default("en")
+  rating       String    @default("clean")
+  itunesId     Int?
+  subscribed   Boolean   @default(false)
+  autoDownload Boolean   @default(false)
+  autoArchive  Boolean   @default(false)
+  keepEpisodes Int       @default(0)
+  lastChecked  DateTime?
+  episodeCount Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  episodes     PodcastEpisode[]
 }
 
 model PodcastEpisode {
   id             String    @id @default(cuid())
   podcastId      String
-  podcast        Podcast  @relation(fields: [podcastId], references: [id], onDelete: Cascade)
+  podcast        Podcast   @relation(fields: [podcastId], references: [id], onDelete: Cascade)
   title          String
   description    String?
   showNotes      String?
   artworkUrl     String?
   audioUrl       String
   audioType      String    @default("audio/mpeg")
-  duration       Int       @default(0)           // seconds
+  duration       Int       @default(0)
   publishDate    DateTime?
-  fileSize       Int       @default(0)           // bytes
+  fileSize       Int       @default(0)
   format         String    @default("MP3")
   bitrate        Int       @default(128)
   season         Int?
@@ -179,7 +237,7 @@ model PodcastEpisode {
   isDownloaded   Boolean   @default(false)
   isPlayed       Boolean   @default(false)
   completed      Boolean   @default(false)
-  resumePosition Int       @default(0)           // seconds — where listener left off
+  resumePosition Int       @default(0)
   favorite       Boolean   @default(false)
   archived       Boolean   @default(false)
   playedAt       DateTime?

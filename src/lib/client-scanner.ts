@@ -3,15 +3,19 @@
 // Uses the File API + music-metadata parseBlob to extract metadata
 // from audio files selected by the user.
 //
+// Storage modes:
+//   - "cloud" (default): Uploads audio to Supabase Storage, saves metadata to PostgreSQL
+//   - "local": Caches audio in IndexedDB (fallback when Supabase is not configured)
+//
 // Supports:
 //   - Folder selection via <input webkitdirectory> or showDirectoryPicker()
 //   - Individual file selection
 //   - Drag & drop
 //   - Progress reporting via callback
-//   - Audio blob caching in IndexedDB for playback
 
 import { parseBlob } from 'music-metadata';
 import { storeAudioTrack, storeCoverArt } from './audio-db';
+import { supabase, STORAGE_BUCKETS } from './supabase';
 
 // ── Types ──
 
@@ -36,16 +40,19 @@ export interface ScannedTrack {
   composer: string;
   coverArt?: string; // base64 data URL
   isLocal: true;     // Mark as client-side scanned
-  cached?: boolean;  // Whether audio blob is in IndexedDB
+  cached?: boolean;  // Whether audio blob is stored in IndexedDB or Supabase
   _blobUrl?: string; // Internal: blob URL for immediate playback
+  storagePath?: string; // Supabase Storage path (cloud mode)
+  storageUrl?: string;  // Supabase CDN URL (cloud mode)
 }
 
 export interface ScanProgress {
-  phase: 'reading' | 'parsing' | 'caching' | 'done';
+  phase: 'reading' | 'parsing' | 'uploading' | 'caching' | 'done';
   current: number;
   total: number;
   fileName?: string;
   tracksFound: number;
+  uploadedCount?: number;
 }
 
 // ── Config ──
@@ -106,6 +113,11 @@ function extractCoverArt(
   }
 }
 
+/** Check if Supabase cloud storage is available */
+export function isCloudStorageAvailable(): boolean {
+  return supabase !== null;
+}
+
 // ── Scanner ──
 
 /** Filter audio files from a list of File objects. */
@@ -117,10 +129,50 @@ function filterAudioFiles(files: File[]): File[] {
   });
 }
 
-/** Scan a single audio file and extract metadata + cache audio. */
+/**
+ * Upload an audio file to Supabase Storage (direct from browser).
+ * Returns the storage path and public CDN URL.
+ */
+async function uploadToCloud(
+  file: File,
+  trackId: string,
+  ext: string,
+): Promise<{ storagePath: string; storageUrl: string } | null> {
+  if (!supabase) return null;
+
+  try {
+    const storagePath = `audio/${trackId}.${ext}`;
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKETS.audio)
+      .upload(storagePath, file, {
+        contentType: file.type || 'application/octet-stream',
+        upsert: true,
+        cacheControl: '31536000', // 1 year
+      });
+
+    if (error) {
+      console.warn(`[client-scanner] Cloud upload failed for ${file.name}:`, error.message);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from(STORAGE_BUCKETS.audio)
+      .getPublicUrl(storagePath);
+
+    return {
+      storagePath,
+      storageUrl: urlData.publicUrl,
+    };
+  } catch (err) {
+    console.warn(`[client-scanner] Cloud upload error for ${file.name}:`, err);
+    return null;
+  }
+}
+
+/** Scan a single audio file and extract metadata + cache/upload audio. */
 async function scanSingleFile(
   file: File,
-  cacheAudio: boolean,
+  useCloud: boolean,
 ): Promise<ScannedTrack | null> {
   const ext = getExtension(file.name);
   const trackId = hashFile(file);
@@ -180,8 +232,28 @@ async function scanSingleFile(
       cached: false,
     };
 
-    // Cache audio blob in IndexedDB for playback
-    if (cacheAudio) {
+    // Try cloud upload first (Supabase Storage — direct from browser)
+    if (useCloud && supabase) {
+      const cloudResult = await uploadToCloud(file, trackId, ext);
+      if (cloudResult) {
+        track.storagePath = cloudResult.storagePath;
+        track.storageUrl = cloudResult.storageUrl;
+        track.cached = true;
+      } else {
+        // Cloud upload failed — fall back to IndexedDB
+        console.warn(`[client-scanner] Cloud upload failed, falling back to IndexedDB for ${file.name}`);
+        try {
+          await storeAudioTrack(trackId, file, {
+            title, artist, album, albumArtist, format: track.format,
+            fileName: file.name, fileSize: file.size,
+          });
+          track.cached = true;
+        } catch {
+          console.warn(`[client-scanner] IndexedDB cache also failed for ${file.name}`);
+        }
+      }
+    } else {
+      // No cloud — use IndexedDB (original behavior)
       try {
         await storeAudioTrack(trackId, file, {
           title, artist, album, albumArtist, format: track.format,
@@ -196,6 +268,27 @@ async function scanSingleFile(
     // Store cover art in IndexedDB (separate from localStorage to avoid quota)
     if (coverArt) {
       try {
+        // Try Supabase Storage for cover art too
+        if (useCloud && supabase) {
+          const coverBlob = await (await fetch(coverArt)).blob();
+          const coverExt = coverArt.includes('image/png') ? 'png' : 'jpg';
+          const coverPath = `cover-art/${trackId}.${coverExt}`;
+          const { error } = await supabase.storage
+            .from(STORAGE_BUCKETS.coverArt)
+            .upload(coverPath, coverBlob, {
+              contentType: coverArt.includes('image/png') ? 'image/png' : 'image/jpeg',
+              upsert: true,
+              cacheControl: '31536000',
+            });
+          if (!error) {
+            const { data: urlData } = supabase.storage
+              .from(STORAGE_BUCKETS.coverArt)
+              .getPublicUrl(coverPath);
+            // Replace base64 with CDN URL for display
+            track.coverArt = urlData.publicUrl;
+          }
+        }
+        // Also store in IndexedDB as fallback
         await storeCoverArt(trackId, coverArt);
       } catch (err) {
         console.warn('[client-scanner] Failed to cache cover art:', err);
@@ -222,12 +315,14 @@ export async function scanFiles(
     cacheAudio?: boolean;
     maxFiles?: number;
     onProgress?: (progress: ScanProgress) => void;
+    useCloud?: boolean;
   } = {},
 ): Promise<ScannedTrack[]> {
   const {
     cacheAudio = true,
     maxFiles = MAX_FILES,
     onProgress,
+    useCloud = isCloudStorageAvailable(),
   } = options;
 
   const audioFiles = filterAudioFiles(files).slice(0, maxFiles);
@@ -246,14 +341,14 @@ export async function scanFiles(
     const file = audioFiles[i];
 
     onProgress?.({
-      phase: 'parsing',
+      phase: useCloud ? 'uploading' : 'parsing',
       current: i + 1,
       total,
       fileName: file.name,
       tracksFound: tracks.length,
     });
 
-    const track = await scanSingleFile(file, cacheAudio);
+    const track = await scanSingleFile(file, useCloud && cacheAudio);
     if (track) {
       tracks.push(track);
     }
@@ -267,7 +362,8 @@ export async function scanFiles(
   });
 
   console.log(
-    `[client-scanner] Scan complete: ${tracks.length} tracks from ${audioFiles.length} audio files`,
+    `[client-scanner] Scan complete: ${tracks.length} tracks from ${audioFiles.length} audio files` +
+    (useCloud ? ' (cloud mode)' : ' (local mode)'),
   );
 
   return tracks;
@@ -281,9 +377,10 @@ export async function scanFolder(
   options: {
     cacheAudio?: boolean;
     onProgress?: (progress: ScanProgress) => void;
+    useCloud?: boolean;
   } = {},
 ): Promise<ScannedTrack[]> {
-  const { cacheAudio = true, onProgress } = options;
+  const { cacheAudio = true, onProgress, useCloud } = options;
 
   // Try File System Access API first (Chromium browsers)
   if (typeof window !== 'undefined' && 'showDirectoryPicker' in window) {
@@ -309,7 +406,7 @@ export async function scanFolder(
       }
 
       await collectFiles(dirHandle);
-      return scanFiles(files, { cacheAudio, onProgress });
+      return scanFiles(files, { cacheAudio, onProgress, useCloud });
     } catch (err) {
       if ((err as DOMException).name === 'AbortError') return [];
       console.warn('[client-scanner] showDirectoryPicker failed, falling back:', err);
@@ -325,7 +422,7 @@ export async function scanFolder(
 
     input.onchange = async () => {
       const files = Array.from(input.files || []);
-      const tracks = await scanFiles(files, { cacheAudio, onProgress });
+      const tracks = await scanFiles(files, { cacheAudio, onProgress, useCloud });
       resolve(tracks);
     };
 
@@ -341,9 +438,10 @@ export async function scanSelectedFiles(
   options: {
     cacheAudio?: boolean;
     onProgress?: (progress: ScanProgress) => void;
+    useCloud?: boolean;
   } = {},
 ): Promise<ScannedTrack[]> {
-  const { cacheAudio = true, onProgress } = options;
+  const { cacheAudio = true, onProgress, useCloud } = options;
 
   return new Promise((resolve) => {
     const input = document.createElement('input');
@@ -355,7 +453,7 @@ export async function scanSelectedFiles(
 
     input.onchange = async () => {
       const files = Array.from(input.files || []);
-      const tracks = await scanFiles(files, { cacheAudio, onProgress });
+      const tracks = await scanFiles(files, { cacheAudio, onProgress, useCloud });
       resolve(tracks);
     };
 

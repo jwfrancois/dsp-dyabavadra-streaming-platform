@@ -4,115 +4,102 @@ import React, { useEffect, useState } from 'react';
 import { useLocalLibraryStore } from '@/store/local-library';
 
 /**
- * StoreHydrationGate — prevents rendering children until all Zustand persisted stores
- * have fully rehydrated from localStorage.
+ * StoreHydrationGate — prevents rendering children until the library is loaded.
  *
- * WHY THIS EXISTS:
- * - Next.js SSR renders the page on the server where localStorage doesn't exist
- * - Zustand persist's skipHydration=true prevents SSR from falsely marking hydration complete
- * - This gate explicitly calls rehydrate() on the client, waits for it to finish,
- *   then checks if data was found. If not, it tries a server-side backup.
+ * Loading priority (checked in order):
+ *   1. Supabase PostgreSQL via /api/library/sync (most reliable, cloud)
+ *   2. localStorage (fallback, same-device same-origin)
+ *   3. IndexedDB for cover art + audio blob URLs (completes the picture)
  *
- * VERCEL NOTE:
- * - localStorage and IndexedDB are CLIENT-SIDE and persist across page loads
- *   as long as the domain stays the same (production URL, not preview URLs)
- * - The server-side backup uses filesystem writes which are EPHEMERAL on Vercel
- *   serverless (files vanish between function invocations)
- * - So the primary persistence strategy is: localStorage + IndexedDB (client-side)
- * - Server backup is a fallback for non-Vercel deployments only
+ * With skipHydration: true on the Zustand persist middleware, SSR never touches
+ * localStorage. This gate runs ONLY on the client and controls the load sequence.
  *
- * Usage: wrap the main app content (inside page.tsx).
+ * IMPORTANT: On Vercel, localStorage/IndexedDB persist across reloads IF the
+ * domain is the same (use production URL, not preview URLs).
  */
 export function StoreHydrationGate({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('Restoring library…');
+  const [statusMessage, setStatusMessage] = useState('Loading library…');
+  const [source, setSource] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     const doHydrate = async () => {
-      // ── Step 1: Force Zustand to read from localStorage ──
-      // With skipHydration: true, this is the ONLY time localStorage is read.
-      // onRehydrateStorage will fire when this completes.
-      setStatusMessage('Restoring library…');
+      // ── Step 1: Try loading from cloud database ──
+      setStatusMessage('Loading from cloud…');
+
+      try {
+        const res = await fetch('/api/library/sync');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.tracks?.length > 0) {
+            console.log(`[HydrationGate] Loaded ${data.tracks.length} tracks from cloud database`);
+            setSource('cloud');
+
+            useLocalLibraryStore.setState({
+              tracks: data.tracks,
+              lastScanTime: data.syncedAt,
+              scanProgress: 100,
+              scanError: null,
+            });
+
+            setStatusMessage(`${data.tracks.length} tracks loaded`);
+            // Brief delay so user sees the count
+            setTimeout(() => { if (!cancelled) setHydrated(true); }, 400);
+            return;
+          } else {
+            console.log('[HydrationGate] Cloud database is empty');
+          }
+        } else {
+          console.warn('[HydrationGate] Cloud sync failed:', res.status);
+        }
+      } catch (err) {
+        console.warn('[HydrationGate] Cloud sync error:', err);
+        // Supabase not configured or network error — fall through to localStorage
+      }
+
+      // ── Step 2: Fall back to localStorage ──
+      setStatusMessage('Loading locally…');
 
       const unsubFinish = useLocalLibraryStore.persist.onFinishHydration(() => {
         if (cancelled) { unsubFinish(); return; }
 
         const tracks = useLocalLibraryStore.getState().tracks;
         console.log(
-          `[HydrationGate] Rehydration complete — ${tracks.length} tracks from localStorage`,
+          `[HydrationGate] Rehydrated ${tracks.length} tracks from localStorage`,
         );
 
         if (tracks.length > 0) {
-          // Success: library data found in localStorage
-          setStatusMessage(`Loaded ${tracks.length} tracks`);
+          setSource('localStorage');
+          setStatusMessage(`${tracks.length} tracks loaded`);
           setTimeout(() => { if (!cancelled) setHydrated(true); }, 300);
-          unsubFinish();
-          return;
+        } else {
+          // Nothing in cloud or localStorage — fresh library
+          console.log('[HydrationGate] No library data found — starting fresh');
+          setSource(null);
+          setHydrated(true);
         }
 
-        // ── Step 2: localStorage empty — try server backup ──
-        // NOTE: On Vercel, this will likely fail because filesystem is ephemeral.
-        // This fallback works on self-hosted deployments (VPS, Docker, bare metal).
-        setStatusMessage('Checking server backup…');
-
-        fetch('/api/library/save')
-          .then((res) => res.json())
-          .then((data) => {
-            if (cancelled) return;
-
-            if (data?.success && data.backup?.tracks?.length > 0) {
-              console.log(
-                `[HydrationGate] Server backup found: ${data.backup.tracks.length} tracks from ${data.backup.savedAt}`,
-              );
-              useLocalLibraryStore.setState({
-                tracks: data.backup.tracks.map((t: any) => ({
-                  ...t,
-                  coverArt: null,
-                  isLocal: t.isLocal ?? false,
-                  cached: false,
-                })),
-                directories: data.backup.directories || [],
-                lastScanTime: data.backup.lastScanTime,
-                scanStats: data.backup.scanStats,
-              });
-              setStatusMessage(`Restored ${data.backup.tracks.length} tracks from backup`);
-            } else {
-              console.log('[HydrationGate] No localStorage or server backup found — fresh library');
-            }
-
-            setTimeout(() => { if (!cancelled) setHydrated(true); }, 500);
-            unsubFinish();
-          })
-          .catch((err) => {
-            console.warn('[HydrationGate] Server backup check failed:', err);
-            // Continue anyway — user just has an empty library
-            setTimeout(() => { if (!cancelled) setHydrated(true); }, 300);
-            unsubFinish();
-          });
+        unsubFinish();
       });
 
-      // Kick off rehydration — reads localStorage, fires onRehydrateStorage,
-      // then fires onFinishHydration callback above
+      // Force Zustand to read from localStorage
       useLocalLibraryStore.persist.rehydrate();
 
-      // Safety timeout: show the app after 4s no matter what
+      // Safety timeout
       setTimeout(() => {
-        if (!cancelled && !hydrated) {
-          console.warn('[HydrationGate] Timeout after 4s — showing app');
-          setStatusMessage('Loading…');
+        if (!cancelled) {
+          console.warn('[HydrationGate] Timeout — showing app');
           setHydrated(true);
           unsubFinish();
         }
-      }, 4000);
+      }, 6000);
     };
 
     doHydrate();
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!hydrated) {
@@ -128,6 +115,11 @@ export function StoreHydrationGate({ children }: { children: React.ReactNode }) 
           <div className="w-4 h-4 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
           <span>{statusMessage}</span>
         </div>
+        {source && (
+          <p className="text-xs text-muted-foreground/60 mt-2">
+            from {source}
+          </p>
+        )}
       </div>
     );
   }

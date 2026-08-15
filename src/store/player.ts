@@ -2,17 +2,28 @@ import { create } from 'zustand';
 import type { Track, Zone, ViewName, PlaybackMode } from '@/lib/data';
 
 // ── Helper: build a playable audio URL for any Track ──
+// Priority order:
+//   1. Supabase Storage CDN URL (storageUrl) — most reliable, works across devices
+//   2. Browser blob URL (blobUrl) — immediate playback for just-imported files
+//   3. Server-side filesystem streaming (filePath) — for local dev / self-hosted
+//   4. IndexedDB fallback — for cached tracks without cloud URL
 function buildAudioUrl(track: Track): string {
-  // Browser-imported tracks have a blob URL for direct playback
+  // 1. Supabase Storage CDN URL (cloud-persisted)
+  const storageUrl = (track as any).storageUrl;
+  if (storageUrl && storageUrl.startsWith('http')) return storageUrl;
+
+  // 2. Browser blob URL (immediate playback)
   if (track.blobUrl) return track.blobUrl;
-  // Server-side scanned tracks streamed from filesystem
+
+  // 3. Server-side scanned tracks streamed from filesystem
   if (track.filePath) {
     if (track.filePath.startsWith('http://') || track.filePath.startsWith('https://'))
       return `/api/proxy/podcast?url=${encodeURIComponent(track.filePath)}`;
     if (track.filePath.startsWith('/'))
       return `/api/library/stream?file=${encodeURIComponent(track.filePath)}`;
   }
-  // No playable URL available
+
+  // 4. No playable URL available
   return '';
 }
 
@@ -21,24 +32,25 @@ function buildAudioUrl(track: Track): string {
  * for client-imported tracks whose blobUrl hasn't been restored yet.
  */
 export async function resolveAudioUrl(track: Track): Promise<string> {
-  // 1. Check existing blob URL
+  // 1. Supabase CDN URL
+  const storageUrl = (track as any).storageUrl;
+  if (storageUrl && storageUrl.startsWith('http')) return storageUrl;
+
+  // 2. Check existing blob URL
   if (track.blobUrl) return track.blobUrl;
 
-  // 2. Try to get from IndexedDB (for client-imported tracks)
+  // 3. Try to get from IndexedDB (for client-imported tracks)
   if ((track as any).isLocal && track.id) {
     try {
       const { getAudioBlobURL } = await import('@/lib/audio-db');
       const blobUrl = await getAudioBlobURL(track.id);
-      if (blobUrl) {
-        // Update the track's blobUrl in the player store for future use
-        return blobUrl;
-      }
+      if (blobUrl) return blobUrl;
     } catch {
       // audio-db not available (SSR or module error)
     }
   }
 
-  // 3. Fall back to server streaming
+  // 4. Fall back to server streaming
   return buildAudioUrl(track);
 }
 

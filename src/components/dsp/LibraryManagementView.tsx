@@ -1050,7 +1050,22 @@ function ImportMusicPanel() {
         directories: updatedDirs,
       });
 
-      // Auto-save library metadata to server backup (fire-and-forget)
+      // Auto-save to cloud database (Supabase PostgreSQL) — fire-and-forget
+      fetch('/api/tracks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tracks: toAdd }),
+      }).then((res) => {
+        if (res.ok) {
+          console.log(`[LibraryManagement] Saved ${toAdd.length} tracks to cloud database`);
+        } else {
+          console.warn('[LibraryManagement] Cloud save failed, tracks in local storage only');
+        }
+      }).catch((err) => {
+        console.warn('[LibraryManagement] Cloud save error:', err);
+      });
+
+      // Also save to server-side JSON backup (fallback for non-Vercel deployments)
       fetch('/api/library/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1060,7 +1075,7 @@ function ImportMusicPanel() {
           lastScanTime: new Date().toISOString(),
         }),
       }).catch((err) => {
-        console.warn('[LibraryManagement] Failed to save server backup:', err);
+        console.warn('[LibraryManagement] Server backup failed:', err);
       });
     }
 
