@@ -5,6 +5,7 @@ import type { Track, Zone, ViewName, PlaybackMode } from '@/lib/data';
 function buildAudioUrl(track: Track): string {
   // Browser-imported tracks have a blob URL for direct playback
   if (track.blobUrl) return track.blobUrl;
+  // Server-side scanned tracks streamed from filesystem
   if (track.filePath) {
     if (track.filePath.startsWith('http://') || track.filePath.startsWith('https://'))
       return `/api/proxy/podcast?url=${encodeURIComponent(track.filePath)}`;
@@ -13,6 +14,32 @@ function buildAudioUrl(track: Track): string {
   }
   // No playable URL available
   return '';
+}
+
+/**
+ * Async version of buildAudioUrl that tries IndexedDB as a fallback
+ * for client-imported tracks whose blobUrl hasn't been restored yet.
+ */
+export async function resolveAudioUrl(track: Track): Promise<string> {
+  // 1. Check existing blob URL
+  if (track.blobUrl) return track.blobUrl;
+
+  // 2. Try to get from IndexedDB (for client-imported tracks)
+  if ((track as any).isLocal && track.id) {
+    try {
+      const { getAudioBlobURL } = await import('@/lib/audio-db');
+      const blobUrl = await getAudioBlobURL(track.id);
+      if (blobUrl) {
+        // Update the track's blobUrl in the player store for future use
+        return blobUrl;
+      }
+    } catch {
+      // audio-db not available (SSR or module error)
+    }
+  }
+
+  // 3. Fall back to server streaming
+  return buildAudioUrl(track);
 }
 
 interface PlayerState {

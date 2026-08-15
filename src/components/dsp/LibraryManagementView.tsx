@@ -1042,10 +1042,25 @@ function ImportMusicPanel() {
     const toAdd = newTracks.filter(t => !existingIds.has(t.id));
 
     if (toAdd.length > 0) {
+      const updatedTracks = [...localStore.tracks, ...toAdd] as any;
+      const updatedDirs = [...localStore.directories, 'Browser Import'].filter((v, i, a) => a.indexOf(v) === i);
       useLocalLibraryStore.setState({
-        tracks: [...localStore.tracks, ...toAdd] as any,
+        tracks: updatedTracks,
         lastScanTime: new Date().toISOString(),
-        directories: [...localStore.directories, 'Browser Import'].filter((v, i, a) => a.indexOf(v) === i),
+        directories: updatedDirs,
+      });
+
+      // Auto-save library metadata to server backup (fire-and-forget)
+      fetch('/api/library/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tracks: updatedTracks,
+          directories: updatedDirs,
+          lastScanTime: new Date().toISOString(),
+        }),
+      }).catch((err) => {
+        console.warn('[LibraryManagement] Failed to save server backup:', err);
       });
     }
 

@@ -38,6 +38,7 @@ import { PluginManagerView } from '@/components/dsp/PluginManagerView';
 import { LicensingView } from '@/components/dsp/LicensingView';
 import { ZonePicker } from '@/components/dsp/ZonePicker';
 import { AudioEngineProvider } from '@/components/dsp/AudioEngineProvider';
+import { StoreHydrationGate } from '@/components/StoreHydration';
 import { useUIStore } from '@/store/ui';
 import type { ViewName } from '@/store/player';
 import { Button } from '@/components/ui/button';
@@ -85,6 +86,7 @@ export default function Page() {
   const { currentView, sidebarOpen, toggleSidebar } = useUIStore();
 
   return (
+    <StoreHydrationGate>
     <AudioEngineProvider>
     <div className="h-screen flex flex-col bg-background text-foreground overflow-hidden">
       {/* Mobile Header */}
@@ -120,5 +122,6 @@ export default function Page() {
       <ZonePicker />
     </div>
     </AudioEngineProvider>
+    </StoreHydrationGate>
   );
 }

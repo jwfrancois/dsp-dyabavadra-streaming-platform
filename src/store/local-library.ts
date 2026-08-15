@@ -394,39 +394,64 @@ export const useLocalLibraryStore = create<LocalLibraryState>()(
         lastScanTime: state.lastScanTime,
         scanStats: state.scanStats,
       }),
-      // After rehydration, restore coverArt from IndexedDB
-      onRehydrateStorage: () => (state) => {
-        if (!state || !state.tracks || typeof window === 'undefined') return;
-        // Rehydrate cover art from IndexedDB in the background
-        import('@/lib/audio-db').then(({ getCoverArt, getAudioBlobURL }) => {
-          const tracks = state.tracks;
-          let pending = 0;
-          const updated = new Map<string, { coverArt: string | null; blobUrl?: string }>();
+      // ── Critical fix: use onRehydrateStorage with batch IndexedDB reads ──
+      // Previous version fired hundreds of individual IndexedDB reads with a
+      // fragile `pending` counter. If any promise threw before decrementing,
+      // the counter never reached 0 and setState was never called.
+      // New version uses Promise.allSettled with batch operations for reliability.
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.error('[local-library] Rehydration error:', error);
+          return;
+        }
 
-          for (const t of tracks) {
-            pending++;
-            Promise.all([
-              t.coverArt ? Promise.resolve(null) : getCoverArt(t.id),
-              getAudioBlobURL(t.id),
-            ]).then(([art, blobUrl]) => {
-              const entry: { coverArt: string | null; blobUrl?: string } = { coverArt: art };
-              if (blobUrl) entry.blobUrl = blobUrl;
-              updated.set(t.id, entry);
-              pending--;
-              if (pending === 0 && updated.size > 0) {
-                useLocalLibraryStore.setState((prev) => ({
-                  tracks: prev.tracks.map((t) => {
-                    const u = updated.get(t.id);
-                    if (!u) return t;
-                    return { ...t, coverArt: u.coverArt ?? t.coverArt, blobUrl: u.blobUrl } as any;
-                  }),
-                }));
-              }
-            }).catch(() => {
-              pending--;
-            });
-          }
-        }).catch(() => {});
+        // Skip if no tracks to restore, or during SSR
+        if (!state || !state.tracks || state.tracks.length === 0 || typeof window === 'undefined') {
+          return;
+        }
+
+        const trackIds = state.tracks.map(t => t.id);
+        console.log(`[local-library] Rehydrating ${trackIds.length} tracks from IndexedDB...`);
+
+        // Dynamic import to avoid SSR issues with browser APIs
+        import('@/lib/audio-db').then(({ getCoverArt, getAudioBlobURL }) => {
+          // Batch all IndexedDB reads using Promise.allSettled (never hangs)
+          const promises = trackIds.map(async (id) => {
+            const results = await Promise.allSettled([
+              getCoverArt(id),
+              getAudioBlobURL(id),
+            ]);
+            const coverArt = results[0].status === 'fulfilled' ? results[0].value : null;
+            const blobUrl = results[1].status === 'fulfilled' ? results[1].value : null;
+            return { id, coverArt, blobUrl };
+          });
+
+          Promise.all(promises).then((updates) => {
+            const updatedMap = new Map(updates.map(u => [u.id, u]));
+            const restoredCount = updates.filter(u => u.coverArt || u.blobUrl).length;
+
+            if (restoredCount > 0) {
+              console.log(`[local-library] Restored ${restoredCount} tracks with cover art/blob URLs from IndexedDB`);
+              useLocalLibraryStore.setState((prev) => ({
+                tracks: prev.tracks.map((t) => {
+                  const u = updatedMap.get(t.id);
+                  if (!u) return t;
+                  return {
+                    ...t,
+                    coverArt: u.coverArt ?? t.coverArt,
+                    blobUrl: u.blobUrl ?? t.blobUrl,
+                  } as any;
+                }),
+              }));
+            } else {
+              console.log('[local-library] No cover art or audio blobs found in IndexedDB (first import or cleared cache)');
+            }
+          }).catch((err) => {
+            console.error('[local-library] Failed to batch-restore from IndexedDB:', err);
+          });
+        }).catch((err) => {
+          console.warn('[local-library] Failed to import audio-db module:', err);
+        });
       },
     }
   )

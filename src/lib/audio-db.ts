@@ -31,6 +31,16 @@ function openDB(): Promise<IDBDatabase> {
 
     request.onsuccess = () => {
       dbInstance = request.result;
+
+      // Handle unexpected DB close (e.g., tab in background)
+      dbInstance.onclose = () => {
+        console.warn('[audio-db] Database connection closed unexpectedly, resetting instance');
+        dbInstance = null;
+      };
+      dbInstance.onerror = (event) => {
+        console.error('[audio-db] Database error:', event);
+      };
+
       resolve(dbInstance);
     };
 
@@ -86,11 +96,21 @@ export async function getAudioBlob(trackId: string): Promise<Blob | null> {
   });
 }
 
-/** Create a blob URL for a cached audio track. Returns null if not cached. */
+/**
+ * Create a blob URL for a cached audio track. Returns null if not cached.
+ * NOTE: The caller is responsible for revoking the URL when no longer needed.
+ * However, for long-lived playback URLs (restored on rehydrate), we intentionally
+ * do NOT revoke them — they live for the page session.
+ */
 export async function getAudioBlobURL(trackId: string): Promise<string | null> {
-  const blob = await getAudioBlob(trackId);
-  if (!blob) return null;
-  return URL.createObjectURL(blob);
+  try {
+    const blob = await getAudioBlob(trackId);
+    if (!blob) return null;
+    return URL.createObjectURL(blob);
+  } catch (err) {
+    console.warn(`[audio-db] Failed to get audio blob URL for ${trackId}:`, err);
+    return null;
+  }
 }
 
 /** Check if a track is cached */

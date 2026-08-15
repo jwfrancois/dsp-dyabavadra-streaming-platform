@@ -43,3 +43,51 @@ Stage Summary:
 - Web metadata fetching: artist bios, album info, discography, similar artists, artist images
 - Real cover art displayed throughout: PlayerBar, NowPlaying, Artist Detail, Album Detail
 - Build passes cleanly
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Fix music library data persistence issue on Vercel deployment
+
+Work Log:
+- Diagnosed root cause: Next.js SSR hydration mismatch with Zustand persist middleware
+  - SSR renders page with empty default state (no localStorage access on server)
+  - Zustand rehydrates from localStorage but hydration may not trigger visible re-render
+  - User sees empty library even though data exists in localStorage
+- Secondary issue: onRehydrateStorage had fragile pending counter that could hang forever
+  - Hundreds of individual IndexedDB reads with Promise.all inside a loop
+  - If any promise threw before decrementing, counter never reached 0
+- Tertiary issue: Server-side scan (fs.readdir) incompatible with Vercel serverless
+
+- Fixed `src/store/local-library.ts`:
+  - Rewrote onRehydrateStorage with Promise.allSettled (never hangs)
+  - Added batch IndexedDB reads with proper error handling
+  - Added diagnostic logging for rehydration debugging
+- Created `src/components/StoreHydration.tsx`:
+  - Hydration gate component that blocks rendering until Zustand rehydrates
+  - Shows "Restoring library..." loading spinner during rehydration
+  - Falls back to server-side backup if localStorage is empty
+  - 3-second safety timeout to prevent infinite loading
+- Updated `src/app/page.tsx`:
+  - Wrapped entire app in StoreHydrationGate
+  - Prevents flash of empty content before rehydration completes
+- Updated `src/lib/audio-db.ts`:
+  - Added error handling for getAudioBlobURL (catch and log instead of throw)
+  - Added onclose/onerror handlers for database connection
+- Updated `src/store/player.ts`:
+  - Added async resolveAudioUrl() with IndexedDB fallback
+  - For client-imported tracks without blobUrl, tries to get from IndexedDB on demand
+- Created `src/app/api/library/save/route.ts`:
+  - Server-side library backup API (POST save, GET load, DELETE clear)
+  - Stores track metadata as JSON in data/library-backup.json
+  - Audio blobs NOT uploaded (too large), only metadata persisted
+- Updated `src/components/dsp/LibraryManagementView.tsx`:
+  - Auto-saves library to server backup after successful import
+  - Fire-and-forget POST to /api/library/save
+
+Stage Summary:
+- Core fix: Hydration gate prevents Next.js SSR from showing empty library
+- Reliability fix: Batch IndexedDB reads with Promise.allSettled never hangs
+- Server backup: Library metadata saved to server on import, restored on load
+- Audio fallback: resolveAudioUrl() tries IndexedDB if blobUrl is missing
+- Build compiles successfully with all changes
