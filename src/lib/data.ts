@@ -80,6 +80,8 @@ export interface Track {
   source: 'local' | 'tidal' | 'qobuz';
   isAvailable: boolean;
   blobUrl?: string; // Client-side blob URL for browser-imported tracks
+  storagePath?: string; // Supabase Storage path (e.g. "audio/{trackId}.{ext}")
+  storageUrl?: string; // Supabase CDN URL for streaming (persists across devices)
 }
 
 export interface Credit {

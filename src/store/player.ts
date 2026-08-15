@@ -9,8 +9,7 @@ import type { Track, Zone, ViewName, PlaybackMode } from '@/lib/data';
 //   4. IndexedDB fallback — for cached tracks without cloud URL
 function buildAudioUrl(track: Track): string {
   // 1. Supabase Storage CDN URL (cloud-persisted)
-  const storageUrl = (track as any).storageUrl;
-  if (storageUrl && storageUrl.startsWith('http')) return storageUrl;
+  if (track.storageUrl && track.storageUrl.startsWith('http')) return track.storageUrl;
 
   // 2. Browser blob URL (immediate playback)
   if (track.blobUrl) return track.blobUrl;
@@ -33,8 +32,7 @@ function buildAudioUrl(track: Track): string {
  */
 export async function resolveAudioUrl(track: Track): Promise<string> {
   // 1. Supabase CDN URL
-  const storageUrl = (track as any).storageUrl;
-  if (storageUrl && storageUrl.startsWith('http')) return storageUrl;
+  if (track.storageUrl && track.storageUrl.startsWith('http')) return track.storageUrl;
 
   // 2. Check existing blob URL
   if (track.blobUrl) return track.blobUrl;

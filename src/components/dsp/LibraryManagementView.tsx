@@ -105,7 +105,9 @@ function localTrackToTrack(lt: LocalTrack): Track {
     playCount: 0,
     source: 'local',
     isAvailable: true,
-    blobUrl: (lt as any).blobUrl as string | undefined,
+    blobUrl: lt.blobUrl as string | undefined,
+    storagePath: lt.storagePath,
+    storageUrl: lt.storageUrl,
   };
 }
 
@@ -1035,6 +1037,8 @@ function ImportMusicPanel() {
       isLocal: true,
       cached: t.cached || false,
       blobUrl: t._blobUrl || undefined,
+      storagePath: t.storagePath || undefined,
+      storageUrl: t.storageUrl || undefined,
     }));
 
     // Merge with existing tracks (by ID)
@@ -1050,7 +1054,7 @@ function ImportMusicPanel() {
         directories: updatedDirs,
       });
 
-      // Auto-save to cloud database (Supabase PostgreSQL) — fire-and-forget
+      // Auto-save to cloud database (Supabase PostgreSQL)
       fetch('/api/tracks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1058,6 +1062,8 @@ function ImportMusicPanel() {
       }).then((res) => {
         if (res.ok) {
           console.log(`[LibraryManagement] Saved ${toAdd.length} tracks to cloud database`);
+        } else if (res.status === 503) {
+          console.warn('[LibraryManagement] Cloud database not configured — tracks saved locally only');
         } else {
           console.warn('[LibraryManagement] Cloud save failed, tracks in local storage only');
         }

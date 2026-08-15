@@ -31,8 +31,10 @@ export function StoreHydrationGate({ children }: { children: React.ReactNode }) 
 
       try {
         const res = await fetch('/api/library/sync');
+
         if (res.ok) {
           const data = await res.json();
+
           if (data.success && data.tracks?.length > 0) {
             console.log(`[HydrationGate] Loaded ${data.tracks.length} tracks from cloud database`);
             setSource('cloud');
@@ -44,13 +46,44 @@ export function StoreHydrationGate({ children }: { children: React.ReactNode }) 
               scanError: null,
             });
 
+            // Cloud tracks have storageUrl but may be missing cover art.
+            // Try IndexedDB for cover art images (stored there as fallback).
+            const trackIds = data.tracks.map((t: any) => t.id);
+            try {
+              const { getCoverArt } = await import('@/lib/audio-db');
+              const coverUpdates: Array<{ id: string; coverArt: string | null }> = [];
+
+              const promises = trackIds.map(async (id: string) => {
+                const results = await Promise.allSettled([getCoverArt(id)]);
+                const coverArt = results[0].status === 'fulfilled' ? results[0].value : null;
+                if (coverArt) coverUpdates.push({ id, coverArt });
+              });
+
+              await Promise.all(promises);
+
+              if (coverUpdates.length > 0) {
+                const coverMap = new Map(coverUpdates.map(u => [u.id, u.coverArt]));
+                useLocalLibraryStore.setState((prev) => ({
+                  tracks: prev.tracks.map((t) => ({
+                    ...t,
+                    coverArt: coverMap.get(t.id) ?? t.coverArt,
+                  })),
+                }));
+                console.log(`[HydrationGate] Restored ${coverUpdates.length} cover arts from IndexedDB`);
+              }
+            } catch {
+              // audio-db not available — cover art restoration skipped
+            }
+
             setStatusMessage(`${data.tracks.length} tracks loaded`);
             // Brief delay so user sees the count
             setTimeout(() => { if (!cancelled) setHydrated(true); }, 400);
             return;
           } else {
-            console.log('[HydrationGate] Cloud database is empty');
+            console.log('[HydrationGate] Cloud database is empty or not configured');
           }
+        } else if (res.status === 503) {
+          console.log('[HydrationGate] Cloud database not available (503) — falling back to local');
         } else {
           console.warn('[HydrationGate] Cloud sync failed:', res.status);
         }

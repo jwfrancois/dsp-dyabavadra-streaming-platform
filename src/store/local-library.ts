@@ -24,8 +24,10 @@ export interface LocalTrack {
   composer: string;
   coverArt: string | null;
   isLocal?: boolean;    // true for browser-imported tracks (persisted to localStorage)
-  cached?: boolean;     // whether audio blob is stored in IndexedDB
+  cached?: boolean;     // whether audio blob is stored in IndexedDB or Supabase Storage
   blobUrl?: string;    // ephemeral blob URL restored from IndexedDB on rehydrate
+  storagePath?: string; // Supabase Storage path (e.g. "audio/{trackId}.{ext}")
+  storageUrl?: string;  // Supabase CDN URL for streaming (persists across devices)
 }
 
 interface LocalLibraryState {
@@ -68,7 +70,8 @@ const STORAGE_KEY = 'dsp-local-library-store';
 /** Strip heavy/ephemeral fields from tracks before persisting to localStorage.
  *  Keep isLocal because the UI uses it to identify imported tracks. */
 function stripForStorage(tracks: LocalTrack[]): LocalTrack[] {
-  return tracks.map(({ coverArt: _ca, blobUrl: _bu, cached: _ch, ...clean }: any) => {
+  return tracks.map(({ coverArt: _ca, blobUrl: _bu, ...clean }: any) => {
+    // Keep: cached, storagePath, storageUrl (small fields, needed for cloud playback)
     return { ...clean, coverArt: null } as LocalTrack;
   });
 }

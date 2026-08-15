@@ -6,13 +6,19 @@
 // Now track metadata lives in PostgreSQL and audio blobs in Supabase Storage.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { getPrisma } from '@/lib/db';
 
 // ── GET: List all library tracks ──
 
 export async function GET() {
+  const prisma = getPrisma();
+  if (!prisma) {
+    return NextResponse.json(
+      { success: false, error: 'Database not configured' },
+      { status: 503 },
+    );
+  }
+
   try {
     const tracks = await prisma.libraryTrack.findMany({
       orderBy: [{ artist: 'asc' }, { album: 'asc' }, { trackNumber: 'asc' }],
@@ -33,6 +39,14 @@ export async function GET() {
 // Uses upsert to handle re-imports (same track ID = update, new ID = create)
 
 export async function POST(request: NextRequest) {
+  const prisma = getPrisma();
+  if (!prisma) {
+    return NextResponse.json(
+      { success: false, error: 'Database not configured' },
+      { status: 503 },
+    );
+  }
+
   try {
     const body = await request.json();
     const { tracks } = body;
@@ -128,6 +142,14 @@ export async function POST(request: NextRequest) {
 // ── DELETE: Clear all library tracks ──
 
 export async function DELETE() {
+  const prisma = getPrisma();
+  if (!prisma) {
+    return NextResponse.json(
+      { success: false, error: 'Database not configured' },
+      { status: 503 },
+    );
+  }
+
   try {
     const count = await prisma.libraryTrack.deleteMany({});
     return NextResponse.json({

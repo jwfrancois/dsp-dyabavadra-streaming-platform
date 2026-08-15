@@ -6,11 +6,17 @@
 // On app load, the hydration gate calls this to populate the library.
 
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { getPrisma } from '@/lib/db';
 
 export async function GET() {
+  const prisma = getPrisma();
+  if (!prisma) {
+    return NextResponse.json(
+      { success: false, error: 'Database not configured' },
+      { status: 503 },
+    );
+  }
+
   try {
     const libraryTracks = await prisma.libraryTrack.findMany({
       orderBy: [{ artist: 'asc' }, { album: 'asc' }, { trackNumber: 'asc' }],
@@ -39,9 +45,9 @@ export async function GET() {
       coverArt: null as string | null, // Cover art loaded separately from IndexedDB or Supabase Storage
       isLocal: t.isLocal,
       cached: !!t.storageUrl, // Has cloud storage = "cached"
-      blobUrl: t.storageUrl || undefined, // Cloud CDN URL replaces blob URL
-      storagePath: t.storagePath,
-      storageUrl: t.storageUrl,
+      blobUrl: undefined as string | undefined, // blobUrl is ephemeral, not from cloud
+      storagePath: t.storagePath || undefined,
+      storageUrl: t.storageUrl || undefined,
     }));
 
     return NextResponse.json({
