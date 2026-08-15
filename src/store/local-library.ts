@@ -386,6 +386,11 @@ export const useLocalLibraryStore = create<LocalLibraryState>()(
     {
       name: STORAGE_KEY,
       storage: safeStorage,
+      // CRITICAL: skipHydration prevents SSR from reading localStorage (which returns null
+      // because typeof window === 'undefined') and marking hydration as complete with
+      // empty state. Without this, hasHydrated() returns true on client mount even
+      // though localStorage was never actually read on the client side.
+      skipHydration: true,
       // Strip heavy fields (coverArt base64) before persisting to localStorage.
       // Cover art is stored separately in IndexedDB.
       partialize: (state) => ({
