@@ -3,6 +3,9 @@
 import React from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
+import { useProfilesStore } from '@/store/profiles';
+import { useSystemStore } from '@/store/system';
+import { useLocalLibraryStore } from '@/store/local-library';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -22,13 +25,13 @@ import { formatDuration, getCoverGradient } from '@/lib/data';
 import { usePodcastStore } from '@/store/podcast';
 
 const navItems: Array<{ icon: typeof Home; label: string; view: string; badge?: string }> = [
-  { icon: Home, label: 'Home', view: 'home' as const },
-  { icon: LayoutGrid, label: 'Artists', view: 'browse-artists' as const },
-  { icon: Disc3, label: 'Albums', view: 'browse-albums' as const },
-  { icon: Music, label: 'Tracks', view: 'browse-tracks' as const },
-  { icon: Radio, label: 'Genres', view: 'browse-genres' as const },
-  { icon: ListMusic, label: 'Playlists', view: 'browse-playlists' as const },
-  { icon: Podcast, label: 'Podcasts', view: 'podcasts' as const, badge: 'podcast' as const },
+  { icon: Home, label: 'Home', view: 'home' },
+  { icon: LayoutGrid, label: 'Artists', view: 'browse-artists' },
+  { icon: Disc3, label: 'Albums', view: 'browse-albums' },
+  { icon: Music, label: 'Tracks', view: 'browse-tracks' },
+  { icon: Radio, label: 'Genres', view: 'browse-genres' },
+  { icon: ListMusic, label: 'Playlists', view: 'browse-playlists' },
+  { icon: Podcast, label: 'Podcasts', view: 'podcasts', badge: 'podcast' },
 ];
 
 const discoveryItems: Array<{ icon: typeof Home; label: string; view: string; params?: Record<string, string> }> = [
@@ -63,9 +66,26 @@ const libraryItems = [
 export function Sidebar() {
   const { currentView, navigate, sidebarOpen, setSidebarOpen } = useUIStore();
   const { isPlaying, currentTrack, activeZoneId, togglePlay } = usePlayerStore();
-  const activeZone = undefined as any;
   const { getTotalNewEpisodes } = usePodcastStore();
   const newEpisodes = getTotalNewEpisodes();
+
+  // Fix 1: Active Zone — derive from player store's activeZoneId
+  const zoneName = activeZoneId === 'zone-1' ? 'Main Listening Room' :
+                   activeZoneId === 'zone-2' ? 'Study' : `Zone ${activeZoneId.replace('zone-', '')}`;
+  const activeZone = { id: activeZoneId, name: zoneName, endpoints: [], isPlaying: false, volume: 0 };
+
+  // Fix 3: User Profile — read from profiles store
+  const activeProfile = useProfilesStore(s => s.getActiveProfile());
+  const profileName = activeProfile?.name || 'Music Lover';
+  const profileInitials = profileName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+
+  // Fix 3: Core status — read from system store
+  const coreStatus = useSystemStore(s => s.core);
+  const coreLabel = coreStatus?.status === 'running' ? 'Core Online' : coreStatus?.status === 'starting' ? 'Core Starting...' : 'Core Offline';
+
+  // Fix 4: Now Playing cover art — look up from local library
+  const localTracks = useLocalLibraryStore(s => s.tracks);
+  const currentTrackCover = currentTrack ? localTracks.find(t => t.id === currentTrack.id)?.coverArt : null;
 
   return (
     <>
@@ -127,7 +147,7 @@ export function Sidebar() {
                   className={`w-full justify-start gap-3 h-9 mb-0.5 ${
                     isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-muted-foreground hover:text-sidebar-foreground'
                   } ${!sidebarOpen ? 'px-0 justify-center' : ''}`}
-                  onClick={() => navigate(item.view)}
+                  onClick={() => navigate(item.view as any)}
                 >
                   <div className="relative flex-shrink-0">
                     <Icon className="w-4 h-4" />
@@ -190,7 +210,7 @@ export function Sidebar() {
                   className={`w-full justify-start gap-3 h-9 mb-0.5 ${
                     isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-muted-foreground hover:text-sidebar-foreground'
                   } ${!sidebarOpen ? 'px-0 justify-center' : ''}`}
-                  onClick={() => navigate(item.view)}
+                  onClick={() => navigate(item.view as any)}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />
                   {sidebarOpen && <span className="text-xs">{item.label}</span>}
@@ -218,7 +238,7 @@ export function Sidebar() {
                   className={`w-full justify-start gap-3 h-9 mb-0.5 ${
                     isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-muted-foreground hover:text-sidebar-foreground'
                   } ${!sidebarOpen ? 'px-0 justify-center' : ''}`}
-                  onClick={() => navigate(item.view)}
+                  onClick={() => navigate(item.view as any)}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />
                   {sidebarOpen && <span className="text-xs">{item.label}</span>}
@@ -240,7 +260,11 @@ export function Sidebar() {
                 onClick={() => navigate('now-playing')}
               >
                 <div className="flex gap-3">
-                  <div className={`w-12 h-12 rounded-md bg-gradient-to-br ${getCoverGradient(currentTrack.id)} flex-shrink-0`} />
+                  {currentTrackCover ? (
+                    <img src={currentTrackCover} alt="" className="w-12 h-12 rounded-md object-cover flex-shrink-0" />
+                  ) : (
+                    <div className={`w-12 h-12 rounded-md bg-gradient-to-br ${getCoverGradient(currentTrack.id)} flex-shrink-0`} />
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-foreground truncate">{currentTrack.title}</p>
                     <p className="text-[11px] text-muted-foreground truncate">{currentTrack.artistName}</p>
@@ -271,7 +295,13 @@ export function Sidebar() {
                 </Button>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {/* No zones configured */}
+                <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary">
+                  <Speaker className="w-3 h-3" />
+                  <span className="text-[10px] font-medium">{zoneName}</span>
+                  {isPlaying && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                  )}
+                </div>
               </div>
             </div>
           </>
@@ -283,11 +313,11 @@ export function Sidebar() {
             <Separator className="bg-sidebar-border" />
             <div className="p-3 flex items-center gap-3">
               <Avatar className="w-8 h-8">
-                <AvatarFallback className="bg-primary text-primary-foreground text-xs">ZA</AvatarFallback>
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs">{profileInitials}</AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-sidebar-foreground truncate">Music Lover</p>
-                <p className="text-[10px] text-muted-foreground">Core Online</p>
+                <p className="text-xs font-medium text-sidebar-foreground truncate">{profileName}</p>
+                <p className="text-[10px] text-muted-foreground">{coreLabel}</p>
               </div>
             </div>
           </>

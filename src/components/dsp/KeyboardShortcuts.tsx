@@ -122,6 +122,13 @@ export function KeyboardShortcuts() {
         return;
       }
 
+      // Cmd+K / Ctrl+K — Toggle global search dialog
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        uiState.toggleSearch();
+        return;
+      }
+
       // L — Toggle love
       if (e.key === 'l' && !e.metaKey && !e.ctrlKey && playerState.currentTrack) {
         useProfilesStore.getState().toggleLoveTrack(playerState.currentTrack.id);
@@ -185,6 +192,7 @@ export function KeyboardShortcuts() {
                 { key: 'N', desc: 'Now Playing' },
                 { key: 'H', desc: 'Home' },
                 { key: '/', desc: 'Search' },
+                { key: '⌘/Ctrl + K', desc: 'Quick Search' },
                 { key: '?', desc: 'This Overlay' },
               ].map(({ key, desc }) => (
                 <div key={key} className="flex items-center gap-3">

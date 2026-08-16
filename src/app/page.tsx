@@ -41,6 +41,7 @@ import { ZonePicker } from '@/components/dsp/ZonePicker';
 import { AudioEngineProvider } from '@/components/dsp/AudioEngineProvider';
 import { StoreHydrationGate } from '@/components/StoreHydration';
 import { KeyboardShortcuts } from '@/components/dsp/KeyboardShortcuts';
+import { GlobalSearchDialog } from '@/components/dsp/GlobalSearchDialog';
 import { useUIStore } from '@/store/ui';
 import type { ViewName } from '@/store/player';
 import { Button } from '@/components/ui/button';
@@ -124,6 +125,9 @@ export default function Page() {
 
       {/* Zone Picker */}
       <ZonePicker />
+
+      {/* Global Search Dialog (Cmd+K) */}
+      <GlobalSearchDialog />
     </div>
     </AudioEngineProvider>
     </StoreHydrationGate>
