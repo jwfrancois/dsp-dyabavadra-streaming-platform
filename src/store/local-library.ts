@@ -63,75 +63,69 @@ interface LocalLibraryState {
   getFormatCounts: () => Record<string, number>;
 }
 
-// ── Helpers for safe localStorage + stripping heavy fields ──
-
-const STORAGE_KEY = 'dsp-local-library-store';
+// ── Helpers for stripping heavy fields before localStorage persist ──
 
 /** Strip heavy/ephemeral fields from tracks before persisting to localStorage.
- *  Keep isLocal because the UI uses it to identify imported tracks. */
+ *  Cover art is stored separately in IndexedDB to avoid quota issues.
+ *  blobUrl is ephemeral (object URLs die on page unload).
+ *  Keep: cached, storagePath, storageUrl (small strings, needed for cloud playback). */
 function stripForStorage(tracks: LocalTrack[]): LocalTrack[] {
   return tracks.map(({ coverArt: _ca, blobUrl: _bu, ...clean }: any) => {
-    // Keep: cached, storagePath, storageUrl (small fields, needed for cloud playback)
     return { ...clean, coverArt: null } as LocalTrack;
   });
 }
 
-/** Custom storage with SSR guards and QuotaExceeded handling */
-const safeStorage = {
-  getItem: (name: string): string | null => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const raw = localStorage.getItem(name);
-      if (!raw) return null;
-      // Auto-migrate: strip coverArt from old data that exceeded quota
-      try {
-        const parsed = JSON.parse(raw);
-        if (parsed?.state?.tracks && Array.isArray(parsed.state.tracks)) {
-          let dirty = false;
-          for (const t of parsed.state.tracks) {
-            if (t.coverArt && typeof t.coverArt === 'string' && t.coverArt.length > 100) {
-              delete t.coverArt;
-              t.coverArt = null;
-              dirty = true;
-            }
-          }
-          if (dirty) {
-            console.log('[local-library] Auto-migrated: stripped coverArt from persisted tracks');
-            localStorage.setItem(name, JSON.stringify(parsed));
-          }
-        }
-      } catch {
-        // If parsing fails, clear the corrupted data
-        console.warn('[local-library] Corrupted data in localStorage, clearing');
-        localStorage.removeItem(name);
-        return null;
+// ── IndexedDB cover art restoration (non-blocking, runs after hydration) ──
+
+/** Restore cover art and blob URLs from IndexedDB after store hydrates from localStorage.
+ *  This is a fire-and-forget enhancement — tracks are already visible without it. */
+function restoreFromIndexedDB() {
+  if (typeof window === 'undefined') return;
+
+  const tracks = useLocalLibraryStore.getState().tracks;
+  if (!tracks || tracks.length === 0) return;
+
+  const trackIds = tracks.map(t => t.id);
+
+  import('@/lib/audio-db').then(({ getCoverArt, getAudioBlobURL }) => {
+    const promises = trackIds.map(async (id) => {
+      const results = await Promise.allSettled([getCoverArt(id), getAudioBlobURL(id)]);
+      const coverArt = results[0].status === 'fulfilled' ? results[0].value : null;
+      const blobUrl = results[1].status === 'fulfilled' ? results[1].value : null;
+      return { id, coverArt, blobUrl };
+    });
+
+    Promise.all(promises).then((updates) => {
+      const updatedMap = new Map(updates.map(u => [u.id, u]));
+      const restoredCount = updates.filter(u => u.coverArt || u.blobUrl).length;
+
+      if (restoredCount > 0) {
+        console.log(`[local-library] Restored ${restoredCount} tracks with cover art/blob from IndexedDB`);
+        useLocalLibraryStore.setState((prev) => ({
+          tracks: prev.tracks.map((t) => {
+            const u = updatedMap.get(t.id);
+            if (!u) return t;
+            return { ...t, coverArt: u.coverArt ?? t.coverArt, blobUrl: u.blobUrl ?? t.blobUrl } as any;
+          }),
+        }));
       }
-      return raw;
-    } catch {
-      return null;
-    }
-  },
-  setItem: (name: string, value: string): void => {
-    if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem(name, value);
-    } catch (e) {
-      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-        console.warn('[local-library] localStorage quota exceeded, clearing and retrying');
-        localStorage.removeItem(name);
-        try {
-          localStorage.setItem(name, value);
-        } catch {
-          console.error('[local-library] Still exceeds quota after clear — data too large');
-        }
-      }
-    }
-  },
-  removeItem: (name: string): void => {
-    if (typeof window === 'undefined') return;
-    try { localStorage.removeItem(name); } catch {}
-  },
-};
+    }).catch(() => {});
+  }).catch(() => {});
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STORE — same pattern as podcast store (which works reliably)
+// ═══════════════════════════════════════════════════════════════
+// Key design decisions (matching the working podcast store):
+//
+//   1. NO skipHydration — zustand auto-reads localStorage on client mount
+//   2. NO custom storage — use default localStorage (same as podcast)
+//   3. NO onRehydrateStorage — IndexedDB restoration is a separate fire-and-forget
+//   4. partialize strips heavy fields (coverArt base64) to avoid quota
+//
+// The podcast store proves this pattern works reliably in Next.js + Vercel.
+// The previous complex pipeline (skipHydration + custom safeStorage + gate)
+// was the root cause of data loss.
 
 export const useLocalLibraryStore = create<LocalLibraryState>()(
   persist(
@@ -387,79 +381,25 @@ export const useLocalLibraryStore = create<LocalLibraryState>()(
       },
     }),
     {
-      name: STORAGE_KEY,
-      storage: safeStorage,
-      // CRITICAL: skipHydration prevents SSR from reading localStorage (which returns null
-      // because typeof window === 'undefined') and marking hydration as complete with
-      // empty state. Without this, hasHydrated() returns true on client mount even
-      // though localStorage was never actually read on the client side.
-      skipHydration: true,
-      // Strip heavy fields (coverArt base64) before persisting to localStorage.
-      // Cover art is stored separately in IndexedDB.
+      name: 'dsp-local-library-store',
+      // Use DEFAULT localStorage storage — same as the podcast store which works reliably.
+      // No custom safeStorage wrapper (it had destructive error handling that deleted data).
+      // No skipHydration — zustand auto-hydrates on client mount (same as podcast).
+      // No onRehydrateStorage — IndexedDB restoration is a separate fire-and-forget call.
       partialize: (state) => ({
         tracks: stripForStorage(state.tracks),
         directories: state.directories,
         lastScanTime: state.lastScanTime,
         scanStats: state.scanStats,
       }),
-      // ── Critical fix: use onRehydrateStorage with batch IndexedDB reads ──
-      // Previous version fired hundreds of individual IndexedDB reads with a
-      // fragile `pending` counter. If any promise threw before decrementing,
-      // the counter never reached 0 and setState was never called.
-      // New version uses Promise.allSettled with batch operations for reliability.
-      onRehydrateStorage: () => (state, error) => {
-        if (error) {
-          console.error('[local-library] Rehydration error:', error);
-          return;
+      // After zustand finishes hydrating from localStorage, try to restore
+      // cover art and blob URLs from IndexedDB (non-blocking).
+      onRehydrateStorage: () => (state) => {
+        if (state && state.tracks && state.tracks.length > 0) {
+          console.log(`[local-library] Auto-hydrated ${state.tracks.length} tracks from localStorage`);
+          // Fire-and-forget IndexedDB restoration (non-blocking)
+          restoreFromIndexedDB();
         }
-
-        // Skip if no tracks to restore, or during SSR
-        if (!state || !state.tracks || state.tracks.length === 0 || typeof window === 'undefined') {
-          return;
-        }
-
-        const trackIds = state.tracks.map(t => t.id);
-        console.log(`[local-library] Rehydrating ${trackIds.length} tracks from IndexedDB...`);
-
-        // Dynamic import to avoid SSR issues with browser APIs
-        import('@/lib/audio-db').then(({ getCoverArt, getAudioBlobURL }) => {
-          // Batch all IndexedDB reads using Promise.allSettled (never hangs)
-          const promises = trackIds.map(async (id) => {
-            const results = await Promise.allSettled([
-              getCoverArt(id),
-              getAudioBlobURL(id),
-            ]);
-            const coverArt = results[0].status === 'fulfilled' ? results[0].value : null;
-            const blobUrl = results[1].status === 'fulfilled' ? results[1].value : null;
-            return { id, coverArt, blobUrl };
-          });
-
-          Promise.all(promises).then((updates) => {
-            const updatedMap = new Map(updates.map(u => [u.id, u]));
-            const restoredCount = updates.filter(u => u.coverArt || u.blobUrl).length;
-
-            if (restoredCount > 0) {
-              console.log(`[local-library] Restored ${restoredCount} tracks with cover art/blob URLs from IndexedDB`);
-              useLocalLibraryStore.setState((prev) => ({
-                tracks: prev.tracks.map((t) => {
-                  const u = updatedMap.get(t.id);
-                  if (!u) return t;
-                  return {
-                    ...t,
-                    coverArt: u.coverArt ?? t.coverArt,
-                    blobUrl: u.blobUrl ?? t.blobUrl,
-                  } as any;
-                }),
-              }));
-            } else {
-              console.log('[local-library] No cover art or audio blobs found in IndexedDB (first import or cleared cache)');
-            }
-          }).catch((err) => {
-            console.error('[local-library] Failed to batch-restore from IndexedDB:', err);
-          });
-        }).catch((err) => {
-          console.warn('[local-library] Failed to import audio-db module:', err);
-        });
       },
     }
   )
