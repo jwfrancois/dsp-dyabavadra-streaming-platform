@@ -12,6 +12,21 @@ import { X, Play, Grip, Trash2, AlertCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useUIStore } from '@/store/ui';
 import { useHistoryStore } from '@/store/history';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragOverEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 type Tab = 'queue' | 'history';
 
@@ -28,15 +43,107 @@ function localToTrack(t: any): Track {
   };
 }
 
+/* ------------------------------------------------------------------ */
+/*  SortableQueueItem                                                  */
+/* ------------------------------------------------------------------ */
+function SortableQueueItem({
+  track,
+  index,
+  play,
+  removeFromQueue,
+  isOver,
+}: {
+  track: Track;
+  index: number;
+  play: (track: Track) => void;
+  removeFromQueue: (index: number) => void;
+  isOver: boolean;
+}) {
+  const sortableId = `queue-${index}`;
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: sortableId });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  position: 'relative' as const,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-2.5 p-2 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors group ${
+        isDragging ? 'shadow-lg ring-1 ring-primary/20' : ''
+      } ${
+        isOver && !isDragging ? 'bg-accent/50 ring-1 ring-primary/15' : ''
+      }`}
+      onClick={() => play(track)}
+    >
+      {/* Drag handle – only the Grip initiates drag */}
+      <Grip
+        className="w-3 h-3 text-muted-foreground/50 flex-shrink-0 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      />
+      <div
+        className={`w-9 h-9 rounded bg-gradient-to-br ${getCoverGradient(track.id)} flex-shrink-0`}
+      />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{track.title}</p>
+        <p className="text-[11px] text-muted-foreground truncate">
+          {track.artistName}
+        </p>
+      </div>
+      <span className="text-[11px] text-muted-foreground flex-shrink-0">
+        {formatDuration(track.duration)}
+      </span>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7 opacity-0 group-hover:opacity-100 flex-shrink-0"
+        onClick={(e) => {
+          e.stopPropagation();
+          removeFromQueue(index);
+        }}
+      >
+        <Trash2 className="w-3 h-3 text-muted-foreground" />
+      </Button>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  QueueDrawer                                                        */
+/* ------------------------------------------------------------------ */
 export function QueueDrawer() {
   const {
-    queue, queueIndex, currentTrack, isPlaying,
-    play, removeFromQueue,
+    queue,
+    queueIndex,
+    currentTrack,
+    isPlaying,
+    play,
+    removeFromQueue,
+    reorderQueue,
   } = usePlayerStore();
   const { queueDrawerOpen, setQueueDrawerOpen } = useUIStore();
   const { entries } = useHistoryStore();
-  const localTracks = useLocalLibraryStore(s => s.tracks);
+  const localTracks = useLocalLibraryStore((s) => s.tracks);
   const [activeTab, setActiveTab] = useState<Tab>('queue');
+
+  // DnD state — must be before any conditional returns (hooks rule)
+  const [overId, setOverId] = useState<string | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
 
   // Build a lookup map for history track resolution
   const trackLookup = useMemo(() => {
@@ -47,11 +154,43 @@ export function QueueDrawer() {
     return map;
   }, [localTracks]);
 
+  // Derive past vs future queue slices
+  const pastItems = useMemo(
+    () => queue.slice(0, queueIndex),
+    [queue, queueIndex],
+  );
+  const futureItems = useMemo(
+    () => queue.slice(queueIndex + 1),
+    [queue, queueIndex],
+  );
+  const futureIds = useMemo(
+    () => futureItems.map((_, i) => `queue-${queueIndex + 1 + i}`),
+    [futureItems, queueIndex],
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    setOverId(null);
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const fromIndex = queue.findIndex((_, i) => `queue-${i}` === active.id);
+      const toIndex = queue.findIndex((_, i) => `queue-${i}` === over.id);
+      if (fromIndex !== -1 && toIndex !== -1) {
+        reorderQueue(fromIndex, toIndex);
+      }
+    }
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    setOverId(event.over?.id?.toString() ?? null);
+  }
+
+  function handleDragStart() {
+    setOverId(null);
+  }
+
   if (!queueDrawerOpen) return null;
 
-  const getZoneName = (zoneId: string) => {
-    return zoneId;
-  };
+  const getZoneName = (zoneId: string) => zoneId;
 
   const formatTimeAgo = (isoString: string) => {
     const now = new Date();
@@ -99,9 +238,17 @@ export function QueueDrawer() {
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div>
             <h2 className="text-sm font-semibold">Queue</h2>
-            <p className="text-[11px] text-muted-foreground">{queue.length} tracks · {formatDuration(queue.reduce((s, t) => s + t.duration, 0))}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {queue.length} tracks ·{' '}
+              {formatDuration(queue.reduce((s, t) => s + t.duration, 0))}
+            </p>
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setQueueDrawerOpen(false)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setQueueDrawerOpen(false)}
+          >
             <X className="w-4 h-4" />
           </Button>
         </div>
@@ -139,60 +286,123 @@ export function QueueDrawer() {
         <ScrollArea className="flex-1">
           {activeTab === 'queue' ? (
             <>
-              {/* Now Playing */}
+              {/* Now Playing — NOT draggable */}
               {currentTrack && (
                 <>
                   <div className="p-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 mb-1">Now Playing</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 mb-1">
+                      Now Playing
+                    </p>
                     <div className="flex items-center gap-3 p-2 rounded-lg bg-primary/10 border border-primary/20">
-                      <div className={`w-10 h-10 rounded bg-gradient-to-br ${getCoverGradient(currentTrack.id)}`} />
+                      <div
+                        className={`w-10 h-10 rounded bg-gradient-to-br ${getCoverGradient(currentTrack.id)}`}
+                      />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate text-primary">{currentTrack.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">{currentTrack.artistName}</p>
+                        <p className="text-sm font-medium truncate text-primary">
+                          {currentTrack.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {currentTrack.artistName}
+                        </p>
                       </div>
-                      <Badge className="text-[10px] bg-primary text-primary-foreground">Playing</Badge>
+                      <Badge className="text-[10px] bg-primary text-primary-foreground">
+                        Playing
+                      </Badge>
                     </div>
                   </div>
                   <Separator className="mx-4" />
                 </>
               )}
 
-              {/* Up Next */}
-              <div className="p-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 mb-1">
-                  Up Next ({queue.length - queueIndex - 1})
-                </p>
-                <div className="space-y-0.5">
-                  {queue.map((track, index) => {
-                    if (index === queueIndex) return null;
-                    const isPast = index < queueIndex;
-                    return (
+              {/* Past items — NOT draggable */}
+              {pastItems.length > 0 && (
+                <div className="p-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 mb-1">
+                    Played
+                  </p>
+                  <div className="space-y-0.5">
+                    {pastItems.map((track, idx) => (
                       <div
-                        key={`${track.id}-${index}`}
-                        className={`flex items-center gap-2.5 p-2 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors group ${
-                          isPast ? 'opacity-40' : ''
-                        }`}
+                        key={`${track.id}-${idx}`}
+                        className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors group opacity-40"
                         onClick={() => play(track)}
                       >
-                        <Grip className="w-3 h-3 text-muted-foreground/50 flex-shrink-0 opacity-0 group-hover:opacity-100" />
-                        <div className={`w-9 h-9 rounded bg-gradient-to-br ${getCoverGradient(track.id)} flex-shrink-0`} />
+                        <div className="w-3 h-3 flex-shrink-0" /> {/* spacer for grip alignment */}
+                        <div
+                          className={`w-9 h-9 rounded bg-gradient-to-br ${getCoverGradient(track.id)} flex-shrink-0`}
+                        />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{track.title}</p>
-                          <p className="text-[11px] text-muted-foreground truncate">{track.artistName}</p>
+                          <p className="text-sm font-medium truncate">
+                            {track.title}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {track.artistName}
+                          </p>
                         </div>
-                        <span className="text-[11px] text-muted-foreground flex-shrink-0">{formatDuration(track.duration)}</span>
+                        <span className="text-[11px] text-muted-foreground flex-shrink-0">
+                          {formatDuration(track.duration)}
+                        </span>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 opacity-0 group-hover:opacity-100 flex-shrink-0"
-                          onClick={(e) => { e.stopPropagation(); removeFromQueue(index); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFromQueue(idx);
+                          }}
                         >
                           <Trash2 className="w-3 h-3 text-muted-foreground" />
                         </Button>
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
+              )}
+
+              {/* Up Next — draggable future items */}
+              <div className="p-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 mb-1">
+                  Up Next ({futureItems.length})
+                </p>
+
+                {futureItems.length === 0 && pastItems.length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-muted-foreground">
+                      Queue is empty
+                    </p>
+                  </div>
+                )}
+
+                {futureItems.length > 0 && (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={futureIds}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="space-y-0.5">
+                        {futureItems.map((track, i) => {
+                          const actualIndex = queueIndex + 1 + i;
+                          return (
+                            <SortableQueueItem
+                              key={`queue-${actualIndex}`}
+                              track={track}
+                              index={actualIndex}
+                              play={play}
+                              removeFromQueue={removeFromQueue}
+                              isOver={overId === `queue-${actualIndex}`}
+                            />
+                          );
+                        })}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                )}
               </div>
             </>
           ) : (
@@ -203,7 +413,9 @@ export function QueueDrawer() {
               </p>
               {entries.length === 0 && (
                 <div className="text-center py-8">
-                  <p className="text-sm text-muted-foreground">No play history yet</p>
+                  <p className="text-sm text-muted-foreground">
+                    No play history yet
+                  </p>
                 </div>
               )}
               <div className="space-y-0.5">
@@ -221,11 +433,17 @@ export function QueueDrawer() {
                           <AlertCircle className="w-4 h-4 text-muted-foreground" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-muted-foreground truncate">Track unavailable</p>
-                          <p className="text-[11px] text-muted-foreground/60 truncate font-mono">{entry.trackId}</p>
+                          <p className="text-sm text-muted-foreground truncate">
+                            Track unavailable
+                          </p>
+                          <p className="text-[11px] text-muted-foreground/60 truncate font-mono">
+                            {entry.trackId}
+                          </p>
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <span className="text-[10px] text-muted-foreground">{formatTimeAgo(entry.playedAt)}</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {formatTimeAgo(entry.playedAt)}
+                          </span>
                           <Badge
                             variant="secondary"
                             className={`text-[9px] h-4 px-1.5 ${sourceColor(entry.source)} text-white border-0`}
@@ -246,7 +464,11 @@ export function QueueDrawer() {
                       onClick={() => play(track)}
                     >
                       {localTrack.coverArt ? (
-                        <img src={localTrack.coverArt} alt="" className="w-9 h-9 rounded flex-shrink-0 object-cover" />
+                        <img
+                          src={localTrack.coverArt}
+                          alt=""
+                          className="w-9 h-9 rounded flex-shrink-0 object-cover"
+                        />
                       ) : (
                         <div
                           className={`w-9 h-9 rounded bg-gradient-to-br ${getCoverGradient(localTrack.id)} flex-shrink-0`}
@@ -254,21 +476,33 @@ export function QueueDrawer() {
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-medium truncate">{localTrack.title}</p>
+                          <p className="text-sm font-medium truncate">
+                            {localTrack.title}
+                          </p>
                           {!entry.completed && (
-                            <span className="text-[9px] text-muted-foreground flex-shrink-0">(partial)</span>
+                            <span className="text-[9px] text-muted-foreground flex-shrink-0">
+                              (partial)
+                            </span>
                           )}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <p className="text-[11px] text-muted-foreground truncate">{localTrack.artist}</p>
-                          <Badge variant="outline" className="text-[8px] h-3 px-1 border-0 bg-muted/60 text-muted-foreground">
-                            {localTrack.format} {formatSampleRate(localTrack.sampleRate)}
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {localTrack.artist}
+                          </p>
+                          <Badge
+                            variant="outline"
+                            className="text-[8px] h-3 px-1 border-0 bg-muted/60 text-muted-foreground"
+                          >
+                            {localTrack.format}{' '}
+                            {formatSampleRate(localTrack.sampleRate)}
                           </Badge>
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
                         <div className="flex items-center gap-1">
-                          <span className="text-[10px] text-muted-foreground">{formatTimeAgo(entry.playedAt)}</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {formatTimeAgo(entry.playedAt)}
+                          </span>
                           <Badge
                             variant="secondary"
                             className={`text-[9px] h-4 px-1.5 ${sourceColor(entry.source)} text-white border-0`}
@@ -284,7 +518,10 @@ export function QueueDrawer() {
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 opacity-0 group-hover:opacity-100 flex-shrink-0"
-                            onClick={(e) => { e.stopPropagation(); play(track); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              play(track);
+                            }}
                           >
                             <Play className="w-3 h-3" />
                           </Button>

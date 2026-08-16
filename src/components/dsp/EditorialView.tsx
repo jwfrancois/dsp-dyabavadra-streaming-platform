@@ -72,7 +72,7 @@ export function EditorialView() {
     const albums = localStore.getAlbums();
     const artists = localStore.getArtists();
     const allTrackIds = localTracks.map(t => t.id);
-    const allAlbumIds = albums.map(a => a.id);
+    const allAlbumIds = albums.map(a => `${a.artist}|||${a.name}`);
 
     const today = new Date().toISOString().slice(0, 10);
 

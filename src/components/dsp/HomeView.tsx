@@ -5,8 +5,11 @@ import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
 import { useSystemStore } from '@/store/system';
 import { formatDuration, formatFileSize, getCoverGradient, formatSampleRate } from '@/lib/data';
+import type { Track } from '@/lib/data';
 import { radioStations } from '@/lib/radio-stations';
 import { useLocalLibraryStore } from '@/store/local-library';
+import { useHistoryStore } from '@/store/history';
+import { useProfilesStore } from '@/store/profiles';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +19,7 @@ import {
   Headphones, Calendar, Music2, Radio, Waves,
   TrendingUp, Disc3, Library, Zap, Info,
   Search, Keyboard, Sun, Moon, Coffee, Sunrise,
+  Heart, Shuffle,
 } from 'lucide-react';
 
 // ── Quality badge helper ──
@@ -41,6 +45,41 @@ function getGreeting(): { text: string; icon: React.ReactNode; emoji: string } {
   return { text: 'Night Owl Mode', icon: <Moon className="w-5 h-5" />, emoji: '' };
 }
 
+// ── Track conversion helper ──
+function localToTrack(t: any): Track {
+  return {
+    id: t.id, title: t.title, albumId: t.album, albumName: t.album,
+    artistId: t.artist, artistName: t.artist, trackNumber: t.trackNumber,
+    discNumber: t.discNumber || 0, duration: t.duration, format: t.format,
+    bitDepth: t.bitDepth, sampleRate: t.sampleRate, channels: t.channels,
+    bitrate: t.bitrate, filePath: t.filePath, fileSize: t.fileSize,
+    composers: t.composer ? [t.composer] : [], performers: [], genre: t.genre,
+    loved: false, playCount: 0, source: 'local', isAvailable: true,
+  };
+}
+
+// ── Time ago helper ──
+function timeAgo(isoString: string): string {
+  const diffMin = Math.floor((Date.now() - new Date(isoString).getTime()) / 60000);
+  if (diffMin < 1) return 'Just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  return `${Math.floor(diffHr / 24)}d ago`;
+}
+
+// ── Genre color helper ──
+const genreGradients = [
+  'from-violet-600 to-purple-800', 'from-rose-600 to-pink-800',
+  'from-blue-600 to-indigo-800', 'from-emerald-600 to-teal-800',
+  'from-amber-600 to-orange-800', 'from-cyan-600 to-sky-800',
+  'from-fuchsia-600 to-pink-800', 'from-lime-600 to-green-800',
+];
+function getGenreGradient(genre: string): string {
+  const hash = genre.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  return genreGradients[hash % genreGradients.length];
+}
+
 export function HomeView() {
   const { navigate } = useUIStore();
   const { play, setQueue, currentTrack, isPlaying } = usePlayerStore();
@@ -52,6 +91,10 @@ export function HomeView() {
   const totalSize = getTotalSize();
   const totalDuration = getTotalDuration();
   const formatCounts = getFormatCounts();
+
+  const historyEntries = useHistoryStore(s => s.entries);
+  const getActiveProfile = useProfilesStore(s => s.getActiveProfile);
+  const activeProfile = getActiveProfile();
 
   const greeting = getGreeting();
 
@@ -83,6 +126,71 @@ export function HomeView() {
     [formatCounts]
   );
 
+  // ── Recently Played from history ──
+  const recentlyPlayed = useMemo(() => {
+    if (historyEntries.length === 0) return [];
+    const seen = new Set<string>();
+    const result: Array<{ track: typeof localTracks[0]; playedAt: string }> = [];
+    for (const entry of historyEntries) {
+      if (seen.has(entry.trackId)) continue;
+      seen.add(entry.trackId);
+      const track = localTracks.find(t => t.id === entry.trackId);
+      if (track) {
+        result.push({ track, playedAt: entry.playedAt });
+        if (result.length >= 6) break;
+      }
+    }
+    return result;
+  }, [historyEntries, localTracks]);
+
+  // ── Loved Tracks from profiles ──
+  const lovedTracks = useMemo(() => {
+    if (!activeProfile || activeProfile.lovedTrackIds.length === 0) return [];
+    return activeProfile.lovedTrackIds
+      .map(id => localTracks.find(t => t.id === id))
+      .filter((t): t is typeof localTracks[0] => !!t)
+      .slice(0, 6);
+  }, [activeProfile, localTracks]);
+
+  // ── Genre map for Quick Play ──
+  const genreMap = useMemo(() => {
+    const map: Record<string, typeof localTracks[0][]> = {};
+    localTracks.forEach(t => {
+      if (t.genre) {
+        const g = t.genre.split(';')[0].trim();
+        if (!map[g]) map[g] = [];
+        map[g].push(t);
+      }
+    });
+    return map;
+  }, [localTracks]);
+
+  const quickPlayGenres = useMemo(() => {
+    const entries = Object.entries(genreMap);
+    if (entries.length < 3) return [];
+    return entries
+      .sort((a, b) => b[1].length - a[1].length)
+      .slice(0, 8)
+      .map(([genre, tracks]) => ({ genre, count: tracks.length }));
+  }, [genreMap]);
+
+  // ── Top Artists derived from library ──
+  const topArtists = useMemo(() => {
+    const artistAlbums: Record<string, Set<string>> = {};
+    localTracks.forEach(t => {
+      if (!artistAlbums[t.artist]) artistAlbums[t.artist] = new Set();
+      artistAlbums[t.artist].add(t.album);
+    });
+    return Object.entries(artistAlbums)
+      .map(([name, albums]) => ({
+        name,
+        trackCount: localTracks.filter(t => t.artist === name).length,
+        albumCount: albums.size,
+      }))
+      .sort((a, b) => b.trackCount - a.trackCount)
+      .slice(0, 6);
+  }, [localTracks]);
+
   const playAlbum = (albumName: string, artistName: string) => {
     const albumTracks = localTracks.filter(t => t.album === albumName && t.artist === artistName).sort((a, b) => a.trackNumber - b.trackNumber);
     if (albumTracks.length > 0) {
@@ -108,6 +216,15 @@ export function HomeView() {
         genre: t.genre, loved: false, playCount: 0, source: 'local' as const, isAvailable: true,
       });
     }
+  };
+
+  // Shuffle play all tracks in a genre
+  const playGenreShuffled = (genre: string) => {
+    const genreTracks = genreMap[genre];
+    if (!genreTracks || genreTracks.length === 0) return;
+    const shuffled = [...genreTracks].sort(() => Math.random() - 0.5);
+    const trackObjs = shuffled.map(localToTrack);
+    setQueue(trackObjs, 0);
   };
 
   // Helper to get album cover art from tracks
@@ -175,7 +292,7 @@ export function HomeView() {
           </p>
         </div>
 
-        {/* ── RECENTLY PLAYED ── */}
+        {/* ── RECENTLY ADDED ── */}
         {recentTracks.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-4">
@@ -223,6 +340,182 @@ export function HomeView() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── RECENTLY PLAYED (from history store) ── */}
+        {recentlyPlayed.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Headphones className="w-5 h-5 text-primary" />
+                Recently Played
+              </h2>
+              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('browse-tracks')}>
+                View All <ArrowRight className="w-3 h-3 ml-1" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {recentlyPlayed.map(({ track, playedAt }) => (
+                <Card
+                  key={`hp-${track.id}-${playedAt}`}
+                  className="bg-card border-border hover:bg-accent/30 cursor-pointer transition-colors group"
+                  onClick={() => playTrack(track.id)}
+                >
+                  <CardContent className="p-3">
+                    <div className="flex gap-3">
+                      <div className="w-12 h-12 rounded-md bg-gradient-to-br flex-shrink-0 relative overflow-hidden shadow-sm">
+                        {track.coverArt ? (
+                          <img src={track.coverArt} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className={`w-full h-full bg-gradient-to-br ${getCoverGradient(track.id)}`} />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{track.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-[11px] text-muted-foreground">{timeAgo(playedAt)}</span>
+                          <QualityBadge format={track.format} sampleRate={track.sampleRate} bitDepth={track.bitDepth} />
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                        onClick={(e) => { e.stopPropagation(); playTrack(track.id); }}
+                      >
+                        <Play className="w-3 h-3 text-primary" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── LOVED TRACKS (from profiles store) ── */}
+        {lovedTracks.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Heart className="w-5 h-5 text-rose-500" />
+                Loved Tracks
+              </h2>
+              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('browse-tracks')}>
+                View All <ArrowRight className="w-3 h-3 ml-1" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {lovedTracks.map(track => (
+                <Card
+                  key={`loved-${track.id}`}
+                  className="bg-card border-border hover:bg-accent/30 cursor-pointer transition-colors group"
+                  onClick={() => playTrack(track.id)}
+                >
+                  <CardContent className="p-3">
+                    <div className="flex gap-3">
+                      <div className="w-12 h-12 rounded-md bg-gradient-to-br flex-shrink-0 relative overflow-hidden shadow-sm">
+                        {track.coverArt ? (
+                          <img src={track.coverArt} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className={`w-full h-full bg-gradient-to-br ${getCoverGradient(track.id)}`} />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{track.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Heart className="w-3 h-3 text-rose-500 fill-rose-500" />
+                          <span className="text-[11px] text-muted-foreground">{formatDuration(track.duration)}</span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                        onClick={(e) => { e.stopPropagation(); playTrack(track.id); }}
+                      >
+                        <Play className="w-3 h-3 text-primary" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── QUICK PLAY (genre-based shortcuts) ── */}
+        {quickPlayGenres.length >= 3 && (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Shuffle className="w-5 h-5 text-violet-400" />
+                Quick Play
+              </h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {quickPlayGenres.map(({ genre, count }) => (
+                <Card
+                  key={`qp-${genre}`}
+                  className="bg-card border-border hover:bg-accent/30 cursor-pointer transition-colors group overflow-hidden"
+                  onClick={() => playGenreShuffled(genre)}
+                >
+                  <CardContent className="p-0">
+                    <div className={`h-20 bg-gradient-to-br ${getGenreGradient(genre)} relative flex items-end p-3`}>
+                      <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
+                      <div className="relative z-10 flex items-center gap-2">
+                        <Shuffle className="w-4 h-4 text-white/70" />
+                        <span className="text-sm font-semibold text-white truncate">{genre}</span>
+                      </div>
+                      <span className="absolute top-2 right-2 text-[10px] font-medium text-white/60">{count} tracks</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── TOP ARTISTS (derived from library) ── */}
+        {topArtists.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Star className="w-5 h-5 text-gold" />
+                Top Artists
+              </h2>
+              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('browse-artists')}>
+                View All <ArrowRight className="w-3 h-3 ml-1" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+              {topArtists.map(artist => {
+                const artistTracks = localTracks.filter(t => t.artist === artist.name);
+                const coverArt = artistTracks.find(t => t.coverArt)?.coverArt;
+                return (
+                  <div
+                    key={artist.name}
+                    className="group text-center cursor-pointer"
+                    onClick={() => navigate('artist-detail', { artistId: artist.name })}
+                  >
+                    <div className="w-full aspect-square rounded-full bg-gradient-to-br mx-auto mb-2 cover-art-hover shadow-lg relative overflow-hidden">
+                      {coverArt ? (
+                        <img src={coverArt} alt={artist.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="text-2xl font-bold text-white/80">{artist.name[0]?.toUpperCase()}</span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{artist.name}</p>
+                    <p className="text-[11px] text-muted-foreground">{artist.trackCount} tracks · {artist.albumCount} albums</p>
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}
