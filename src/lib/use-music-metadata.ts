@@ -33,6 +33,37 @@ export interface SimilarArtistsResult {
   error?: string;
 }
 
+export interface ComposerBioResult {
+  summaries: Array<{ title: string; snippet: string; url: string; source: string }>;
+  readMoreUrl: string;
+  error?: string;
+}
+
+export interface GenreInfoResult {
+  summaries: Array<{ title: string; snippet: string; url: string; source: string }>;
+  readMoreUrl: string;
+  characteristics?: string;
+  origins?: string;
+  moods?: string[];
+  error?: string;
+}
+
+export interface AlbumCreditsResult {
+  summaries: Array<{ title: string; snippet: string; url: string; source: string }>;
+  error?: string;
+}
+
+export interface TrackInfoResult {
+  summaries: Array<{ title: string; snippet: string; url: string; source: string }>;
+  error?: string;
+}
+
+export interface AlbumReviewResult {
+  summaries: Array<{ title: string; snippet: string; url: string; source: string }>;
+  rating?: string;
+  error?: string;
+}
+
 export interface SearchResult {
   query: string;
   results: Array<{ title: string; snippet: string; url: string; source: string; date: string }>;
@@ -236,6 +267,126 @@ export function useSimilarArtists(artist: string, enabled = true) {
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
   }, [artist, enabled]);
+
+  return { data, loading, error };
+}
+
+// ─── Composer Biography Hook ───
+
+export function useComposerBio(artist: string, enabled = true) {
+  const [data, setData] = useState<ComposerBioResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fetchedRef = useRef(false);
+
+  useEffect(() => {
+    if (!artist || !enabled || fetchedRef.current) return;
+    fetchedRef.current = true;
+    setLoading(true);
+    setError(null);
+
+    const params = new URLSearchParams({ type: 'composer-bio', artist });
+    fetchAPI<ComposerBioResult>(`/api/music-metadata?${params}`, `composer-bio:${artist}`)
+      .then(d => setData(d))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [artist, enabled]);
+
+  return { data, loading, error };
+}
+
+// ─── Genre Info Hook ───
+
+export function useGenreInfo(query: string, enabled = true) {
+  const [data, setData] = useState<GenreInfoResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fetchedRef = useRef(false);
+
+  useEffect(() => {
+    if (!query || !enabled || fetchedRef.current) return;
+    fetchedRef.current = true;
+    setLoading(true);
+    setError(null);
+
+    const params = new URLSearchParams({ type: 'genre-info', query });
+    fetchAPI<GenreInfoResult>(`/api/music-metadata?${params}`, `genre:${query}`)
+      .then(d => setData(d))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [query, enabled]);
+
+  return { data, loading, error };
+}
+
+// ─── Album Credits Hook ───
+
+export function useAlbumCredits(artist: string, album: string, enabled = true) {
+  const [data, setData] = useState<AlbumCreditsResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fetchedRef = useRef(false);
+
+  useEffect(() => {
+    if (!artist || !album || !enabled || fetchedRef.current) return;
+    fetchedRef.current = true;
+    setLoading(true);
+    setError(null);
+
+    const params = new URLSearchParams({ type: 'album-credits', artist, album });
+    fetchAPI<AlbumCreditsResult>(`/api/music-metadata?${params}`, `credits:${artist}:${album}`)
+      .then(d => setData(d))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [artist, album, enabled]);
+
+  return { data, loading, error };
+}
+
+// ─── Track Info Hook ───
+
+export function useTrackInfo(artist: string, title: string, enabled = true) {
+  const [data, setData] = useState<TrackInfoResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fetchedRef = useRef(false);
+
+  useEffect(() => {
+    if (!artist || !title || !enabled || fetchedRef.current) return;
+    fetchedRef.current = true;
+    setLoading(true);
+    setError(null);
+
+    const params = new URLSearchParams({ type: 'track-info', artist, title });
+    fetchAPI<TrackInfoResult>(`/api/music-metadata?${params}`, `track:${artist}:${title}`)
+      .then(d => setData(d))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [artist, title, enabled]);
+
+  return { data, loading, error };
+}
+
+// ─── Album Review Hook ───
+
+export function useAlbumReview(artist: string, album: string, enabled = true) {
+  const [data, setData] = useState<AlbumReviewResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fetchedRef = useRef(false);
+
+  useEffect(() => {
+    if (!artist || !album || !enabled || fetchedRef.current) return;
+    fetchedRef.current = true;
+    setLoading(true);
+    setError(null);
+
+    const params = new URLSearchParams({ type: 'album-review', artist, album });
+    fetchAPI<AlbumReviewResult>(`/api/music-metadata?${params}`, `review:${artist}:${album}`)
+      .then(d => setData(d))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [artist, album, enabled]);
 
   return { data, loading, error };
 }

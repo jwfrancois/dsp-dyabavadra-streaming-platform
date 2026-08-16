@@ -8,6 +8,7 @@ import {
   getCoverGradient, formatDuration,
 } from '@/lib/data';
 import type { Track } from '@/lib/data';
+import { useGenreInfo } from '@/lib/use-music-metadata';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import {
   ArrowLeft, Play, Music, Users, Disc3, Sparkles,
-  Globe, Hash, ChevronRight,
+  Globe, Hash, ChevronRight, ExternalLink,
 } from 'lucide-react';
 
 const genreColorMap: Record<string, string> = {
@@ -122,6 +123,9 @@ export function GenreDetailView() {
   }, [localTracks, genreName]);
 
   const relatedEditorials: { id: string; title: string; type: string; subtitle?: string; curator?: string }[] = [];
+
+  // Web-sourced genre info
+  const { data: genreInfo, loading: genreInfoLoading } = useGenreInfo(genreName || '');
 
   // Static mood mapping based on genre name
   const genreMoods: string[] = (() => {
@@ -230,6 +234,33 @@ export function GenreDetailView() {
             <p className="text-sm text-muted-foreground leading-relaxed max-w-3xl">
               Explore the {genreName} collection in your library. Browse {trackCount} tracks across {albumCount} albums from {artistCount} artists.
             </p>
+            {/* Web-sourced genre description */}
+            {genreInfoLoading && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                Loading genre information...
+              </div>
+            )}
+            {genreInfo && !genreInfoLoading && (
+              <div className="mt-4 space-y-3">
+                {genreInfo.summaries.map((s, i) => (
+                  <div key={i} className="p-3 rounded-lg bg-surface/50">
+                    <p className="text-xs text-muted-foreground leading-relaxed">{s.snippet}</p>
+                    <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline mt-1 inline-flex items-center gap-1">
+                      <ExternalLink className="w-3 h-3" /> {s.source} — Read more
+                    </a>
+                  </div>
+                ))}
+                {genreInfo.characteristics && (
+                  <p className="text-xs text-muted-foreground italic mt-2">{genreInfo.characteristics}</p>
+                )}
+                {genreInfo.origins && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    <span className="font-medium">Origins:</span> {genreInfo.origins}
+                  </p>
+                )}
+              </div>
+            )}
           </section>
         )}
 

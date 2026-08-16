@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { useAlbumInfo } from '@/lib/use-music-metadata';
+import { useAlbumInfo, useAlbumCredits, useAlbumReview } from '@/lib/use-music-metadata';
 import {
   Play, ArrowLeft, Heart, Share2, Star, Clock, Gauge,
   CheckCircle2, Zap, ChevronRight, AlertCircle, Mic,
@@ -39,6 +39,8 @@ export function AlbumDetailView() {
   }, [albumId, isLocalAlbum]);
 
   const { data: albumInfo, loading: albumInfoLoading, error: albumInfoError } = useAlbumInfo(localAlbumInfo?.artistName || '', localAlbumInfo?.albumName || '');
+  const { data: albumCredits, loading: creditsLoading } = useAlbumCredits(localAlbumInfo?.artistName || '', localAlbumInfo?.albumName || '');
+  const { data: albumReview, loading: reviewLoading } = useAlbumReview(localAlbumInfo?.artistName || '', localAlbumInfo?.albumName || '');
 
   // For local albums, find tracks from the local library store
   const localAlbumTracks = React.useMemo(() => {
@@ -100,7 +102,7 @@ export function AlbumDetailView() {
   const isBitPerfect = false; // No signal path info for local imports
 
   // Aggregate all unique credits across the album
-  const albumCredits = React.useMemo(() => {
+  const performerCredits = React.useMemo(() => {
     const creditMap = new Map<string, { name: string; roles: string[]; instruments: string[]; trackIds: string[] }>();
     for (const track of albumTracks) {
       for (const perf of track.performers) {
@@ -248,6 +250,28 @@ export function AlbumDetailView() {
           )}
         </div>
 
+        {/* Production Credits (from web) */}
+        {albumCredits && albumCredits.summaries.length > 0 && (
+          <section className="mb-6">
+            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+              <Mic className="w-5 h-5 text-muted-foreground" />
+              Production & Personnel
+            </h2>
+            <div className="space-y-2">
+              {albumCredits.summaries.map((s, i) => (
+                <Card key={i} className="bg-surface/50 border-border">
+                  <CardContent className="p-3">
+                    <p className="text-xs text-muted-foreground leading-relaxed">{s.snippet}</p>
+                    <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline mt-1 inline-block">
+                      {s.source}
+                    </a>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Track List */}
         <section className="mb-8">
           <h2 className="text-lg font-semibold mb-4">Track List</h2>
@@ -296,9 +320,9 @@ export function AlbumDetailView() {
             <Mic className="w-5 h-5 text-muted-foreground" />
             Credits
           </h2>
-          {albumCredits.length > 0 ? (
+          {performerCredits.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {albumCredits.map(credit => (
+              {performerCredits.map(credit => (
                 <div
                   key={credit.name}
                   className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors group"
@@ -330,6 +354,28 @@ export function AlbumDetailView() {
                 <Badge key={name} variant="outline" className="px-3 py-1">
                   {name} <span className="text-muted-foreground ml-1">({count})</span>
                 </Badge>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Critical Reception (from web) */}
+        {albumReview && albumReview.summaries.length > 0 && (
+          <section className="mb-6">
+            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+              <Star className="w-5 h-5 text-amber-400" />
+              Critical Reception
+            </h2>
+            <div className="space-y-2">
+              {albumReview.summaries.map((s, i) => (
+                <Card key={i} className="bg-surface/50 border-border">
+                  <CardContent className="p-3">
+                    <p className="text-xs text-muted-foreground leading-relaxed">{s.snippet}</p>
+                    <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline mt-1 inline-block">
+                      {s.source} — Read full review
+                    </a>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </section>

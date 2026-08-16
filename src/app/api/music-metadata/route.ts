@@ -171,6 +171,236 @@ async function fetchDiscography(artist: string): Promise<string | null> {
   return null;
 }
 
+// Fetch classical composer biography
+async function fetchComposerBio(artist: string): Promise<string | null> {
+  const queries = [
+    `${artist} composer biography classical music life`,
+    `${artist} composer works period`,
+  ];
+
+  for (const query of queries) {
+    const results = await webSearch(query, 5);
+    const snippets = results
+      .map(r => ({
+        title: r.name,
+        snippet: r.snippet,
+        url: r.url,
+        source: r.host_name,
+      }))
+      .filter(r =>
+        r.source.includes('wikipedia.org') ||
+        r.source.includes('britannica.com') ||
+        r.source.includes('allmusic.com') ||
+        r.source.includes('discogs.com') ||
+        r.snippet.length > 100
+      );
+
+    if (snippets.length > 0) {
+      return JSON.stringify({
+        summaries: snippets.slice(0, 3),
+        readMoreUrl: snippets[0].url,
+      });
+    }
+  }
+
+  // Fallback: return any results we got
+  const results = await webSearch(`${artist} composer biography classical`, 3);
+  if (results.length > 0) {
+    return JSON.stringify({
+      summaries: results.slice(0, 2).map(r => ({
+        title: r.name,
+        snippet: r.snippet,
+        url: r.url,
+        source: r.host_name,
+      })),
+      readMoreUrl: results[0].url,
+    });
+  }
+
+  return null;
+}
+
+// Fetch genre description and history
+async function fetchGenreInfo(genre: string): Promise<string | null> {
+  const queries = [
+    `${genre} music genre history origins characteristics`,
+    `${genre} music genre description`,
+  ];
+
+  for (const query of queries) {
+    const results = await webSearch(query, 5);
+    const snippets = results
+      .map(r => ({
+        title: r.name,
+        snippet: r.snippet,
+        url: r.url,
+        source: r.host_name,
+      }))
+      .filter(r =>
+        r.source.includes('wikipedia.org') ||
+        r.source.includes('allmusic.com') ||
+        r.source.includes('britannica.com') ||
+        r.snippet.length > 100
+      );
+
+    if (snippets.length > 0) {
+      // Extract characteristics, origins, and moods from snippets
+      const allText = snippets.map(s => s.snippet).join(' ');
+      return JSON.stringify({
+        summaries: snippets.slice(0, 3),
+        readMoreUrl: snippets[0].url,
+        characteristics: allText.substring(0, 200),
+        origins: allText.substring(0, 150),
+        moods: [],
+      });
+    }
+  }
+
+  // Fallback: return any results we got
+  const results = await webSearch(`${genre} genre music`, 3);
+  if (results.length > 0) {
+    return JSON.stringify({
+      summaries: results.slice(0, 2).map(r => ({
+        title: r.name,
+        snippet: r.snippet,
+        url: r.url,
+        source: r.host_name,
+      })),
+      readMoreUrl: results[0].url,
+      characteristics: results[0].snippet.substring(0, 200),
+      origins: results[0].snippet.substring(0, 150),
+      moods: [],
+    });
+  }
+
+  return null;
+}
+
+// Fetch album production credits and personnel
+async function fetchAlbumCredits(artist: string, album: string): Promise<string | null> {
+  const queries = [
+    `${artist} "${album}" album credits producer engineer`,
+    `${artist} ${album} album personnel musicians`,
+  ];
+
+  for (const query of queries) {
+    const results = await webSearch(query, 5);
+    const snippets = results.map(r => ({
+      title: r.name,
+      snippet: r.snippet,
+      url: r.url,
+      source: r.host_name,
+    }));
+
+    if (snippets.length > 0) {
+      return JSON.stringify({
+        summaries: snippets.slice(0, 3),
+      });
+    }
+  }
+
+  return null;
+}
+
+// Fetch individual track info
+async function fetchTrackInfo(artist: string, title: string): Promise<string | null> {
+  const queries = [
+    `${artist} "${title}" song analysis`,
+    `${artist} ${title} song wiki`,
+  ];
+
+  for (const query of queries) {
+    const results = await webSearch(query, 5);
+    const snippets = results
+      .map(r => ({
+        title: r.name,
+        snippet: r.snippet,
+        url: r.url,
+        source: r.host_name,
+      }))
+      .filter(r =>
+        r.source.includes('wikipedia.org') ||
+        r.source.includes('allmusic.com') ||
+        r.source.includes('songfacts.com') ||
+        r.snippet.length > 100
+      );
+
+    if (snippets.length > 0) {
+      return JSON.stringify({
+        summaries: snippets.slice(0, 3),
+      });
+    }
+  }
+
+  // Fallback: return any results we got
+  const results = await webSearch(`${artist} ${title} song`, 3);
+  if (results.length > 0) {
+    return JSON.stringify({
+      summaries: results.slice(0, 2).map(r => ({
+        title: r.name,
+        snippet: r.snippet,
+        url: r.url,
+        source: r.host_name,
+      })),
+    });
+  }
+
+  return null;
+}
+
+// Fetch album critical reception / reviews
+async function fetchAlbumReview(artist: string, album: string): Promise<string | null> {
+  const queries = [
+    `${artist} "${album}" album review critical reception`,
+    `${artist} ${album} album ratings`,
+  ];
+
+  for (const query of queries) {
+    const results = await webSearch(query, 5);
+    const snippets = results
+      .map(r => ({
+        title: r.name,
+        snippet: r.snippet,
+        url: r.url,
+        source: r.host_name,
+      }))
+      .filter(r =>
+        r.source.includes('pitchfork.com') ||
+        r.source.includes('rollingstone.com') ||
+        r.source.includes('allmusic.com') ||
+        r.source.includes('metacritic.com') ||
+        r.source.includes('nme.com') ||
+        r.source.includes('wikipedia.org') ||
+        r.snippet.length > 100
+      );
+
+    if (snippets.length > 0) {
+      // Try to extract a rating from snippets
+      const ratingMatch = snippets.map(s => s.snippet).join(' ').match(/(\d+\.?\d*)\s*\/\s*10|(\d+\.?\d*)\s*\/\s*5|(\d+)\s*\/\s*100|(\d+)\s*stars/i);
+      const rating = ratingMatch ? ratingMatch[0] : undefined;
+      return JSON.stringify({
+        summaries: snippets.slice(0, 3),
+        rating,
+      });
+    }
+  }
+
+  // Fallback: return any results we got
+  const results = await webSearch(`${artist} ${album} review`, 3);
+  if (results.length > 0) {
+    return JSON.stringify({
+      summaries: results.slice(0, 2).map(r => ({
+        title: r.name,
+        snippet: r.snippet,
+        url: r.url,
+        source: r.host_name,
+      })),
+    });
+  }
+
+  return null;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const type = searchParams.get('type') || '';
@@ -184,8 +414,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Generic search
-    if (query) {
+    // Generic search (only when no type is specified)
+    if (query && !type) {
       const cacheKey = `search:${query}`;
       const cached = getCached(cacheKey);
       if (cached) return NextResponse.json(cached);
@@ -336,7 +566,82 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(data);
     }
 
-    return NextResponse.json({ error: 'Invalid type parameter. Use: lyrics, artist-bio, album-info, discography, artist-image, similar-artists, or query' }, { status: 400 });
+    // Composer biography
+    if (type === 'composer-bio' && artist) {
+      const cacheKey = `composer-bio:${artist}`;
+      const cached = getCached(cacheKey);
+      if (cached) return NextResponse.json(cached);
+
+      const data = await fetchComposerBio(artist);
+      if (data) {
+        const parsed = JSON.parse(data);
+        setCache(cacheKey, parsed);
+        return NextResponse.json(parsed);
+      }
+      return NextResponse.json({ error: 'Composer biography not found' }, { status: 404 });
+    }
+
+    // Genre info
+    if (type === 'genre-info' && query) {
+      const cacheKey = `genre:${query}`;
+      const cached = getCached(cacheKey);
+      if (cached) return NextResponse.json(cached);
+
+      const data = await fetchGenreInfo(query);
+      if (data) {
+        const parsed = JSON.parse(data);
+        setCache(cacheKey, parsed);
+        return NextResponse.json(parsed);
+      }
+      return NextResponse.json({ error: 'Genre info not found' }, { status: 404 });
+    }
+
+    // Album credits
+    if (type === 'album-credits' && artist && album) {
+      const cacheKey = `credits:${artist}:${album}`;
+      const cached = getCached(cacheKey);
+      if (cached) return NextResponse.json(cached);
+
+      const data = await fetchAlbumCredits(artist, album);
+      if (data) {
+        const parsed = JSON.parse(data);
+        setCache(cacheKey, parsed);
+        return NextResponse.json(parsed);
+      }
+      return NextResponse.json({ error: 'Album credits not found' }, { status: 404 });
+    }
+
+    // Track info
+    if (type === 'track-info' && artist && title) {
+      const cacheKey = `track:${artist}:${title}`;
+      const cached = getCached(cacheKey);
+      if (cached) return NextResponse.json(cached);
+
+      const data = await fetchTrackInfo(artist, title);
+      if (data) {
+        const parsed = JSON.parse(data);
+        setCache(cacheKey, parsed);
+        return NextResponse.json(parsed);
+      }
+      return NextResponse.json({ error: 'Track info not found' }, { status: 404 });
+    }
+
+    // Album review
+    if (type === 'album-review' && artist && album) {
+      const cacheKey = `review:${artist}:${album}`;
+      const cached = getCached(cacheKey);
+      if (cached) return NextResponse.json(cached);
+
+      const data = await fetchAlbumReview(artist, album);
+      if (data) {
+        const parsed = JSON.parse(data);
+        setCache(cacheKey, parsed);
+        return NextResponse.json(parsed);
+      }
+      return NextResponse.json({ error: 'Album review not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ error: 'Invalid type parameter. Use: lyrics, artist-bio, composer-bio, genre-info, album-info, album-credits, track-info, album-review, discography, artist-image, similar-artists, or query' }, { status: 400 });
   } catch (err) {
     console.error('Music metadata API error:', err);
     return NextResponse.json({ error: 'Failed to fetch music metadata' }, { status: 500 });
