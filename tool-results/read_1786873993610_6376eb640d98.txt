@@ -1,0 +1,402 @@
+     1→     1→     1→     1→'use client';
+     2→     2→     2→     2→
+     3→     3→     3→     3→import React from 'react';
+     4→     4→     4→     4→import { useSystemStore } from '@/store/system';
+     5→     5→     5→     5→import { Card, CardContent } from '@/components/ui/card';
+     6→     6→     6→     6→import { Badge } from '@/components/ui/badge';
+     7→     7→     7→     7→import { Button } from '@/components/ui/button';
+     8→     8→     8→     8→import { Switch } from '@/components/ui/switch';
+     9→     9→     9→     9→import { ScrollArea } from '@/components/ui/scroll-area';
+    10→    10→    10→    10→import { Separator } from '@/components/ui/separator';
+    11→    11→    11→    11→import {
+    12→    12→    12→    12→  Server, Database, HardDrive, Cpu, MemoryStick, Wifi, WifiOff,
+    13→    13→    13→    13→  Shield, ShieldCheck, Globe, Monitor, Smartphone, Tablet, Computer,
+    14→    14→    14→    14→  RefreshCw, Power, Activity, Network, Radio, Clock, AlertTriangle,
+    15→    15→    15→    15→  CheckCircle2, Download, Upload, Eye, Settings, Music,
+    16→    16→    16→    16→} from 'lucide-react';
+    17→    17→    17→    17→import type {
+    18→    18→    18→    18→  CoreStatus, StorageLocationInfo, RemoteAppInfo, StreamingServiceInfo,
+    19→    19→    19→    19→} from '@/lib/data';
+    20→    20→    20→    20→
+    21→    21→    21→    21→// ─── Helpers ───
+    22→    22→    22→    22→
+    23→    23→    23→    23→function formatBytes(bytes: number): string {
+    24→    24→    24→    24→  if (bytes >= 1099511627776) return (bytes / 1099511627776).toFixed(1) + ' TB';
+    25→    25→    25→    25→  if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
+    26→    26→    26→    26→  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+    27→    27→    27→    27→  return bytes.toLocaleString() + ' B';
+    28→    28→    28→    28→}
+    29→    29→    29→    29→
+    30→    30→    30→    30→function formatUptime(s: number): string {
+    31→    31→    31→    31→  return Math.floor(s / 86400) + 'd ' + Math.floor((s % 86400) / 3600) + 'h ' + Math.floor((s % 3600) / 60) + 'm';
+    32→    32→    32→    32→}
+    33→    33→    33→    33→
+    34→    34→    34→    34→function usageColor(pct: number): string {
+    35→    35→    35→    35→  if (pct < 60) return 'bg-signal-green';
+    36→    36→    36→    36→  if (pct < 80) return 'bg-signal-amber';
+    37→    37→    37→    37→  return 'bg-signal-red';
+    38→    38→    38→    38→}
+    39→    39→    39→    39→
+    40→    40→    40→    40→function UsageBar({ value, label }: { value: number; label?: string }) {
+    41→    41→    41→    41→  const pct = Math.min(Math.max(value, 0), 100);
+    42→    42→    42→    42→  return (
+    43→    43→    43→    43→    <div className="flex items-center gap-3">
+    44→    44→    44→    44→      <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
+    45→    45→    45→    45→        <div className={`h-full rounded-full transition-all ${usageColor(pct)}`} style={{ width: `${pct}%` }} />
+    46→    46→    46→    46→      </div>
+    47→    47→    47→    47→      <span className="font-mono text-xs text-muted-foreground w-12 text-right">
+    48→    48→    48→    48→        {label ?? `${Math.round(pct)}%`}
+    49→    49→    49→    49→      </span>
+    50→    50→    50→    50→    </div>
+    51→    51→    51→    51→  );
+    52→    52→    52→    52→}
+    53→    53→    53→    53→
+    54→    54→    54→    54→function SectionLabel({ children }: { children: React.ReactNode }) {
+    55→    55→    55→    55→  return (
+    56→    56→    56→    56→    <div className="flex items-center gap-2 mb-3">
+    57→    57→    57→    57→      <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+    58→    58→    58→    58→        {children}
+    59→    59→    59→    59→      </span>
+    60→    60→    60→    60→      <Separator className="flex-1" />
+    61→    61→    61→    61→    </div>
+    62→    62→    62→    62→  );
+    63→    63→    63→    63→}
+    64→    64→    64→    64→
+    65→    65→    65→    65→function StorageIcon({ type }: { type: StorageLocationInfo['type'] }) {
+    66→    66→    66→    66→  switch (type) {
+    67→    67→    67→    67→    case 'nas': return <Network className="h-4 w-4 text-blue-400" />;
+    68→    68→    68→    68→    case 'usb': return <HardDrive className="h-4 w-4 text-purple-400" />;
+    69→    69→    69→    69→    default: return <Database className="h-4 w-4 text-muted-foreground" />;
+    70→    70→    70→    70→  }
+    71→    71→    71→    71→}
+    72→    72→    72→    72→
+    73→    73→    73→    73→function RemoteAppIcon({ type }: { type: RemoteAppInfo['type'] }) {
+    74→    74→    74→    74→  switch (type) {
+    75→    75→    75→    75→    case 'ios': return <Smartphone className="h-4 w-4" />;
+    76→    76→    76→    76→    case 'android': return <Smartphone className="h-4 w-4" />;
+    77→    77→    77→    77→    case 'desktop': return <Computer className="h-4 w-4" />;
+    78→    78→    78→    78→    case 'web': return <Monitor className="h-4 w-4" />;
+    79→    79→    79→    79→    default: return <Monitor className="h-4 w-4" />;
+    80→    80→    80→    80→  }
+    81→    81→    81→    81→}
+    82→    82→    82→    82→
+    83→    83→    83→    83→function formatTimeAgo(iso?: string): string {
+    84→    84→    84→    84→  if (!iso) return '—';
+    85→    85→    85→    85→  const diff = Date.now() - new Date(iso).getTime();
+    86→    86→    86→    86→  const mins = Math.floor(diff / 60000);
+    87→    87→    87→    87→  if (mins < 1) return 'just now';
+    88→    88→    88→    88→  if (mins < 60) return `${mins}m ago`;
+    89→    89→    89→    89→  const hrs = Math.floor(mins / 60);
+    90→    90→    90→    90→  if (hrs < 24) return `${hrs}h ago`;
+    91→    91→    91→    91→  return `${Math.floor(hrs / 24)}d ago`;
+    92→    92→    92→    92→}
+    93→    93→    93→    93→
+    94→    94→    94→    94→// ─── Main Component ───
+    95→    95→    95→    95→
+    96→    96→    96→    96→export function SystemArchitectureView() {
+    97→    97→    97→    97→  const coreStatus = useSystemStore((s) => s.coreStatus);
+    98→    98→    98→    98→
+    99→    99→    99→    99→  if (!coreStatus) {
+   100→   100→   100→   100→    return (
+   101→   101→   101→   101→      <div className="max-w-6xl mx-auto p-6 flex items-center justify-center min-h-[60vh]">
+   102→   102→   102→   102→        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+   103→   103→   103→   103→          <RefreshCw className="h-8 w-8 animate-spin" />
+   104→   104→   104→   104→          <span className="text-sm">Loading system architecture…</span>
+   105→   105→   105→   105→        </div>
+   106→   106→   106→   106→      </div>
+   107→   107→   107→   107→    );
+   108→   108→   108→   108→  }
+   109→   109→   109→   109→
+   110→   110→   110→   110→  const { machineInfo, audioEngine, storageLocations, networkInfo, apiInfo, streamingServices, libraryStats } = coreStatus;
+   111→   111→   111→   111→  const memPct = (machineInfo.memoryUsed / machineInfo.memoryTotal) * 100;
+   112→   112→   112→   112→
+   113→   113→   113→   113→  const statusConfig: Record<string, { label: string; color: string; bgClass: string }> = {
+   114→   114→   114→   114→    running: { label: 'Online', color: 'text-signal-green', bgClass: 'bg-signal-green/15 text-signal-green border-signal-green/30' },
+   115→   115→   115→   115→    starting: { label: 'Starting', color: 'text-signal-amber', bgClass: 'bg-signal-amber/15 text-signal-amber border-signal-amber/30' },
+   116→   116→   116→   116→    stopping: { label: 'Stopping', color: 'text-signal-amber', bgClass: 'bg-signal-amber/15 text-signal-amber border-signal-amber/30' },
+   117→   117→   117→   117→    error: { label: 'Error', color: 'text-signal-red', bgClass: 'bg-signal-red/15 text-signal-red border-signal-red/30' },
+   118→   118→   118→   118→  };
+   119→   119→   119→   119→
+   120→   120→   120→   120→  const st = statusConfig[coreStatus.status] ?? statusConfig.error;
+   121→   121→   121→   121→
+   122→   122→   122→   122→  return (
+   123→   123→   123→   123→    <ScrollArea className="h-full">
+   124→   124→   124→   124→      <div className="max-w-6xl mx-auto p-6 space-y-6">
+   125→   125→   125→   125→
+   126→   126→   126→   126→        {/* ── 1. Core Server Status ── */}
+   127→   127→   127→   127→        <Card className="bg-card border-border">
+   128→   128→   128→   128→          <CardContent className="p-5">
+   129→   129→   129→   129→            <SectionLabel>Core Server Status</SectionLabel>
+   130→   130→   130→   130→            <div className="flex items-start justify-between">
+   131→   131→   131→   131→              <div className="flex items-center gap-4">
+   132→   132→   132→   132→                <div className="rounded-lg bg-surface/50 p-3">
+   133→   133→   133→   133→                  <Server className="h-6 w-6 text-primary" />
+   134→   134→   134→   134→                </div>
+   135→   135→   135→   135→                <div>
+   136→   136→   136→   136→                  <h3 className="font-medium text-foreground">{coreStatus.name}</h3>
+   137→   137→   137→   137→                  <div className="flex items-center gap-3 mt-1.5">
+   138→   138→   138→   138→                    <Badge variant="outline" className={`text-[10px] px-2 py-0 border ${st.bgClass}`}>
+   139→   139→   139→   139→                      {coreStatus.status === 'running' && <CheckCircle2 className="h-3 w-3 mr-1" />}
+   140→   140→   140→   140→                      {coreStatus.status === 'starting' && <RefreshCw className="h-3 w-3 mr-1 animate-spin" />}
+   141→   141→   141→   141→                      {coreStatus.status === 'error' && <AlertTriangle className="h-3 w-3 mr-1" />}
+   142→   142→   142→   142→                      {st.label}
+   143→   143→   143→   143→                    </Badge>
+   144→   144→   144→   144→                    <span className="font-mono text-xs text-muted-foreground">v{coreStatus.version}</span>
+   145→   145→   145→   145→                  </div>
+   146→   146→   146→   146→                  <div className="flex items-center gap-1.5 mt-1.5">
+   147→   147→   147→   147→                    <Clock className="h-3 w-3 text-muted-foreground" />
+   148→   148→   148→   148→                    <span className="font-mono text-xs text-muted-foreground">
+   149→   149→   149→   149→                      Uptime: {formatUptime(coreStatus.uptime)}
+   150→   150→   150→   150→                    </span>
+   151→   151→   151→   151→                  </div>
+   152→   152→   152→   152→                </div>
+   153→   153→   153→   153→              </div>
+   154→   154→   154→   154→              <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground">
+   155→   155→   155→   155→                <Power className="h-3.5 w-3.5" />
+   156→   156→   156→   156→                Reboot
+   157→   157→   157→   157→              </Button>
+   158→   158→   158→   158→            </div>
+   159→   159→   159→   159→          </CardContent>
+   160→   160→   160→   160→        </Card>
+   161→   161→   161→   161→
+   162→   162→   162→   162→        {/* ── 2. Machine Info ── */}
+   163→   163→   163→   163→        <Card className="bg-card border-border">
+   164→   164→   164→   164→          <CardContent className="p-5">
+   165→   165→   165→   165→            <SectionLabel>Machine Info</SectionLabel>
+   166→   166→   166→   166→            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+   167→   167→   167→   167→              <div className="space-y-3">
+   168→   168→   168→   168→                <div className="flex items-center gap-2">
+   169→   169→   169→   169→                  <Cpu className="h-4 w-4 text-muted-foreground" />
+   170→   170→   170→   170→                  <span className="text-sm text-foreground">{machineInfo.cpuModel}</span>
+   171→   171→   171→   171→                </div>
+   172→   172→   172→   172→                <div className="text-xs text-muted-foreground ml-6">{machineInfo.cores} cores · {machineInfo.architecture}</div>
+   173→   173→   173→   173→                <div className="ml-6">
+   174→   174→   174→   174→                  <UsageBar value={machineInfo.cpuUsage} />
+   175→   175→   175→   175→                </div>
+   176→   176→   176→   176→              </div>
+   177→   177→   177→   177→              <div className="space-y-3">
+   178→   178→   178→   178→                <div className="flex items-center gap-2">
+   179→   179→   179→   179→                  <MemoryStick className="h-4 w-4 text-muted-foreground" />
+   180→   180→   180→   180→                  <span className="text-sm text-foreground">
+   181→   181→   181→   181→                    Memory{' '}
+   182→   182→   182→   182→                    <span className="font-mono text-xs text-muted-foreground">
+   183→   183→   183→   183→                      {formatBytes(machineInfo.memoryUsed)} / {formatBytes(machineInfo.memoryTotal)}
+   184→   184→   184→   184→                    </span>
+   185→   185→   185→   185→                  </span>
+   186→   186→   186→   186→                </div>
+   187→   187→   187→   187→                <div className="ml-6">
+   188→   188→   188→   188→                  <UsageBar value={memPct} />
+   189→   189→   189→   189→                </div>
+   190→   190→   190→   190→              </div>
+   191→   191→   191→   191→            </div>
+   192→   192→   192→   192→            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+   193→   193→   193→   193→              <Globe className="h-3 w-3" />
+   194→   194→   194→   194→              <span className="font-mono">{machineInfo.os}</span>
+   195→   195→   195→   195→            </div>
+   196→   196→   196→   196→          </CardContent>
+   197→   197→   197→   197→        </Card>
+   198→   198→   198→   198→
+   199→   199→   199→   199→        {/* ── 3. Audio Engine ── */}
+   200→   200→   200→   200→        <Card className="bg-card border-border">
+   201→   201→   201→   201→          <CardContent className="p-5">
+   202→   202→   202→   202→            <SectionLabel>Audio Engine</SectionLabel>
+   203→   203→   203→   203→            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+   204→   204→   204→   204→              {/* Left: status + zones + sample rate */}
+   205→   205→   205→   205→              <div className="space-y-4">
+   206→   206→   206→   206→                <div className="flex items-center gap-3">
+   207→   207→   207→   207→                  <Activity className="h-4 w-4 text-primary" />
+   208→   208→   208→   208→                  <span className="text-sm font-medium text-foreground capitalize">{audioEngine.status}</span>
+   209→   209→   209→   209→                  <span className="text-xs text-muted-foreground">
+   210→   210→   210→   210→                    {audioEngine.activeZones}/{audioEngine.totalZones} zones active
+   211→   211→   211→   211→                  </span>
+   212→   212→   212→   212→                </div>
+   213→   213→   213→   213→                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+   214→   214→   214→   214→                  <Radio className="h-3.5 w-3.5" />
+   215→   215→   215→   215→                  Current sample rate:{' '}
+   216→   216→   216→   216→                  <span className="font-mono text-foreground">
+   217→   217→   217→   217→                    {audioEngine.currentSampleRate >= 1000
+   218→   218→   218→   218→                      ? `${(audioEngine.currentSampleRate / 1000).toFixed(1)} kHz`
+   219→   219→   219→   219→                      : `${audioEngine.currentSampleRate} Hz`}
+   220→   220→   220→   220→                  </span>
+   221→   221→   221→   221→                </div>
+   222→   222→   222→   222→                {/* Capabilities */}
+   223→   223→   223→   223→                <div className="flex flex-wrap gap-2 mt-1">
+   224→   224→   224→   224→                  {audioEngine.bitPerfectCapable && (
+   225→   225→   225→   225→                    <Badge variant="outline" className="gap-1 bg-signal-green/10 border-signal-green/20 text-signal-green text-[10px] px-2 py-0">
+   226→   226→   226→   226→                      <CheckCircle2 className="h-3 w-3" /> Bit-Perfect
+   227→   227→   227→   227→                    </Badge>
+   228→   228→   228→   228→                  )}
+   229→   229→   229→   229→                  {audioEngine.dsdNativeCapable && (
+   230→   230→   230→   230→                    <Badge variant="outline" className="gap-1 bg-signal-green/10 border-signal-green/20 text-signal-green text-[10px] px-2 py-0">
+   231→   231→   231→   231→                      <CheckCircle2 className="h-3 w-3" /> DSD Native
+   232→   232→   232→   232→                    </Badge>
+   233→   233→   233→   233→                  )}
+   234→   234→   234→   234→                  {audioEngine.mqaPassthrough && (
+   235→   235→   235→   235→                    <Badge variant="outline" className="gap-1 bg-signal-green/10 border-signal-green/20 text-signal-green text-[10px] px-2 py-0">
+   236→   236→   236→   236→                      <CheckCircle2 className="h-3 w-3" /> MQA Passthrough
+   237→   237→   237→   237→                    </Badge>
+   238→   238→   238→   238→                  )}
+   239→   239→   239→   239→                  <Badge variant="outline" className="text-[10px] px-2 py-0 text-muted-foreground">
+   240→   240→   240→   240→                    Max {audioEngine.maxChannels}ch
+   241→   241→   241→   241→                  </Badge>
+   242→   242→   242→   242→                </div>
+   243→   243→   243→   243→              </div>
+   244→   244→   244→   244→              {/* Right: load bars + formats */}
+   245→   245→   245→   245→              <div className="space-y-3">
+   246→   246→   246→   246→                <div className="space-y-1.5">
+   247→   247→   247→   247→                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Decoding</span>
+   248→   248→   248→   248→                  <UsageBar value={audioEngine.decodingLoad} />
+   249→   249→   249→   249→                </div>
+   250→   250→   250→   250→                <div className="space-y-1.5">
+   251→   251→   251→   251→                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">DSP</span>
+   252→   252→   252→   252→                  <UsageBar value={audioEngine.dspLoad} />
+   253→   253→   253→   253→                </div>
+   254→   254→   254→   254→                <div className="space-y-1.5">
+   255→   255→   255→   255→                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Output</span>
+   256→   256→   256→   256→                  <UsageBar value={audioEngine.outputLoad} />
+   257→   257→   257→   257→                </div>
+   258→   258→   258→   258→                <div className="flex flex-wrap gap-1.5 mt-2">
+   259→   259→   259→   259→                  {audioEngine.supportedFormats.map((f) => (
+   260→   260→   260→   260→                    <span key={f} className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface/50 text-muted-foreground border border-border">
+   261→   261→   261→   261→                      {f}
+   262→   262→   262→   262→                    </span>
+   263→   263→   263→   263→                  ))}
+   264→   264→   264→   264→                </div>
+   265→   265→   265→   265→              </div>
+   266→   266→   266→   266→            </div>
+   267→   267→   267→   267→          </CardContent>
+   268→   268→   268→   268→        </Card>
+   269→   269→   269→   269→
+   270→   270→   270→   270→        {/* ── 4. Storage Locations ── */}
+   271→   271→   271→   271→        <Card className="bg-card border-border">
+   272→   272→   272→   272→          <CardContent className="p-5">
+   273→   273→   273→   273→            <SectionLabel>Storage Locations</SectionLabel>
+   274→   274→   274→   274→            <div className="space-y-3">
+   275→   275→   275→   275→              {storageLocations.map((loc) => {
+   276→   276→   276→   276→                const usedPct = (loc.usedSpace / loc.totalSpace) * 100;
+   277→   277→   277→   277→                return (
+   278→   278→   278→   278→                  <div key={loc.id} className="rounded-lg bg-surface/50 border border-border p-4 space-y-2.5">
+   279→   279→   279→   279→                    <div className="flex items-start justify-between">
+   280→   280→   280→   280→                      <div className="flex items-center gap-3">
+   281→   281→   281→   281→                        <StorageIcon type={loc.type} />
+   282→   282→   282→   282→                        <div>
+   283→   283→   283→   283→                          <div className="text-sm font-medium text-foreground">{loc.name}</div>
+   284→   284→   284→   284→                          <div className="font-mono text-[11px] text-muted-foreground mt-0.5">{loc.path}</div>
+   285→   285→   285→   285→                        </div>
+   286→   286→   286→   286→                      </div>
+   287→   287→   287→   287→                      <div className="flex items-center gap-2">
+   288→   288→   288→   288→                        {loc.isWatching ? (
+   289→   289→   289→   289→                          <Badge variant="outline" className="gap-1 bg-signal-green/10 border-signal-green/20 text-signal-green text-[10px] px-2 py-0">
+   290→   290→   290→   290→                            <Eye className="h-3 w-3" /> Watching
+   291→   291→   291→   291→                          </Badge>
+   292→   292→   292→   292→                        ) : (
+   293→   293→   293→   293→                          <Badge variant="outline" className="text-[10px] px-2 py-0 text-muted-foreground border-border">
+   294→   294→   294→   294→                            Paused
+   295→   295→   295→   295→                          </Badge>
+   296→   296→   296→   296→                        )}
+   297→   297→   297→   297→                        <Badge variant="outline" className="text-[10px] px-2 py-0 text-muted-foreground border-border uppercase">
+   298→   298→   298→   298→                          {loc.type}
+   299→   299→   299→   299→                        </Badge>
+   300→   300→   300→   300→                      </div>
+   301→   301→   301→   301→                    </div>
+   302→   302→   302→   302→                    <UsageBar value={usedPct} label={`${formatBytes(loc.usedSpace)} / ${formatBytes(loc.totalSpace)}`} />
+   303→   303→   303→   303→                    <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
+   304→   304→   304→   304→                      <span>{loc.trackCount.toLocaleString()} tracks</span>
+   305→   305→   305→   305→                      <span>{loc.albumCount.toLocaleString()} albums</span>
+   306→   306→   306→   306→                      <span className="flex items-center gap-1 ml-auto">
+   307→   307→   307→   307→                        <Clock className="h-3 w-3" />
+   308→   308→   308→   308→                        Last scan: {formatTimeAgo(loc.lastScan)}
+   309→   309→   309→   309→                      </span>
+   310→   310→   310→   310→                    </div>
+   311→   311→   311→   311→                  </div>
+   312→   312→   312→   312→                );
+   313→   313→   313→   313→              })}
+   314→   314→   314→   314→            </div>
+   315→   315→   315→   315→          </CardContent>
+   316→   316→   316→   316→        </Card>
+   317→   317→   317→   317→
+   318→   318→   318→   318→        {/* ── 5. Network Protocol ── */}
+   319→   319→   319→   319→        <Card className="bg-card border-border">
+   320→   320→   320→   320→          <CardContent className="p-5">
+   321→   321→   321→   321→            <SectionLabel>Network Protocol</SectionLabel>
+   322→   322→   322→   322→            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+   323→   323→   323→   323→              <div className="space-y-3">
+   324→   324→   324→   324→                <div className="flex items-center gap-2">
+   325→   325→   325→   325→                  <Globe className="h-4 w-4 text-primary" />
+   326→   326→   326→   326→                  <span className="font-medium text-sm text-foreground capitalize">{networkInfo.protocol}</span>
+   327→   327→   327→   327→                </div>
+   328→   328→   328→   328→                <div className="grid grid-cols-2 gap-3 text-xs">
+   329→   329→   329→   329→                  <div className="space-y-0.5">
+   330→   330→   330→   330→                    <span className="text-muted-foreground">Port</span>
+   331→   331→   331→   331→                    <div className="font-mono text-foreground">{networkInfo.port}</div>
+   332→   332→   332→   332→                  </div>
+   333→   333→   333→   333→                  <div className="space-y-0.5">
+   334→   334→   334→   334→                    <span className="text-muted-foreground">Discovery Port</span>
+   335→   335→   335→   335→                    <div className="font-mono text-foreground">{networkInfo.discoveryPort}</div>
+   336→   336→   336→   336→                  </div>
+   337→   337→   337→   337→                  <div className="space-y-0.5">
+   338→   338→   338→   338→                    <span className="text-muted-foreground">IP Address</span>
+   339→   339→   339→   339→                    <div className="font-mono text-foreground">{networkInfo.ipAddress}</div>
+   340→   340→   340→   340→                  </div>
+   341→   341→   341→   341→                  <div className="space-y-0.5">
+   342→   342→   342→   342→                    <span className="text-muted-foreground">MAC</span>
+   343→   343→   343→   343→                    <div className="font-mono text-foreground">{networkInfo.macAddress}</div>
+   344→   344→   344→   344→                  </div>
+   345→   345→   345→   345→                </div>
+   346→   346→   346→   346→              </div>
+   347→   347→   347→   347→              <div className="space-y-3">
+   348→   348→   348→   348→                <div className="flex items-center justify-between">
+   349→   349→   349→   349→                  <div className="flex items-center gap-2 text-sm text-foreground">
+   350→   350→   350→   350→                    {networkInfo.encryption ? <ShieldCheck className="h-4 w-4 text-signal-green" /> : <Shield className="h-4 w-4 text-muted-foreground" />}
+   351→   351→   351→   351→                    Encryption
+   352→   352→   352→   352→                  </div>
+   353→   353→   353→   353→                  <Switch checked={networkInfo.encryption} disabled />
+   354→   354→   354→   354→                </div>
+   355→   355→   355→   355→                <div className="flex items-center justify-between">
+   356→   356→   356→   356→                  <div className="flex items-center gap-2 text-sm text-foreground">
+   357→   357→   357→   357→                    {networkInfo.remoteAccess ? <Wifi className="h-4 w-4 text-signal-green" /> : <WifiOff className="h-4 w-4 text-muted-foreground" />}
+   358→   358→   358→   358→                    Remote Access
+   359→   359→   359→   359→                  </div>
+   360→   360→   360→   360→                  <Switch checked={networkInfo.remoteAccess} disabled />
+   361→   361→   361→   361→                </div>
+   362→   362→   362→   362→                <Separator />
+   363→   363→   363→   363→                <div className="flex items-center justify-between text-xs text-muted-foreground">
+   364→   364→   364→   364→                  <span>Connected Endpoints</span>
+   365→   365→   365→   365→                  <span className="font-mono text-foreground">{networkInfo.connectedEndpoints}</span>
+   366→   366→   366→   366→                </div>
+   367→   367→   367→   367→                <div className="flex items-center justify-between text-xs text-muted-foreground">
+   368→   368→   368→   368→                  <span>Discovery Mode</span>
+   369→   369→   369→   369→                  <span className="font-mono text-foreground uppercase">{coreStatus.discoveryMode}</span>
+   370→   370→   370→   370→                </div>
+   371→   371→   371→   371→              </div>
+   372→   372→   372→   372→            </div>
+   373→   373→   373→   373→          </CardContent>
+   374→   374→   374→   374→        </Card>
+   375→   375→   375→   375→
+   376→   376→   376→   376→        {/* ── 6. Remote Control Apps ── */}
+   377→   377→   377→   377→        <Card className="bg-card border-border">
+   378→   378→   378→   378→          <CardContent className="p-5">
+   379→   379→   379→   379→            <SectionLabel>Remote Control Apps</SectionLabel>
+   380→   380→   380→   380→            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+   381→   381→   381→   381→              {apiInfo.remoteApps.map((app) => (
+   382→   382→   382→   382→                <div key={app.id} className="rounded-lg bg-surface/50 border border-border p-3.5 space-y-2">
+   383→   383→   383→   383→                  <div className="flex items-center gap-2.5">
+   384→   384→   384→   384→                    <div className="rounded-md bg-white/5 p-2">
+   385→   385→   385→   385→                      <RemoteAppIcon type={app.type} />
+   386→   386→   386→   386→                    </div>
+   387→   387→   387→   387→                    <div className="min-w-0 flex-1">
+   388→   388→   388→   388→                      <div className="text-sm font-medium text-foreground truncate">{app.name}</div>
+   389→   389→   389→   389→                      <div className="font-mono text-[10px] text-muted-foreground">{app.ipAddress}</div>
+   390→   390→   390→   390→                    </div>
+   391→   391→   391→   391→                  </div>
+   392→   392→   392→   392→                  <div className="flex items-center gap-1.5">
+   393→   393→   393→   393→                    <div className={`h-2 w-2 rounded-full ${app.connected ? 'bg-signal-green' : 'bg-muted-foreground/40'}`} />
+   394→   394→   394→   394→                    {app.connected ? (
+   395→   395→   395→   395→                      <span className="text-[11px] text-signal-green">Connected</span>
+   396→   396→   396→   396→                    ) : (
+   397→   397→   397→   397→                      <span className="text-[11px] text-muted-foreground">
+   398→   398→   398→   398→                        Last seen: {formatTimeAgo(app.lastSeen)}
+   399→   399→   399→   399→                      </span>
+   400→   400→   400→   400→                    )}
+
+[showing lines 1-400 of 502; use offset=401 with limit to continue reading]

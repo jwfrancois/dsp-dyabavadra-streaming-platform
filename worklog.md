@@ -91,3 +91,25 @@ Stage Summary:
 - Server backup: Library metadata saved to server on import, restored on load
 - Audio fallback: resolveAudioUrl() tries IndexedDB if blobUrl is missing
 - Build compiles successfully with all changes
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Fix Core/System infinite spinner & implement full plugin system
+
+Work Log:
+- Diagnosed Core/System view spinning indefinitely: SystemArchitectureView.tsx read `s.coreStatus` but system store field is `s.core` → always undefined → infinite spinner
+- Fixed SystemArchitectureView: changed all `coreStatus` references to `core`, added safe division for memory percentage
+- Enhanced system store with browser-detectable data: OS detection from user agent, hardwareConcurrency for cores, deviceMemory for RAM
+- Added live uptime counter (ticks every second via setInterval, starts on mount in AudioEngineProvider)
+- Populated default system data: storage locations, remote apps, streaming services (TIDAL/Qobuz), audio engine formats
+- Created plugin store (src/store/plugins.ts) with 25 plugins across 5 categories
+- Wired PluginManagerView to use plugin store with working Install/Uninstall/Toggle actions
+- Plugin states persist to localStorage via `dsp-plugin-states` key
+- Build verified: all 21 routes compile successfully
+- Pushed to GitHub: commit be5feb5
+
+Stage Summary:
+- Core/System view now shows full system architecture with live data and uptime counter
+- Plugin Manager shows 25 plugins (16 installed, 9 available) with full install/uninstall/toggle functionality
+- All plugin states persist across page reloads via localStorage
