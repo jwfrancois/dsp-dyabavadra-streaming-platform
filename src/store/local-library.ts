@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -75,19 +76,29 @@ function stripForStorage(tracks: LocalTrack[]): LocalTrack[] {
   });
 }
 
-// ── IndexedDB cover art restoration (non-blocking, runs after hydration) ──
+// ── IndexedDB cover art + audio blob restoration (client-side only) ──
+//
+// CRITICAL: onRehydrateStorage runs during SSR where window/indexedDB don't exist.
+// We must NOT use onRehydrateStorage for IndexedDB operations.
+// Instead, useIndexedDBRestore() is a React hook called from a client component.
 
-/** Restore cover art and blob URLs from IndexedDB after store hydrates from localStorage.
- *  This is a fire-and-forget enhancement — tracks are already visible without it. */
-function restoreFromIndexedDB() {
-  if (typeof window === 'undefined') return;
+let _restoreDone = false;
+
+async function restoreFromIndexedDB() {
+  if (_restoreDone || typeof window === 'undefined') return;
+  _restoreDone = true;
+
+  // Wait one tick for zustand to finish setting state from localStorage
+  await new Promise(r => setTimeout(r, 50));
 
   const tracks = useLocalLibraryStore.getState().tracks;
   if (!tracks || tracks.length === 0) return;
 
   const trackIds = tracks.map(t => t.id);
+  console.log(`[local-library] Restoring ${trackIds.length} tracks from IndexedDB...`);
 
-  import('@/lib/audio-db').then(({ getCoverArt, getAudioBlobURL }) => {
+  try {
+    const { getCoverArt, getAudioBlobURL } = await import('@/lib/audio-db');
     const promises = trackIds.map(async (id) => {
       const results = await Promise.allSettled([getCoverArt(id), getAudioBlobURL(id)]);
       const coverArt = results[0].status === 'fulfilled' ? results[0].value : null;
@@ -95,22 +106,33 @@ function restoreFromIndexedDB() {
       return { id, coverArt, blobUrl };
     });
 
-    Promise.all(promises).then((updates) => {
-      const updatedMap = new Map(updates.map(u => [u.id, u]));
-      const restoredCount = updates.filter(u => u.coverArt || u.blobUrl).length;
+    const updates = await Promise.all(promises);
+    const updatedMap = new Map(updates.map(u => [u.id, u]));
+    const restoredCount = updates.filter(u => u.coverArt || u.blobUrl).length;
 
-      if (restoredCount > 0) {
-        console.log(`[local-library] Restored ${restoredCount} tracks with cover art/blob from IndexedDB`);
-        useLocalLibraryStore.setState((prev) => ({
-          tracks: prev.tracks.map((t) => {
-            const u = updatedMap.get(t.id);
-            if (!u) return t;
-            return { ...t, coverArt: u.coverArt ?? t.coverArt, blobUrl: u.blobUrl ?? t.blobUrl } as any;
-          }),
-        }));
-      }
-    }).catch(() => {});
-  }).catch(() => {});
+    if (restoredCount > 0) {
+      console.log(`[local-library] Restored ${restoredCount} tracks with cover art/blob from IndexedDB`);
+      useLocalLibraryStore.setState((prev) => ({
+        tracks: prev.tracks.map((t) => {
+          const u = updatedMap.get(t.id);
+          if (!u) return t;
+          return { ...t, coverArt: u.coverArt ?? t.coverArt, blobUrl: u.blobUrl ?? t.blobUrl } as any;
+        }),
+      }));
+    } else {
+      console.log('[local-library] No cover art or audio blobs in IndexedDB');
+    }
+  } catch (err) {
+    console.warn('[local-library] Failed to restore from IndexedDB:', err);
+  }
+}
+
+/** Hook to trigger IndexedDB restoration on first client render.
+ *  Call this once at the app root (e.g. in StoreHydration.tsx). */
+export function useIndexedDBRestore() {
+  React.useEffect(() => {
+    restoreFromIndexedDB();
+  }, []);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -392,15 +414,10 @@ export const useLocalLibraryStore = create<LocalLibraryState>()(
         lastScanTime: state.lastScanTime,
         scanStats: state.scanStats,
       }),
-      // After zustand finishes hydrating from localStorage, try to restore
-      // cover art and blob URLs from IndexedDB (non-blocking).
-      onRehydrateStorage: () => (state) => {
-        if (state && state.tracks && state.tracks.length > 0) {
-          console.log(`[local-library] Auto-hydrated ${state.tracks.length} tracks from localStorage`);
-          // Fire-and-forget IndexedDB restoration (non-blocking)
-          restoreFromIndexedDB();
-        }
-      },
+      // IndexedDB restoration (cover art + audio blobs) is handled by
+      // the useIndexedDBRestore() hook in StoreHydration.tsx.
+      // We do NOT use onRehydrateStorage here because it runs during SSR
+      // where IndexedDB is unavailable.
     }
   )
 );
