@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
 import { useSystemStore } from '@/store/system';
@@ -11,14 +11,20 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import {
   Play, ArrowRight, Clock, Star, Sparkles,
   Headphones, Calendar, Music2, Radio, Waves,
   TrendingUp, Disc3, Library, Zap, Info,
   Search, Keyboard, Sun, Moon, Coffee, Sunrise,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-// ── Quality badge helper ──
+// ═══════════════════════════════════════════════════════════
+// QUALITY BADGE HELPER
+// ═══════════════════════════════════════════════════════════
+
 function QualityBadge({ format, sampleRate, bitDepth }: { format: string; sampleRate: number; bitDepth: number }) {
   const isHiRes = sampleRate > 48000 || bitDepth > 16;
   const isLossless = ['FLAC', 'WAV', 'AIFF', 'ALAC', 'DSF', 'DFF', 'WavPack', 'APE', 'TAK'].includes(format.toUpperCase());
@@ -30,16 +36,307 @@ function QualityBadge({ format, sampleRate, bitDepth }: { format: string; sample
   return null;
 }
 
-// ── Time-based greeting ──
-function getGreeting(): { text: string; icon: React.ReactNode; emoji: string } {
+// ═══════════════════════════════════════════════════════════
+// TIME-BASED GREETING
+// ═══════════════════════════════════════════════════════════
+
+function getGreeting(): { text: string; icon: React.ReactNode } {
   const hour = new Date().getHours();
-  if (hour < 6) return { text: 'Night Owl Mode', icon: <Moon className="w-5 h-5" />, emoji: '' };
-  if (hour < 12) return { text: 'Good Morning', icon: <Sunrise className="w-5 h-5" />, emoji: '' };
-  if (hour < 14) return { text: 'Good Afternoon', icon: <Sun className="w-5 h-5" />, emoji: '' };
-  if (hour < 18) return { text: 'Good Afternoon', icon: <Sun className="w-5 h-5" />, emoji: '' };
-  if (hour < 22) return { text: 'Good Evening', icon: <Moon className="w-5 h-5" />, emoji: '' };
-  return { text: 'Night Owl Mode', icon: <Moon className="w-5 h-5" />, emoji: '' };
+  if (hour < 6) return { text: 'Night Owl Mode', icon: <Moon className="w-5 h-5" /> };
+  if (hour < 12) return { text: 'Good Morning', icon: <Sunrise className="w-5 h-5" /> };
+  if (hour < 18) return { text: 'Good Afternoon', icon: <Sun className="w-5 h-5" /> };
+  if (hour < 22) return { text: 'Good Evening', icon: <Moon className="w-5 h-5" /> };
+  return { text: 'Night Owl Mode', icon: <Moon className="w-5 h-5" /> };
 }
+
+// ═══════════════════════════════════════════════════════════
+// ANALOG CLOCK — SVG-based with smooth animation
+// ═══════════════════════════════════════════════════════════
+
+function AnalogClock({ className }: { className?: string }) {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const hours = now.getHours() % 12;
+  const minutes = now.getMinutes();
+  const seconds = now.getSeconds();
+
+  // Smooth angles
+  const hourAngle = (hours * 30) + (minutes * 0.5);
+  const minuteAngle = minutes * 6;
+  const secondAngle = seconds * 6;
+
+  // Current time string
+  const timeStr = now.toLocaleTimeString('en-US', {
+    hour: '2-digit', minute: '2-digit', hour12: true
+  });
+  const dateStr = now.toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric'
+  });
+
+  const size = 180;
+  const center = size / 2;
+  const radius = center - 8;
+
+  return (
+    <div className={cn('flex flex-col items-center gap-2', className)}>
+      <svg
+        viewBox={`0 0 ${size} ${size}`}
+        className="w-full max-w-[200px] drop-shadow-2xl"
+        style={{ filter: 'drop-shadow(0 0 20px rgba(var(--primary), 0.15))' }}
+      >
+        {/* Outer glow ring */}
+        <defs>
+          <radialGradient id="clockGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="80%" stopColor="transparent" />
+            <stop offset="100%" stopColor="hsl(var(--primary) / 0.08)" />
+          </radialGradient>
+          <linearGradient id="clockFace" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="hsl(var(--card))" />
+            <stop offset="100%" stopColor="hsl(var(--card) / 0.8)" />
+          </linearGradient>
+          <filter id="handShadow">
+            <feDropShadow dx="0" dy="1" stdDeviation="1" floodOpacity="0.3" />
+          </filter>
+        </defs>
+
+        {/* Background glow */}
+        <circle cx={center} cy={center} r={radius + 6} fill="url(#clockGlow)" />
+
+        {/* Clock face */}
+        <circle
+          cx={center} cy={center} r={radius}
+          fill="url(#clockFace)"
+          stroke="hsl(var(--border))"
+          strokeWidth="1.5"
+        />
+
+        {/* Inner decorative ring */}
+        <circle
+          cx={center} cy={center} r={radius - 4}
+          fill="none"
+          stroke="hsl(var(--border) / 0.3)"
+          strokeWidth="0.5"
+        />
+
+        {/* Minute ticks */}
+        {Array.from({ length: 60 }).map((_, i) => {
+          const angle = (i * 6) * (Math.PI / 180);
+          const isHour = i % 5 === 0;
+          const outerR = radius - 6;
+          const innerR = isHour ? radius - 18 : radius - 10;
+          return (
+            <line
+              key={`tick-${i}`}
+              x1={center + Math.sin(angle) * innerR}
+              y1={center - Math.cos(angle) * innerR}
+              x2={center + Math.sin(angle) * outerR}
+              y2={center - Math.cos(angle) * outerR}
+              stroke={isHour ? 'hsl(var(--foreground) / 0.7)' : 'hsl(var(--muted-foreground) / 0.25)'}
+              strokeWidth={isHour ? 2 : 0.8}
+              strokeLinecap="round"
+            />
+          );
+        })}
+
+        {/* Hour numbers */}
+        {Array.from({ length: 12 }).map((_, i) => {
+          const num = i === 0 ? 12 : i;
+          const angle = (i * 30) * (Math.PI / 180);
+          const numR = radius - 28;
+          return (
+            <text
+              key={`num-${i}`}
+              x={center + Math.sin(angle) * numR}
+              y={center - Math.cos(angle) * numR + 4}
+              textAnchor="middle"
+              fill="hsl(var(--foreground) / 0.5)"
+              fontSize="11"
+              fontWeight="500"
+              fontFamily="var(--font-geist-sans), system-ui, sans-serif"
+            >
+              {num}
+            </text>
+          );
+        })}
+
+        {/* Hour hand */}
+        <line
+          x1={center}
+          y1={center}
+          x2={center + Math.sin((hourAngle) * Math.PI / 180) * (radius * 0.45)}
+          y2={center - Math.cos((hourAngle) * Math.PI / 180) * (radius * 0.45)}
+          stroke="hsl(var(--foreground))"
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          filter="url(#handShadow)"
+        />
+
+        {/* Minute hand */}
+        <line
+          x1={center}
+          y1={center}
+          x2={center + Math.sin((minuteAngle) * Math.PI / 180) * (radius * 0.65)}
+          y2={center - Math.cos((minuteAngle) * Math.PI / 180) * (radius * 0.65)}
+          stroke="hsl(var(--foreground))"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          filter="url(#handShadow)"
+        />
+
+        {/* Second hand */}
+        <g style={{ transition: 'transform 0.2s cubic-bezier(0.4, 2.08, 0.55, 0.44)', transformOrigin: `${center}px ${center}px` }}>
+          <line
+            x1={center - Math.sin((secondAngle) * Math.PI / 180) * 15}
+            y1={center + Math.cos((secondAngle) * Math.PI / 180) * 15}
+            x2={center + Math.sin((secondAngle) * Math.PI / 180) * (radius * 0.72)}
+            y2={center - Math.cos((secondAngle) * Math.PI / 180) * (radius * 0.72)}
+            stroke="hsl(var(--primary))"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+          />
+        </g>
+
+        {/* Center dot */}
+        <circle cx={center} cy={center} r="4" fill="hsl(var(--card))" stroke="hsl(var(--primary))" strokeWidth="1.5" />
+        <circle cx={center} cy={center} r="1.5" fill="hsl(var(--primary))" />
+      </svg>
+
+      {/* Digital time display */}
+      <div className="text-center">
+        <p className="text-sm font-medium tabular-nums" style={{ fontVariantNumeric: 'tabular-nums' }}>{timeStr}</p>
+        <p className="text-[11px] text-muted-foreground">{dateStr}</p>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// INTERACTIVE CALENDAR
+// ═══════════════════════════════════════════════════════════
+
+function InteractiveCalendar({ className }: { className?: string }) {
+  const today = new Date();
+  const [viewDate, setViewDate] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+
+  const monthName = viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const firstDayOfMonth = new Date(year, month, 1);
+  const lastDayOfMonth = new Date(year, month + 1, 0);
+  const daysInMonth = lastDayOfMonth.getDate();
+  const startingDay = firstDayOfMonth.getDay(); // 0=Sun
+
+  const days = useMemo(() => {
+    const result: (number | null)[] = [];
+    // Leading empty cells
+    for (let i = 0; i < startingDay; i++) result.push(null);
+    // Day cells
+    for (let d = 1; d <= daysInMonth; d++) result.push(d);
+    return result;
+  }, [startingDay, daysInMonth]);
+
+  const prevMonth = useCallback(() => {
+    setViewDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1));
+  }, []);
+
+  const nextMonth = useCallback(() => {
+    setViewDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1));
+  }, []);
+
+  const isToday = (day: number) =>
+    day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+
+  const isSelected = (day: number) =>
+    selectedDate &&
+    day === selectedDate.getDate() &&
+    month === selectedDate.getMonth() &&
+    year === selectedDate.getFullYear();
+
+  const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+  return (
+    <div className={cn('rounded-xl border border-border bg-card overflow-hidden', className)}>
+      {/* Month header */}
+      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-primary/5 to-accent/5 border-b border-border/50">
+        <button
+          onClick={prevMonth}
+          className="p-1 rounded-md hover:bg-accent/50 transition-colors text-muted-foreground hover:text-foreground"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <h3 className="text-sm font-semibold tracking-wide">{monthName}</h3>
+        <button
+          onClick={nextMonth}
+          className="p-1 rounded-md hover:bg-accent/50 transition-colors text-muted-foreground hover:text-foreground"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Week day headers */}
+      <div className="grid grid-cols-7 border-b border-border/30">
+        {weekDays.map(d => (
+          <div key={d} className="py-2 text-center text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* Day grid */}
+      <div className="grid grid-cols-7">
+        {days.map((day, idx) => {
+          if (day === null) return <div key={`empty-${idx}`} className="h-9" />;
+
+          const todayFlag = isToday(day);
+          const selectedFlag = isSelected(day);
+
+          return (
+            <button
+              key={day}
+              onClick={() => setSelectedDate(new Date(year, month, day))}
+              className={cn(
+                'h-9 flex items-center justify-center text-xs font-medium transition-all duration-200 relative',
+                'hover:bg-accent/40 rounded-md m-0.5',
+                todayFlag && !selectedFlag && 'text-primary font-bold',
+                selectedFlag && 'bg-primary text-primary-foreground rounded-md shadow-sm shadow-primary/20',
+                !todayFlag && !selectedFlag && 'text-foreground/70'
+              )}
+            >
+              {day}
+              {todayFlag && !selectedFlag && (
+                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Selected date display */}
+      {selectedDate && (
+        <div className="px-4 py-2.5 border-t border-border/30 bg-primary/[0.03]">
+          <p className="text-xs text-muted-foreground">
+            Selected:{' '}
+            <span className="text-foreground font-medium">
+              {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+            </span>
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// MAIN HOME VIEW
+// ═══════════════════════════════════════════════════════════
 
 export function HomeView() {
   const { navigate } = useUIStore();
@@ -119,49 +416,46 @@ export function HomeView() {
   return (
     <ScrollArea className="h-full">
       <div className="p-6 space-y-8 max-w-7xl mx-auto">
-        {/* ── HERO: Dynamic Greeting ── */}
-        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-primary/20 via-card to-accent/20 p-8">
-          <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-1">
-              {greeting.icon}
-              <h1 className="text-2xl font-bold">{greeting.text}</h1>
-            </div>
-            <p className="text-muted-foreground max-w-lg">
-              {localTracks.length > 0
-                ? `Your library holds ${localTracks.length} tracks across ${localAlbums.length} albums by ${localArtists.length} artists — ${formatDuration(totalDuration)} of music.`
-                : 'Your DSP music sanctuary awaits. Scan your library to begin the audiophile experience.'}
-            </p>
 
-            {/* Now playing quick resume */}
-            {currentTrack && isPlaying && (
-              <div className="mt-3 flex items-center gap-3 p-3 bg-black/20 rounded-lg max-w-md">
-                <div className="w-2 h-2 rounded-full bg-signal-green animate-pulse" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium truncate">Now Playing: {currentTrack.title}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">{currentTrack.artistName}</p>
-                </div>
-                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => navigate('now-playing')}>
-                  <ArrowRight className="w-3 h-3" />
-                </Button>
+        {/* ═══════════════════════════════════════════════
+            HERO — DSP Title + Clock + Calendar
+        ═══════════════════════════════════════════════ */}
+        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 via-card to-accent/10 border border-border/50">
+          {/* Subtle noise texture overlay */}
+          <div className="absolute inset-0 opacity-[0.03] bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjZmZmIiBvcGFjaXR5PSIwLjIiLz48L3N2Zz4=')]" />
+
+          <div className="relative z-10 p-6 sm:p-8">
+            {/* Cursive Title */}
+            <div className="text-center mb-6">
+              <h1
+                className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent leading-tight"
+                style={{ fontFamily: 'var(--font-dancing-script), cursive, serif' }}
+              >
+                Dyabavadra Streaming Platform
+              </h1>
+              <div className="flex items-center justify-center gap-2 mt-2">
+                {greeting.icon}
+                <p className="text-sm text-muted-foreground font-medium">{greeting.text}</p>
               </div>
-            )}
-
-            <div className="flex gap-3 mt-4 flex-wrap">
-              {recentTracks.length > 0 && (
-                <Button size="sm" onClick={() => playTrack(recentTracks[0]?.id)}>
-                  <Play className="w-4 h-4 mr-2" /> Resume Playing
-                </Button>
-              )}
-              <Button size="sm" variant="outline" onClick={() => navigate('browse-genres')}>
-                <Sparkles className="w-4 h-4 mr-2" /> Discover
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => navigate('search')}>
-                <Search className="w-4 h-4 mr-2" /> Search
-              </Button>
             </div>
-          </div>
-          <div className="absolute top-0 right-0 w-64 h-full opacity-10">
-            <div className={`w-full h-full bg-gradient-to-br ${getCoverGradient('hero')}`} />
+
+            {/* Clock + Calendar row */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10">
+              {/* Analog Clock */}
+              <AnalogClock className="w-[180px] sm:w-[200px] flex-shrink-0" />
+
+              {/* Divider */}
+              <div className="hidden sm:block w-px h-48 bg-gradient-to-b from-transparent via-border to-transparent" />
+              <div className="sm:hidden h-px w-48 bg-gradient-to-r from-transparent via-border to-transparent" />
+
+              {/* Interactive Calendar */}
+              <InteractiveCalendar className="w-full sm:w-auto max-w-[280px] flex-shrink-0" />
+            </div>
+
+            {/* Subtle tagline */}
+            <p className="text-center text-xs text-muted-foreground/60 mt-4 tracking-wide">
+              High-fidelity music streaming & library system
+            </p>
           </div>
         </div>
 
@@ -175,7 +469,21 @@ export function HomeView() {
           </p>
         </div>
 
-        {/* ── RECENTLY PLAYED ── */}
+        {/* Now playing quick resume */}
+        {currentTrack && isPlaying && (
+          <div className="flex items-center gap-3 p-3 bg-primary/[0.04] rounded-xl border border-primary/10 max-w-lg">
+            <div className="w-2 h-2 rounded-full bg-signal-green animate-pulse" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium truncate">Now Playing: {currentTrack.title}</p>
+              <p className="text-[11px] text-muted-foreground truncate">{currentTrack.artistName}</p>
+            </div>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => navigate('now-playing')}>
+              <ArrowRight className="w-3 h-3" />
+            </Button>
+          </div>
+        )}
+
+        {/* ── RECENTLY ADDED ── */}
         {recentTracks.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-4">
@@ -227,7 +535,7 @@ export function HomeView() {
           </section>
         )}
 
-        {/* ── QUICK STATS — Enhanced ── */}
+        {/* ── QUICK STATS ── */}
         <section>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
@@ -323,7 +631,7 @@ export function HomeView() {
           </section>
         )}
 
-        {/* ── NEW RELEASES ── */}
+        {/* ── ALBUMS ── */}
         {newestAlbums.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-4">
@@ -352,7 +660,6 @@ export function HomeView() {
                           <div className={`w-full h-full bg-gradient-to-br ${getCoverGradient(album.name)}`} />
                         )}
                       </div>
-                      {/* Play overlay */}
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="w-10 h-10 rounded-full bg-primary/90 flex items-center justify-center shadow-lg">
                           <Play className="w-5 h-5 text-primary-foreground ml-0.5" />
@@ -368,7 +675,7 @@ export function HomeView() {
           </section>
         )}
 
-        {/* ── BROWSE ARTISTS ── */}
+        {/* ── ARTISTS ── */}
         {recentArtists.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-4">
