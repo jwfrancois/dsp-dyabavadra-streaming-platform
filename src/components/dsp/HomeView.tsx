@@ -464,7 +464,7 @@ export function HomeView() {
     <ScrollArea className="h-full">
       <div className="p-6 space-y-8 max-w-7xl mx-auto">
         {/* ═══════════════════════════════════════════════
-            HERO — DSP Title + Analog Clock + Calendar
+            HERO — DSP Title + Antenna + Analog Clock + Calendar
         ═══════════════════════════════════════════════ */}
         <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 via-card to-accent/10 border border-border/50">
           <div className="absolute inset-0 opacity-[0.03] bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjZmZmIiBvcGFjaXR5PSIwLjIiLz48L3N2Zz4=')]" />
@@ -484,8 +484,27 @@ export function HomeView() {
               </div>
             </div>
 
-            {/* Clock + Calendar */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10">
+            {/* Antenna + Clock + Calendar */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-8">
+              {/* Radio Antenna — broadcasting signal imagery */}
+              <div className="relative flex-shrink-0 hidden sm:flex items-end justify-center w-[100px]">
+                <img
+                  src="/antenna-hero.png"
+                  alt=""
+                  aria-hidden="true"
+                  className="h-[180px] object-contain opacity-50 drop-shadow-[0_0_12px_hsl(var(--primary)/0.25)] grayscale-[30%] brightness-110 contrast-125"
+                  draggable={false}
+                />
+                {/* Signal rings animated from antenna tip */}
+                <div className="absolute top-1 left-1/2 -translate-x-1/2">
+                  <span className="absolute -inset-4 rounded-full border border-primary/20 animate-ping" style={{ animationDuration: '3s' }} />
+                  <span className="absolute -inset-8 rounded-full border border-primary/10 animate-ping" style={{ animationDuration: '4s', animationDelay: '1s' }} />
+                </div>
+              </div>
+
+              <div className="hidden sm:block w-px h-48 bg-gradient-to-b from-transparent via-border to-transparent" />
+              <div className="sm:hidden h-px w-48 bg-gradient-to-r from-transparent via-border to-transparent" />
+
               <AnalogClock className="w-[180px] sm:w-[200px] flex-shrink-0" />
 
               <div className="hidden sm:block w-px h-48 bg-gradient-to-b from-transparent via-border to-transparent" />
