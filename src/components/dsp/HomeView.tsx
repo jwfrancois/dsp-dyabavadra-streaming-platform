@@ -257,7 +257,7 @@ export function HomeView() {
           <section>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Wave className="w-5 h-5 text-primary" />
+                <Waves className="w-5 h-5 text-primary" />
                 Audio Quality
               </h2>
             </div>
@@ -468,7 +468,7 @@ export function HomeView() {
                   </div>
                   <div>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Audio Engine</p>
-                    <p className="text-sm font-medium mt-1">{coreStatus.audioEngine?.name || 'Web Audio API'}</p>
+                    <p className="text-sm font-medium mt-1">{(coreStatus.audioEngine as any)?.name || 'Web Audio API'}</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Supported Formats</p>
