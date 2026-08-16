@@ -1,115 +1,22 @@
 ---
 Task ID: 1
-Agent: Main Agent
-Task: Enhance DSP Now Playing, Player Bar, and Artist views with album covers, artist photos, and rich web metadata
+Agent: Super Z (Main)
+Task: Competitive analysis of audio streaming platforms + implementation of high-impact improvements for DSP
 
 Work Log:
-- Explored entire DSP codebase structure: 35+ components, 11 Zustand stores, API routes, hooks
-- Read all key files: NowPlayingView.tsx, PlayerBar.tsx, ArtistDetailView.tsx, AlbumDetailView.tsx, CoverArt.tsx, data.ts, use-music-metadata.ts, music-metadata API route, audio-db.ts, local-library.ts
-- Added `artist-image` and `similar-artists` API endpoints to `/api/music-metadata/route.ts`
-- Added `useArtistImage` and `useSimilarArtists` hooks to `src/lib/use-music-metadata.ts`
-- Added `ArtistImageResult` and `SimilarArtistsResult` type interfaces
-- Enhanced `NowPlayingView.tsx` with:
-  - Real album cover art from local library (resolved from sibling tracks in same album)
-  - Artist info card with quick bio fetched from web
-  - Album info card with web-fetched album description
-  - Signal path visualization showing current track format chain
-  - Format/sample rate/bit depth badges prominently displayed
-  - Dynamic background gradient
-  - Vinyl peek effect on cover art hover
-  - File info card
-  - Up Next queue with real cover art per track
-  - External links to full bio and album info sources
-- Enhanced `PlayerBar.tsx` with:
-  - Real cover art images in the music mode player bar (resolved from local library)
-  - Cover art shine overlay for visual polish
-  - Same enhancement for queue items in up-next
-- Enhanced `ArtistDetailView.tsx` with:
-  - Large hero section with gradient background blur and prominent artist photo area
-  - 4-column stats grid (Albums, Tracks, Total Duration, Genres)
-  - Full artist biography from web (Wikipedia, AllMusic, Britannica, Discogs)
-  - Web discography section with source links
-  - Similar/Related artists from web search
-  - Audio format breakdown with file size totals
-  - Shuffle play button
-  - Cover art on discography album cards with format badges
-  - Cover art on track list items with format/sample rate info per track
-  - Source attribution card
-- Enhanced `CoverArt.tsx` to accept optional `coverArtUrl` prop for real images
-- Build verified: `next build` succeeded with 0 errors
+- Conducted comprehensive competitive analysis of 7 platforms (Roon, Spotify, Apple Music, Tidal/Qobuz, Audirvana, Plexamp, Navidrome)
+- Generated full gap analysis with 20 identified gaps across 5 priority tiers
+- Implemented 7 high-impact features in a single session:
+  1. Audio Visualizer (AnalyserNode + Canvas) — 3 modes: spectrum bars, waveform, circular radial
+  2. Synced Lyrics (LRCLIB.net API) — LRC parser, auto-scroll, tap-to-seek, plain/synced toggle
+  3. Keyboard Shortcuts (14 shortcuts) — Space, arrows, Cmd+arrows, S/R/M/L/Q/N/H//, ? overlay
+  4. Enhanced Home Page — time greetings, quality badges, genre distribution, format breakdown, DSP core status
+  5. Audio Quality Badges — Hi-Res (gold), Lossless (green), DSD (purple) on PlayerBar + tracks
+  6. Listening Stats Dashboard — new view with quality distribution, format/rate breakdowns, top artists/genres
+  7. Lyrics API — /api/lyrics route with 24h server cache
 
 Stage Summary:
-- All 6 components enhanced for premium Roon/Spotify-beating quality
-- Web metadata fetching: artist bios, album info, discography, similar artists, artist images
-- Real cover art displayed throughout: PlayerBar, NowPlaying, Artist Detail, Album Detail
-- Build passes cleanly
-
----
-Task ID: 2
-Agent: Main Agent
-Task: Fix music library data persistence issue on Vercel deployment
-
-Work Log:
-- Diagnosed root cause: Next.js SSR hydration mismatch with Zustand persist middleware
-  - SSR renders page with empty default state (no localStorage access on server)
-  - Zustand rehydrates from localStorage but hydration may not trigger visible re-render
-  - User sees empty library even though data exists in localStorage
-- Secondary issue: onRehydrateStorage had fragile pending counter that could hang forever
-  - Hundreds of individual IndexedDB reads with Promise.all inside a loop
-  - If any promise threw before decrementing, counter never reached 0
-- Tertiary issue: Server-side scan (fs.readdir) incompatible with Vercel serverless
-
-- Fixed `src/store/local-library.ts`:
-  - Rewrote onRehydrateStorage with Promise.allSettled (never hangs)
-  - Added batch IndexedDB reads with proper error handling
-  - Added diagnostic logging for rehydration debugging
-- Created `src/components/StoreHydration.tsx`:
-  - Hydration gate component that blocks rendering until Zustand rehydrates
-  - Shows "Restoring library..." loading spinner during rehydration
-  - Falls back to server-side backup if localStorage is empty
-  - 3-second safety timeout to prevent infinite loading
-- Updated `src/app/page.tsx`:
-  - Wrapped entire app in StoreHydrationGate
-  - Prevents flash of empty content before rehydration completes
-- Updated `src/lib/audio-db.ts`:
-  - Added error handling for getAudioBlobURL (catch and log instead of throw)
-  - Added onclose/onerror handlers for database connection
-- Updated `src/store/player.ts`:
-  - Added async resolveAudioUrl() with IndexedDB fallback
-  - For client-imported tracks without blobUrl, tries to get from IndexedDB on demand
-- Created `src/app/api/library/save/route.ts`:
-  - Server-side library backup API (POST save, GET load, DELETE clear)
-  - Stores track metadata as JSON in data/library-backup.json
-  - Audio blobs NOT uploaded (too large), only metadata persisted
-- Updated `src/components/dsp/LibraryManagementView.tsx`:
-  - Auto-saves library to server backup after successful import
-  - Fire-and-forget POST to /api/library/save
-
-Stage Summary:
-- Core fix: Hydration gate prevents Next.js SSR from showing empty library
-- Reliability fix: Batch IndexedDB reads with Promise.allSettled never hangs
-- Server backup: Library metadata saved to server on import, restored on load
-- Audio fallback: resolveAudioUrl() tries IndexedDB if blobUrl is missing
-- Build compiles successfully with all changes
-
----
-Task ID: 5
-Agent: Main Agent
-Task: Fix Core/System infinite spinner & implement full plugin system
-
-Work Log:
-- Diagnosed Core/System view spinning indefinitely: SystemArchitectureView.tsx read `s.coreStatus` but system store field is `s.core` → always undefined → infinite spinner
-- Fixed SystemArchitectureView: changed all `coreStatus` references to `core`, added safe division for memory percentage
-- Enhanced system store with browser-detectable data: OS detection from user agent, hardwareConcurrency for cores, deviceMemory for RAM
-- Added live uptime counter (ticks every second via setInterval, starts on mount in AudioEngineProvider)
-- Populated default system data: storage locations, remote apps, streaming services (TIDAL/Qobuz), audio engine formats
-- Created plugin store (src/store/plugins.ts) with 25 plugins across 5 categories
-- Wired PluginManagerView to use plugin store with working Install/Uninstall/Toggle actions
-- Plugin states persist to localStorage via `dsp-plugin-states` key
-- Build verified: all 21 routes compile successfully
-- Pushed to GitHub: commit be5feb5
-
-Stage Summary:
-- Core/System view now shows full system architecture with live data and uptime counter
-- Plugin Manager shows 25 plugins (16 installed, 9 available) with full install/uninstall/toggle functionality
-- All plugin states persist across page reloads via localStorage
+- All features build successfully (Next.js 16 + Turbopack)
+- Pushed to GitHub (commit f03f02e)
+- Key insight: DSP's Web Audio DSP pipeline is genuinely best-in-class for web apps — no competitor has this
+- Biggest remaining gaps: gapless playback, real loudness measurement, smart discovery engine
