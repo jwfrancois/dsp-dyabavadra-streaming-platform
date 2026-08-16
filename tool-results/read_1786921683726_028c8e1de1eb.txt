@@ -1,0 +1,508 @@
+     1→'use client';
+     2→
+     3→import React, { useMemo } from 'react';
+     4→import { useUIStore } from '@/store/ui';
+     5→import { usePlayerStore } from '@/store/player';
+     6→import { useSystemStore } from '@/store/system';
+     7→import { formatDuration, formatFileSize, getCoverGradient, formatSampleRate } from '@/lib/data';
+     8→import { radioStations } from '@/lib/radio-stations';
+     9→import { useLocalLibraryStore } from '@/store/local-library';
+    10→import { Card, CardContent } from '@/components/ui/card';
+    11→import { Button } from '@/components/ui/button';
+    12→import { Badge } from '@/components/ui/badge';
+    13→import { ScrollArea } from '@/components/ui/scroll-area';
+    14→import {
+    15→  Play, ArrowRight, Clock, Star, Sparkles,
+    16→  Headphones, Calendar, Music2, Radio, Waves,
+    17→  TrendingUp, Disc3, Library, Zap, Info,
+    18→  Search, Keyboard, Sun, Moon, Coffee, Sunrise,
+    19→} from 'lucide-react';
+    20→
+    21→// ── Quality badge helper ──
+    22→function QualityBadge({ format, sampleRate, bitDepth }: { format: string; sampleRate: number; bitDepth: number }) {
+    23→  const isHiRes = sampleRate > 48000 || bitDepth > 16;
+    24→  const isLossless = ['FLAC', 'WAV', 'AIFF', 'ALAC', 'DSF', 'DFF', 'WavPack', 'APE', 'TAK'].includes(format.toUpperCase());
+    25→  const isDSD = ['DSF', 'DFF', 'DSD'].includes(format.toUpperCase());
+    26→
+    27→  if (isDSD) return <Badge className="text-[9px] bg-purple-500/20 text-purple-400 border-purple-500/30 h-4 px-1">DSD</Badge>;
+    28→  if (isHiRes && isLossless) return <Badge className="text-[9px] bg-primary/20 text-primary border-primary/30 h-4 px-1">Hi-Res</Badge>;
+    29→  if (isLossless) return <Badge className="text-[9px] bg-signal-green/20 text-signal-green border-signal-green/30 h-4 px-1">Lossless</Badge>;
+    30→  return null;
+    31→}
+    32→
+    33→// ── Time-based greeting ──
+    34→function getGreeting(): { text: string; icon: React.ReactNode; emoji: string } {
+    35→  const hour = new Date().getHours();
+    36→  if (hour < 6) return { text: 'Night Owl Mode', icon: <Moon className="w-5 h-5" />, emoji: '' };
+    37→  if (hour < 12) return { text: 'Good Morning', icon: <Sunrise className="w-5 h-5" />, emoji: '' };
+    38→  if (hour < 14) return { text: 'Good Afternoon', icon: <Sun className="w-5 h-5" />, emoji: '' };
+    39→  if (hour < 18) return { text: 'Good Afternoon', icon: <Sun className="w-5 h-5" />, emoji: '' };
+    40→  if (hour < 22) return { text: 'Good Evening', icon: <Moon className="w-5 h-5" />, emoji: '' };
+    41→  return { text: 'Night Owl Mode', icon: <Moon className="w-5 h-5" />, emoji: '' };
+    42→}
+    43→
+    44→export function HomeView() {
+    45→  const { navigate } = useUIStore();
+    46→  const { play, setQueue, currentTrack, isPlaying } = usePlayerStore();
+    47→  const coreStatus = useSystemStore(s => s.core);
+    48→
+    49→  const { tracks: localTracks, getAlbums, getArtists, getTotalSize, getTotalDuration, getFormatCounts } = useLocalLibraryStore();
+    50→  const localAlbums = getAlbums();
+    51→  const localArtists = getArtists();
+    52→  const totalSize = getTotalSize();
+    53→  const totalDuration = getTotalDuration();
+    54→  const formatCounts = getFormatCounts();
+    55→
+    56→  const greeting = getGreeting();
+    57→
+    58→  const recentTracks = localTracks.slice(0, 8);
+    59→  const newestAlbums = [...localAlbums].sort((a, b) => b.year - a.year).slice(0, 6);
+    60→  const recentArtists = localArtists.slice(0, 8);
+    61→
+    62→  // Genre distribution
+    63→  const genreDistribution = useMemo(() => {
+    64→    const genres: Record<string, number> = {};
+    65→    localTracks.forEach(t => {
+    66→      if (t.genre) {
+    67→        const g = t.genre.split(';')[0].trim();
+    68→        genres[g] = (genres[g] || 0) + 1;
+    69→      }
+    70→    });
+    71→    return Object.entries(genres).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    72→  }, [localTracks]);
+    73→
+    74→  // Hi-Res tracks count
+    75→  const hiResCount = useMemo(() =>
+    76→    localTracks.filter(t => t.sampleRate > 48000 || t.bitDepth > 16).length,
+    77→    [localTracks]
+    78→  );
+    79→
+    80→  // Format breakdown
+    81→  const formatBreakdown = useMemo(() =>
+    82→    Object.entries(formatCounts).sort((a, b) => b[1] - a[1]),
+    83→    [formatCounts]
+    84→  );
+    85→
+    86→  const playAlbum = (albumName: string, artistName: string) => {
+    87→    const albumTracks = localTracks.filter(t => t.album === albumName && t.artist === artistName).sort((a, b) => a.trackNumber - b.trackNumber);
+    88→    if (albumTracks.length > 0) {
+    89→      const trackObjs = albumTracks.map(t => ({
+    90→        id: t.id, title: t.title, albumId: t.album, albumName: t.album, artistId: t.artist, artistName: t.artist,
+    91→        trackNumber: t.trackNumber, discNumber: t.discNumber, duration: t.duration, format: t.format,
+    92→        bitDepth: t.bitDepth, sampleRate: t.sampleRate, channels: t.channels, bitrate: t.bitrate,
+    93→        filePath: t.filePath, fileSize: t.fileSize, composers: [t.composer], performers: [],
+    94→        genre: t.genre, loved: false, playCount: 0, source: 'local' as const, isAvailable: true,
+    95→      }));
+    96→      setQueue(trackObjs, 0);
+    97→    }
+    98→  };
+    99→
+   100→  const playTrack = (trackId: string) => {
+   101→    const t = localTracks.find(tr => tr.id === trackId);
+   102→    if (t) {
+   103→      play({
+   104→        id: t.id, title: t.title, albumId: t.album, albumName: t.album, artistId: t.artist, artistName: t.artist,
+   105→        trackNumber: t.trackNumber, discNumber: t.discNumber, duration: t.duration, format: t.format,
+   106→        bitDepth: t.bitDepth, sampleRate: t.sampleRate, channels: t.channels, bitrate: t.bitrate,
+   107→        filePath: t.filePath, fileSize: t.fileSize, composers: [t.composer], performers: [],
+   108→        genre: t.genre, loved: false, playCount: 0, source: 'local' as const, isAvailable: true,
+   109→      });
+   110→    }
+   111→  };
+   112→
+   113→  // Helper to get album cover art from tracks
+   114→  const getAlbumCover = (albumName: string, artistName: string) => {
+   115→    const track = localTracks.find(t => t.album === albumName && t.artist === artistName && t.coverArt);
+   116→    return track?.coverArt || null;
+   117→  };
+   118→
+   119→  return (
+   120→    <ScrollArea className="h-full">
+   121→      <div className="p-6 space-y-8 max-w-7xl mx-auto">
+   122→        {/* ── HERO: Dynamic Greeting ── */}
+   123→        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-primary/20 via-card to-accent/20 p-8">
+   124→          <div className="relative z-10">
+   125→            <div className="flex items-center gap-2 mb-1">
+   126→              {greeting.icon}
+   127→              <h1 className="text-2xl font-bold">{greeting.text}</h1>
+   128→            </div>
+   129→            <p className="text-muted-foreground max-w-lg">
+   130→              {localTracks.length > 0
+   131→                ? `Your library holds ${localTracks.length} tracks across ${localAlbums.length} albums by ${localArtists.length} artists — ${formatDuration(totalDuration)} of music.`
+   132→                : 'Your DSP music sanctuary awaits. Scan your library to begin the audiophile experience.'}
+   133→            </p>
+   134→
+   135→            {/* Now playing quick resume */}
+   136→            {currentTrack && isPlaying && (
+   137→              <div className="mt-3 flex items-center gap-3 p-3 bg-black/20 rounded-lg max-w-md">
+   138→                <div className="w-2 h-2 rounded-full bg-signal-green animate-pulse" />
+   139→                <div className="min-w-0 flex-1">
+   140→                  <p className="text-xs font-medium truncate">Now Playing: {currentTrack.title}</p>
+   141→                  <p className="text-[11px] text-muted-foreground truncate">{currentTrack.artistName}</p>
+   142→                </div>
+   143→                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => navigate('now-playing')}>
+   144→                  <ArrowRight className="w-3 h-3" />
+   145→                </Button>
+   146→              </div>
+   147→            )}
+   148→
+   149→            <div className="flex gap-3 mt-4 flex-wrap">
+   150→              {recentTracks.length > 0 && (
+   151→                <Button size="sm" onClick={() => playTrack(recentTracks[0]?.id)}>
+   152→                  <Play className="w-4 h-4 mr-2" /> Resume Playing
+   153→                </Button>
+   154→              )}
+   155→              <Button size="sm" variant="outline" onClick={() => navigate('browse-genres')}>
+   156→                <Sparkles className="w-4 h-4 mr-2" /> Discover
+   157→              </Button>
+   158→              <Button size="sm" variant="outline" onClick={() => navigate('search')}>
+   159→                <Search className="w-4 h-4 mr-2" /> Search
+   160→              </Button>
+   161→            </div>
+   162→          </div>
+   163→          <div className="absolute top-0 right-0 w-64 h-full opacity-10">
+   164→            <div className={`w-full h-full bg-gradient-to-br ${getCoverGradient('hero')}`} />
+   165→          </div>
+   166→        </div>
+   167→
+   168→        {/* ── KEYBOARD SHORTCUT TIP ── */}
+   169→        <div className="flex items-center gap-2 px-4 py-2 bg-surface/50 rounded-lg border border-border/50">
+   170→          <Keyboard className="w-3.5 h-3.5 text-muted-foreground" />
+   171→          <p className="text-[11px] text-muted-foreground">
+   172→            Press <kbd className="px-1.5 py-0.5 bg-card border border-border rounded text-[10px] font-mono mx-0.5">?</kbd> for keyboard shortcuts ·
+   173→            <kbd className="px-1.5 py-0.5 bg-card border border-border rounded text-[10px] font-mono mx-0.5">Space</kbd> play/pause ·
+   174→            <kbd className="px-1.5 py-0.5 bg-card border border-border rounded text-[10px] font-mono mx-0.5">/</kbd> search
+   175→          </p>
+   176→        </div>
+   177→
+   178→        {/* ── RECENTLY PLAYED ── */}
+   179→        {recentTracks.length > 0 && (
+   180→          <section>
+   181→            <div className="flex items-center justify-between mb-4">
+   182→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   183→                <Clock className="w-5 h-5 text-muted-foreground" />
+   184→                Recently Added
+   185→              </h2>
+   186→              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('browse-tracks')}>
+   187→                View All <ArrowRight className="w-3 h-3 ml-1" />
+   188→              </Button>
+   189→            </div>
+   190→            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+   191→              {recentTracks.map(track => (
+   192→                <Card
+   193→                  key={track.id}
+   194→                  className="bg-card border-border hover:bg-accent/30 cursor-pointer transition-colors group"
+   195→                  onClick={() => playTrack(track.id)}
+   196→                >
+   197→                  <CardContent className="p-3">
+   198→                    <div className="flex gap-3">
+   199→                      <div className="w-12 h-12 rounded-md bg-gradient-to-br flex-shrink-0 relative overflow-hidden shadow-sm">
+   200→                        {track.coverArt ? (
+   201→                          <img src={track.coverArt} alt="" className="w-full h-full object-cover" />
+   202→                        ) : (
+   203→                          <div className={`w-full h-full bg-gradient-to-br ${getCoverGradient(track.id)}`} />
+   204→                        )}
+   205→                      </div>
+   206→                      <div className="min-w-0 flex-1">
+   207→                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{track.title}</p>
+   208→                        <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
+   209→                        <div className="flex items-center gap-1 mt-0.5">
+   210→                          <span className="text-[11px] text-muted-foreground">{formatDuration(track.duration)}</span>
+   211→                          <QualityBadge format={track.format} sampleRate={track.sampleRate} bitDepth={track.bitDepth} />
+   212→                        </div>
+   213→                      </div>
+   214→                      <Button
+   215→                        variant="ghost"
+   216→                        size="icon"
+   217→                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+   218→                        onClick={(e) => { e.stopPropagation(); playTrack(track.id); }}
+   219→                      >
+   220→                        <Play className="w-3 h-3 text-primary" />
+   221→                      </Button>
+   222→                    </div>
+   223→                  </CardContent>
+   224→                </Card>
+   225→              ))}
+   226→            </div>
+   227→          </section>
+   228→        )}
+   229→
+   230→        {/* ── QUICK STATS — Enhanced ── */}
+   231→        <section>
+   232→          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+   233→            {[
+   234→              { label: 'Tracks', value: localTracks.length.toString(), icon: Music2, color: 'text-primary', sub: hiResCount > 0 ? `${hiResCount} Hi-Res` : undefined },
+   235→              { label: 'Albums', value: localAlbums.length.toString(), icon: Disc3, color: 'text-signal-green', sub: undefined },
+   236→              { label: 'Artists', value: localArtists.length.toString(), icon: Star, color: 'text-gold', sub: undefined },
+   237→              { label: 'Total Time', value: totalDuration > 3600 ? `${Math.floor(totalDuration / 3600)}d ${Math.floor((totalDuration % 3600) / 60)}h` : `${Math.floor(totalDuration / 60)}m`, icon: Clock, color: 'text-signal-amber', sub: undefined },
+   238→            ].map(stat => (
+   239→              <Card key={stat.label} className="bg-card border-border hover:border-primary/20 transition-colors">
+   240→                <CardContent className="p-4 flex items-center gap-3">
+   241→                  <div className="w-10 h-10 rounded-lg bg-surface flex items-center justify-center">
+   242→                    <stat.icon className={`w-5 h-5 ${stat.color}`} />
+   243→                  </div>
+   244→                  <div>
+   245→                    <p className="text-xl font-bold tabular-nums">{stat.value}</p>
+   246→                    <p className="text-xs text-muted-foreground">{stat.label}</p>
+   247→                    {stat.sub && <p className="text-[10px] text-primary">{stat.sub}</p>}
+   248→                  </div>
+   249→                </CardContent>
+   250→              </Card>
+   251→            ))}
+   252→          </div>
+   253→        </section>
+   254→
+   255→        {/* ── AUDIO QUALITY BREAKDOWN ── */}
+   256→        {localTracks.length > 0 && formatBreakdown.length > 0 && (
+   257→          <section>
+   258→            <div className="flex items-center justify-between mb-4">
+   259→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   260→                <Waves className="w-5 h-5 text-primary" />
+   261→                Audio Quality
+   262→              </h2>
+   263→            </div>
+   264→            <Card className="bg-card border-border">
+   265→              <CardContent className="p-4">
+   266→                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+   267→                  {formatBreakdown.map(([format, count]) => {
+   268→                    const isLossless = ['FLAC', 'WAV', 'AIFF', 'ALAC', 'DSF', 'DFF', 'WavPack', 'APE', 'TAK'].includes(format.toUpperCase());
+   269→                    const isDSD = ['DSF', 'DFF', 'DSD'].includes(format.toUpperCase());
+   270→                    return (
+   271→                      <div key={format} className="text-center">
+   272→                        <div className="relative mx-auto w-14 h-14 rounded-xl bg-surface flex items-center justify-center mb-2">
+   273→                          <span className="text-lg font-bold font-mono">{count}</span>
+   274→                          {isDSD && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-purple-500 border-2 border-card" />}
+   275→                          {!isDSD && isLossless && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-signal-green border-2 border-card" />}
+   276→                        </div>
+   277→                        <p className="text-xs font-semibold font-mono">{format}</p>
+   278→                        <p className="text-[10px] text-muted-foreground">
+   279→                          {isDSD ? 'DSD' : isLossless ? 'Lossless' : 'Lossy'}
+   280→                        </p>
+   281→                      </div>
+   282→                    );
+   283→                  })}
+   284→                </div>
+   285→                {totalSize > 0 && (
+   286→                  <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between">
+   287→                    <p className="text-xs text-muted-foreground">Total Library Size</p>
+   288→                    <p className="text-sm font-semibold font-mono">{formatFileSize(totalSize)}</p>
+   289→                  </div>
+   290→                )}
+   291→              </CardContent>
+   292→            </Card>
+   293→          </section>
+   294→        )}
+   295→
+   296→        {/* ── GENRE DISTRIBUTION ── */}
+   297→        {genreDistribution.length > 0 && (
+   298→          <section>
+   299→            <div className="flex items-center justify-between mb-4">
+   300→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   301→                <TrendingUp className="w-5 h-5 text-signal-green" />
+   302→                Top Genres
+   303→              </h2>
+   304→              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('browse-genres')}>
+   305→                All Genres <ArrowRight className="w-3 h-3 ml-1" />
+   306→              </Button>
+   307→            </div>
+   308→            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+   309→              {genreDistribution.map(([genre, count]) => (
+   310→                <Card
+   311→                  key={genre}
+   312→                  className="bg-card border-border hover:bg-accent/30 cursor-pointer transition-colors group"
+   313→                  onClick={() => navigate('genre-detail', { genre })}
+   314→                >
+   315→                  <CardContent className="p-3 text-center">
+   316→                    <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{genre}</p>
+   317→                    <p className="text-lg font-bold tabular-nums mt-1">{count}</p>
+   318→                    <p className="text-[10px] text-muted-foreground">tracks</p>
+   319→                  </CardContent>
+   320→                </Card>
+   321→              ))}
+   322→            </div>
+   323→          </section>
+   324→        )}
+   325→
+   326→        {/* ── NEW RELEASES ── */}
+   327→        {newestAlbums.length > 0 && (
+   328→          <section>
+   329→            <div className="flex items-center justify-between mb-4">
+   330→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   331→                <Sparkles className="w-5 h-5 text-primary" />
+   332→                Albums
+   333→              </h2>
+   334→              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('browse-albums')}>
+   335→                View All <ArrowRight className="w-3 h-3 ml-1" />
+   336→              </Button>
+   337→            </div>
+   338→            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+   339→              {newestAlbums.map(album => {
+   340→                const coverArt = getAlbumCover(album.name, album.artist);
+   341→                return (
+   342→                  <div
+   343→                    key={`${album.name}-${album.artist}`}
+   344→                    className="group cursor-pointer"
+   345→                    onClick={() => playAlbum(album.name, album.artist)}
+   346→                  >
+   347→                    <div className="relative mb-2">
+   348→                      <div className="w-full aspect-square rounded-lg bg-gradient-to-br cover-art-hover shadow-lg relative overflow-hidden">
+   349→                        {coverArt ? (
+   350→                          <img src={coverArt} alt={album.name} className="w-full h-full object-cover" />
+   351→                        ) : (
+   352→                          <div className={`w-full h-full bg-gradient-to-br ${getCoverGradient(album.name)}`} />
+   353→                        )}
+   354→                      </div>
+   355→                      {/* Play overlay */}
+   356→                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+   357→                        <div className="w-10 h-10 rounded-full bg-primary/90 flex items-center justify-center shadow-lg">
+   358→                          <Play className="w-5 h-5 text-primary-foreground ml-0.5" />
+   359→                        </div>
+   360→                      </div>
+   361→                    </div>
+   362→                    <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{album.name}</p>
+   363→                    <p className="text-xs text-muted-foreground truncate">{album.artist}{album.year ? ` · ${album.year}` : ''}</p>
+   364→                  </div>
+   365→                );
+   366→              })}
+   367→            </div>
+   368→          </section>
+   369→        )}
+   370→
+   371→        {/* ── BROWSE ARTISTS ── */}
+   372→        {recentArtists.length > 0 && (
+   373→          <section>
+   374→            <div className="flex items-center justify-between mb-4">
+   375→              <h2 className="text-lg font-semibold">Artists</h2>
+   376→              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('browse-artists')}>
+   377→                View All <ArrowRight className="w-3 h-3 ml-1" />
+   378→              </Button>
+   379→            </div>
+   380→            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
+   381→              {recentArtists.map(artist => {
+   382→                const artistTracks = localTracks.filter(t => t.artist === artist);
+   383→                const coverArt = artistTracks.find(t => t.coverArt)?.coverArt;
+   384→                return (
+   385→                  <div
+   386→                    key={artist}
+   387→                    className="group text-center cursor-pointer"
+   388→                    onClick={() => navigate('artist-detail', { artistId: artist })}
+   389→                  >
+   390→                    <div className="w-full aspect-square rounded-full bg-gradient-to-br mx-auto mb-2 cover-art-hover shadow-lg relative overflow-hidden">
+   391→                      {coverArt ? (
+   392→                        <img src={coverArt} alt={artist} className="w-full h-full object-cover" />
+   393→                      ) : (
+   394→                        <div className={`w-full h-full bg-gradient-to-br ${getCoverGradient(artist)}`} />
+   395→                      )}
+   396→                    </div>
+   397→                    <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{artist}</p>
+   398→                    <p className="text-[11px] text-muted-foreground">{artistTracks.length} tracks</p>
+   399→                  </div>
+   400→                );
+   401→              })}
+   402→            </div>
+   403→          </section>
+   404→        )}
+   405→
+   406→        {/* ── INTERNET RADIO ── */}
+   407→        <section>
+   408→          <div className="flex items-center justify-between mb-4">
+   409→            <h2 className="text-lg font-semibold flex items-center gap-2">
+   410→              <Radio className="w-5 h-5 text-signal-green" />
+   411→              Internet Radio
+   412→            </h2>
+   413→            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('radio')}>
+   414→              All Stations <ArrowRight className="w-3 h-3 ml-1" />
+   415→            </Button>
+   416→          </div>
+   417→          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+   418→            {radioStations.slice(0, 4).map(station => (
+   419→              <Card
+   420→                key={station.id}
+   421→                className="bg-card border-border hover:bg-accent/30 cursor-pointer transition-colors group"
+   422→                onClick={() => navigate('radio')}
+   423→              >
+   424→                <CardContent className="p-3">
+   425→                  <div className="flex gap-3">
+   426→                    <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${getCoverGradient(station.id)} flex-shrink-0 flex items-center justify-center`}>
+   427→                      <Radio className="w-4 h-4 text-white/60" />
+   428→                    </div>
+   429→                    <div className="min-w-0 flex-1">
+   430→                      <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{station.name}</p>
+   431→                      <div className="flex items-center gap-1 mt-0.5">
+   432→                        <Badge variant="outline" className="text-[9px] px-1 py-0 text-signal-green border-signal-green/30">LIVE</Badge>
+   433→                        <span className="text-[10px] text-muted-foreground">{station.genre}</span>
+   434→                      </div>
+   435→                    </div>
+   436→                  </div>
+   437→                </CardContent>
+   438→              </Card>
+   439→            ))}
+   440→          </div>
+   441→        </section>
+   442→
+   443→        {/* ── SYSTEM STATUS ── */}
+   444→        {coreStatus && (
+   445→          <section>
+   446→            <div className="flex items-center justify-between mb-4">
+   447→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   448→                <Zap className="w-5 h-5 text-signal-amber" />
+   449→                DSP Core
+   450→              </h2>
+   451→              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('system')}>
+   452→                System Details <ArrowRight className="w-3 h-3 ml-1" />
+   453→              </Button>
+   454→            </div>
+   455→            <Card className="bg-card border-border">
+   456→              <CardContent className="p-4">
+   457→                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+   458→                  <div>
+   459→                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Core Status</p>
+   460→                    <div className="flex items-center gap-1.5 mt-1">
+   461→                      <div className="w-2 h-2 rounded-full bg-signal-green animate-pulse" />
+   462→                      <p className="text-sm font-medium">{coreStatus.name}</p>
+   463→                    </div>
+   464→                  </div>
+   465→                  <div>
+   466→                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Uptime</p>
+   467→                    <p className="text-sm font-medium font-mono mt-1">{coreStatus.uptime}s</p>
+   468→                  </div>
+   469→                  <div>
+   470→                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Audio Engine</p>
+   471→                    <p className="text-sm font-medium mt-1">{(coreStatus.audioEngine as any)?.name || 'Web Audio API'}</p>
+   472→                  </div>
+   473→                  <div>
+   474→                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Supported Formats</p>
+   475→                    <p className="text-sm font-medium mt-1">{coreStatus.audioEngine?.supportedFormats?.length || 6} formats</p>
+   476→                  </div>
+   477→                </div>
+   478→              </CardContent>
+   479→            </Card>
+   480→          </section>
+   481→        )}
+   482→
+   483→        {/* ── EMPTY STATE ── */}
+   484→        {localTracks.length === 0 && (
+   485→          <section className="text-center py-12">
+   486→            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-surface flex items-center justify-center">
+   487→              <Library className="w-10 h-10 text-muted-foreground/40" />
+   488→            </div>
+   489→            <h2 className="text-xl font-semibold mb-2">Your Library Awaits</h2>
+   490→            <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6">
+   491→              Import your music collection to unlock DSP&apos;s full audiophile experience.
+   492→              Supports FLAC, WAV, DSD, MQA, AIFF, and 17 other formats with bit-perfect playback.
+   493→            </p>
+   494→            <div className="flex gap-3 justify-center">
+   495→              <Button onClick={() => navigate('library')}>
+   496→                <Library className="w-4 h-4 mr-2" /> Scan Library
+   497→              </Button>
+   498→              <Button variant="outline" onClick={() => navigate('radio')}>
+   499→                <Radio className="w-4 h-4 mr-2" /> Try Radio
+   500→              </Button>
+   501→            </div>
+   502→          </section>
+   503→        )}
+   504→      </div>
+   505→    </ScrollArea>
+   506→  );
+   507→}
+   508→
