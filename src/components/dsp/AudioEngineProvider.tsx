@@ -5,6 +5,8 @@ import { usePlayerStore } from '@/store/player';
 import { usePodcastStore } from '@/store/podcast';
 import { useDSPEngineStore } from '@/store/dsp-engine';
 import { useSystemStore } from '@/store/system';
+import { useHistoryStore } from '@/store/history';
+import { useProfilesStore } from '@/store/profiles';
 import {
   getAudioContext,
   connectMediaElement,
@@ -205,6 +207,20 @@ export function AudioEngineProvider({ children }: { children: React.ReactNode })
 
             if (isPlaying) {
               a.play().catch((e) => console.warn('[AudioEngine] play() after src change failed:', e));
+
+              // Record in history store
+              if (mode === 'music' && state.currentTrack) {
+                const historyStore = useHistoryStore.getState();
+                const profilesStore = useProfilesStore.getState();
+                historyStore.addEntry({
+                  trackId: state.currentTrack.id,
+                  profileId: profilesStore.activeProfileId || 'profile-1',
+                  playedAt: new Date().toISOString(),
+                  completed: false,
+                  source: 'local',
+                  zoneId: state.activeZoneId,
+                });
+              }
             }
           } else {
             a.pause();
@@ -227,9 +243,12 @@ export function AudioEngineProvider({ children }: { children: React.ReactNode })
     );
 
     // Volume subscription — route through DSP master gain
+    let lastVolume = usePlayerStore.getState().volume;
     const unsubVolume = usePlayerStore.subscribe(
-      (state) => state.volume,
-      (volume) => {
+      (state) => {
+        const volume = state.volume;
+        if (volume === lastVolume) return;
+        lastVolume = volume;
         volumeRef.current = volume;
         const isMuted = usePlayerStore.getState().isMuted;
         if (isDSPActive()) {
@@ -240,9 +259,12 @@ export function AudioEngineProvider({ children }: { children: React.ReactNode })
       }
     );
 
+    let lastMuted = usePlayerStore.getState().isMuted;
     const unsubMute = usePlayerStore.subscribe(
-      (state) => state.isMuted,
-      (isMuted) => {
+      (state) => {
+        const isMuted = state.isMuted;
+        if (isMuted === lastMuted) return;
+        lastMuted = isMuted;
         if (isDSPActive()) {
           setDSPVolume(volumeRef.current, isMuted);
         } else {

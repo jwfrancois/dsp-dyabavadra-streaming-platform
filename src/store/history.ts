@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { PlayHistoryEntry } from '@/lib/data';
 
 interface HistoryState {
@@ -11,18 +12,28 @@ interface HistoryState {
   clearHistory: () => void;
 }
 
-export const useHistoryStore = create<HistoryState>((set, get) => ({
-  entries: [],
-  maxEntries: 500,
+export const useHistoryStore = create<HistoryState>()(
+  persist(
+    (set, get) => ({
+      entries: [],
+      maxEntries: 500,
 
-  addEntry: (entry) => set(s => {
-    const newEntry: PlayHistoryEntry = { ...entry, id: `ph-${Date.now()}` };
-    return { entries: [newEntry, ...s.entries].slice(0, s.maxEntries) };
-  }),
+      addEntry: (entry) => set(s => {
+        const newEntry: PlayHistoryEntry = { ...entry, id: `ph-${Date.now()}` };
+        return { entries: [newEntry, ...s.entries].slice(0, s.maxEntries) };
+      }),
 
-  getEntriesForProfile: (profileId) => get().entries.filter(e => e.profileId === profileId),
+      getEntriesForProfile: (profileId) => get().entries.filter(e => e.profileId === profileId),
 
-  getEntriesForZone: (zoneId) => get().entries.filter(e => e.zoneId === zoneId),
+      getEntriesForZone: (zoneId) => get().entries.filter(e => e.zoneId === zoneId),
 
-  clearHistory: () => set({ entries: [] }),
-}));
+      clearHistory: () => set({ entries: [] }),
+    }),
+    {
+      name: 'dsp-history-store',
+      partialize: (state) => ({
+        entries: state.entries,
+      }),
+    }
+  )
+);

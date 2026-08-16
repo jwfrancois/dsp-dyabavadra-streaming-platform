@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { DSPConfig, EQBand } from '@/lib/data';
 
 interface DSPEngineState {
@@ -30,123 +31,137 @@ interface DSPEngineState {
   resetZoneConfig: (zoneId: string) => void;
 }
 
-export const useDSPEngineStore = create<DSPEngineState>((set, get) => {
-  return {
-    zoneConfigs: {},
-    selectedZoneId: 'zone-1',
-    bitPerfectDefault: true,
-    gaplessPlayback: true,
-    globalDither: { enabled: true, type: 'tpdf' },
+export const useDSPEngineStore = create<DSPEngineState>()(
+  persist(
+    (set, get) => {
+      return {
+        zoneConfigs: {},
+        selectedZoneId: 'zone-1',
+        bitPerfectDefault: true,
+        gaplessPlayback: true,
+        globalDither: { enabled: true, type: 'tpdf' },
 
-    selectZone: (zoneId) => set({ selectedZoneId: zoneId }),
+        selectZone: (zoneId) => set({ selectedZoneId: zoneId }),
 
-    getZoneConfig: (zoneId) => {
-      return get().zoneConfigs[zoneId] || { dither: { enabled: false, type: 'none' } };
+        getZoneConfig: (zoneId) => {
+          return get().zoneConfigs[zoneId] || { dither: { enabled: false, type: 'none' } };
+        },
+
+        updateZoneConfig: (zoneId, config) => set(s => ({
+          zoneConfigs: {
+            ...s.zoneConfigs,
+            [zoneId]: { ...s.zoneConfigs[zoneId], ...config },
+          },
+        })),
+
+        toggleDSPModule: (zoneId, module) => set(s => {
+          const current = s.zoneConfigs[zoneId] || {};
+          const moduleVal = current[module];
+          if (!moduleVal || typeof moduleVal !== 'object' || !('enabled' in moduleVal)) return s;
+          return {
+            zoneConfigs: {
+              ...s.zoneConfigs,
+              [zoneId]: {
+                ...current,
+                [module]: { ...(moduleVal as unknown as Record<string, unknown>), enabled: !((moduleVal as unknown as Record<string, unknown>).enabled) },
+              },
+            },
+          };
+        }),
+
+        updateEQBand: (zoneId, bandId, updates) => set(s => {
+          const config = s.zoneConfigs[zoneId];
+          if (!config?.eq) return s;
+          return {
+            zoneConfigs: {
+              ...s.zoneConfigs,
+              [zoneId]: {
+                ...config,
+                eq: config.eq.map(b => b.id === bandId ? { ...b, ...updates } : b),
+              },
+            },
+          };
+        }),
+
+        addEQBand: (zoneId, band) => set(s => {
+          const config = s.zoneConfigs[zoneId];
+          return {
+            zoneConfigs: {
+              ...s.zoneConfigs,
+              [zoneId]: {
+                ...config,
+                eq: [...(config?.eq || []), band],
+              },
+            },
+          };
+        }),
+
+        removeEQBand: (zoneId, bandId) => set(s => {
+          const config = s.zoneConfigs[zoneId];
+          return {
+            zoneConfigs: {
+              ...s.zoneConfigs,
+              [zoneId]: {
+                ...config,
+                eq: config?.eq?.filter(b => b.id !== bandId) || [],
+              },
+            },
+          };
+        }),
+
+        setVolumeMode: (zoneId, mode) => set(s => ({
+          zoneConfigs: {
+            ...s.zoneConfigs,
+            [zoneId]: {
+              ...s.zoneConfigs[zoneId],
+              volumeMode: mode,
+            },
+          },
+        })),
+
+        setVolumeLimit: (zoneId, maxPercent, startupMax) => set(s => ({
+          zoneConfigs: {
+            ...s.zoneConfigs,
+            [zoneId]: {
+              ...s.zoneConfigs[zoneId],
+              volumeLimit: { maxPercent, startupMax },
+            },
+          },
+        })),
+
+        setClockMode: (zoneId, mode) => set(s => ({
+          zoneConfigs: {
+            ...s.zoneConfigs,
+            [zoneId]: {
+              ...s.zoneConfigs[zoneId],
+              clockMode: mode,
+            },
+          },
+        })),
+
+        toggleBitPerfectDefault: () => set(s => ({ bitPerfectDefault: !s.bitPerfectDefault })),
+
+        toggleGapless: () => set(s => ({ gaplessPlayback: !s.gaplessPlayback })),
+
+        setGlobalDither: (type) => set({ globalDither: { enabled: type !== 'none', type } }),
+
+        resetZoneConfig: (zoneId) => set(s => ({
+          zoneConfigs: {
+            ...s.zoneConfigs,
+            [zoneId]: { dither: { enabled: false, type: 'none' } },
+          },
+        })),
+      };
     },
-
-    updateZoneConfig: (zoneId, config) => set(s => ({
-      zoneConfigs: {
-        ...s.zoneConfigs,
-        [zoneId]: { ...s.zoneConfigs[zoneId], ...config },
-      },
-    })),
-
-    toggleDSPModule: (zoneId, module) => set(s => {
-      const current = s.zoneConfigs[zoneId] || {};
-      const moduleVal = current[module];
-      if (!moduleVal || typeof moduleVal !== 'object' || !('enabled' in moduleVal)) return s;
-      return {
-        zoneConfigs: {
-          ...s.zoneConfigs,
-          [zoneId]: {
-            ...current,
-            [module]: { ...(moduleVal as Record<string, unknown>), enabled: !(moduleVal as Record<string, unknown>).enabled },
-          },
-        },
-      };
-    }),
-
-    updateEQBand: (zoneId, bandId, updates) => set(s => {
-      const config = s.zoneConfigs[zoneId];
-      if (!config?.eq) return s;
-      return {
-        zoneConfigs: {
-          ...s.zoneConfigs,
-          [zoneId]: {
-            ...config,
-            eq: config.eq.map(b => b.id === bandId ? { ...b, ...updates } : b),
-          },
-        },
-      };
-    }),
-
-    addEQBand: (zoneId, band) => set(s => {
-      const config = s.zoneConfigs[zoneId];
-      return {
-        zoneConfigs: {
-          ...s.zoneConfigs,
-          [zoneId]: {
-            ...config,
-            eq: [...(config?.eq || []), band],
-          },
-        },
-      };
-    }),
-
-    removeEQBand: (zoneId, bandId) => set(s => {
-      const config = s.zoneConfigs[zoneId];
-      return {
-        zoneConfigs: {
-          ...s.zoneConfigs,
-          [zoneId]: {
-            ...config,
-            eq: config?.eq?.filter(b => b.id !== bandId) || [],
-          },
-        },
-      };
-    }),
-
-    setVolumeMode: (zoneId, mode) => set(s => ({
-      zoneConfigs: {
-        ...s.zoneConfigs,
-        [zoneId]: {
-          ...s.zoneConfigs[zoneId],
-          volumeMode: mode,
-        },
-      },
-    })),
-
-    setVolumeLimit: (zoneId, maxPercent, startupMax) => set(s => ({
-      zoneConfigs: {
-        ...s.zoneConfigs,
-        [zoneId]: {
-          ...s.zoneConfigs[zoneId],
-          volumeLimit: { maxPercent, startupMax },
-        },
-      },
-    })),
-
-    setClockMode: (zoneId, mode) => set(s => ({
-      zoneConfigs: {
-        ...s.zoneConfigs,
-        [zoneId]: {
-          ...s.zoneConfigs[zoneId],
-          clockMode: mode,
-        },
-      },
-    })),
-
-    toggleBitPerfectDefault: () => set(s => ({ bitPerfectDefault: !s.bitPerfectDefault })),
-
-    toggleGapless: () => set(s => ({ gaplessPlayback: !s.gaplessPlayback })),
-
-    setGlobalDither: (type) => set({ globalDither: { enabled: type !== 'none', type } }),
-
-    resetZoneConfig: (zoneId) => set(s => ({
-      zoneConfigs: {
-        ...s.zoneConfigs,
-        [zoneId]: { dither: { enabled: false, type: 'none' } },
-      },
-    })),
-  };
-});
+    {
+      name: 'dsp-dsp-engine-store',
+      partialize: (state) => ({
+        zoneConfigs: state.zoneConfigs,
+        selectedZoneId: state.selectedZoneId,
+        bitPerfectDefault: state.bitPerfectDefault,
+        gaplessPlayback: state.gaplessPlayback,
+        globalDither: state.globalDither,
+      }),
+    }
+  )
+);
