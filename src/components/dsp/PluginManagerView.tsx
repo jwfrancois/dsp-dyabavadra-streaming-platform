@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { DSPPlugin } from '@/lib/data';
+import { usePluginStore } from '@/store/plugins';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   Puzzle, Settings, Download, Trash2, RefreshCw, CheckCircle2,
   AlertTriangle, ExternalLink, Shield, Zap, Radio, Music, Database, Cpu,
+  Package,
 } from 'lucide-react';
 
 type CategoryFilter = 'all' | DSPPlugin['type'];
@@ -90,13 +92,13 @@ function LicenseBadge({ type }: { type: DSPPlugin['licenseType'] }) {
 }
 
 function PluginCard({ plugin }: { plugin: DSPPlugin }) {
-  const [enabled, setEnabled] = useState(plugin.enabled);
+  const { togglePlugin, installPlugin, uninstallPlugin } = usePluginStore();
   const TypeIcon = TYPE_ICONS[plugin.type];
 
   return (
     <Card
       className={`bg-card border-border mb-3 transition-all ${
-        plugin.installed && enabled ? 'border-l-2 border-l-signal-green' : ''
+        plugin.installed && plugin.enabled ? 'border-l-2 border-l-signal-green' : ''
       }`}
     >
       <CardContent className="p-4">
@@ -140,11 +142,11 @@ function PluginCard({ plugin }: { plugin: DSPPlugin }) {
             <>
               <div className="flex items-center gap-2 mr-auto">
                 <Switch
-                  checked={enabled}
-                  onCheckedChange={setEnabled}
+                  checked={plugin.enabled}
+                  onCheckedChange={() => togglePlugin(plugin.id)}
                   aria-label={`Enable ${plugin.name}`}
                 />
-                <span className="text-xs text-muted-foreground">{enabled ? 'Enabled' : 'Disabled'}</span>
+                <span className="text-xs text-muted-foreground">{plugin.enabled ? 'Enabled' : 'Disabled'}</span>
               </div>
               {plugin.configUrl && (
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>
@@ -153,13 +155,22 @@ function PluginCard({ plugin }: { plugin: DSPPlugin }) {
                   </a>
                 </Button>
               )}
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5 text-red-400 hover:text-red-300 border-red-800/40 hover:bg-red-950/40">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1.5 text-red-400 hover:text-red-300 border-red-800/40 hover:bg-red-950/40"
+                onClick={() => uninstallPlugin(plugin.id)}
+              >
                 <Trash2 className="w-3 h-3" /> Uninstall
               </Button>
             </>
           ) : (
             <>
-              <Button size="sm" className="h-7 text-xs gap-1.5">
+              <Button
+                size="sm"
+                className="h-7 text-xs gap-1.5"
+                onClick={() => installPlugin(plugin.id)}
+              >
                 <Download className="w-3 h-3" /> Install
               </Button>
               <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5">
@@ -180,9 +191,15 @@ function PluginCard({ plugin }: { plugin: DSPPlugin }) {
 
 export function PluginManagerView() {
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('all');
+  const plugins = usePluginStore(s => s.plugins);
+  const isCheckingUpdates = usePluginStore(s => s.isCheckingUpdates);
+  const checkForUpdates = usePluginStore(s => s.checkForUpdates);
 
-  const installedPlugins: DSPPlugin[] = [];
-  const availablePlugins: DSPPlugin[] = [];
+  const { installedPlugins, availablePlugins } = useMemo(() => {
+    const installed = plugins.filter(p => p.installed);
+    const available = plugins.filter(p => !p.installed);
+    return { installedPlugins: installed, availablePlugins: available };
+  }, [plugins]);
 
   const filterByCategory = (list: DSPPlugin[]) =>
     activeCategory === 'all' ? list : list.filter(p => p.type === activeCategory);
@@ -200,11 +217,17 @@ export function PluginManagerView() {
               <Puzzle className="w-6 h-6" /> Plugins &amp; Extensions
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {installedPlugins.length} installed
+              {installedPlugins.length} installed, {availablePlugins.length} available — {plugins.length} total
             </p>
           </div>
-          <Button variant="outline" className="gap-2">
-            <Download className="w-4 h-4" /> Browse Plugins
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={checkForUpdates}
+            disabled={isCheckingUpdates}
+          >
+            <RefreshCw className={`w-4 h-4 ${isCheckingUpdates ? 'animate-spin' : ''}`} />
+            Check for Updates
           </Button>
         </div>
 
@@ -212,6 +235,9 @@ export function PluginManagerView() {
         <div className="flex flex-wrap gap-2 mb-6">
           {CATEGORIES.map(cat => {
             const isActive = activeCategory === cat.key;
+            const count = cat.key === 'all'
+              ? plugins.length
+              : plugins.filter(p => p.type === cat.key).length;
             return (
               <button
                 key={cat.key}
@@ -223,6 +249,7 @@ export function PluginManagerView() {
                 }`}
               >
                 {cat.label}
+                <span className="ml-1.5 opacity-60">({count})</span>
               </button>
             );
           })}
@@ -249,7 +276,7 @@ export function PluginManagerView() {
             <Separator className="my-6 bg-border" />
             <section className="mb-8">
               <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                <Download className="w-4 h-4 text-blue-400" /> Available Plugins
+                <Package className="w-4 h-4 text-blue-400" /> Available Plugins
                 <Badge variant="secondary" className="text-[10px] ml-1">
                   {filteredAvailable.length}
                 </Badge>
@@ -269,18 +296,18 @@ export function PluginManagerView() {
               <Cpu className="w-4 h-4 text-primary" /> Extension Architecture
             </h2>
             <p className="text-sm text-muted-foreground mb-2">
-              DSP Core supports modular extensions through a stable Plugin API.
+              DSP Core supports modular extensions through a stable Plugin API. Each plugin runs in its own processing pipeline stage, ensuring isolation and reliability.
             </p>
             <p className="text-sm text-muted-foreground mb-4">
-              Plugin API v2 — stable interface for third-party modules.
+              Plugin API v2.0 — stable interface for third-party modules. Developer documentation available on request.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {[
-                { icon: Cpu, label: 'DSP Pipelines', desc: 'Custom DSP processing stages' },
-                { icon: Radio, label: 'Streaming Adapters', desc: 'Music service integrations' },
-                { icon: Zap, label: 'Output Protocols', desc: 'Audio output destinations' },
-                { icon: Database, label: 'Metadata Sources', desc: 'Tag and info enrichment' },
-                { icon: Music, label: 'Codec Decoders', desc: 'Audio format support' },
+                { icon: Cpu, label: 'DSP Pipelines', desc: 'Custom DSP processing stages (EQ, crossover, convolution)' },
+                { icon: Radio, label: 'Streaming Adapters', desc: 'Music service integrations (TIDAL, Qobuz, Subsonic)' },
+                { icon: Zap, label: 'Output Protocols', desc: 'Audio output destinations (RAAT, AirPlay, DLNA, Bluetooth)' },
+                { icon: Database, label: 'Metadata Sources', desc: 'Tag and info enrichment (MusicBrainz, Discogs, AcoustID)' },
+                { icon: Music, label: 'Codec Decoders', desc: 'Audio format support (FLAC, DSD, WAV, MP3, AAC, Opus)' },
               ].map(item => (
                 <div
                   key={item.label}

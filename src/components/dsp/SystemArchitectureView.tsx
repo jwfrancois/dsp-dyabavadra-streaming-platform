@@ -94,9 +94,9 @@ function formatTimeAgo(iso?: string): string {
 // ─── Main Component ───
 
 export function SystemArchitectureView() {
-  const coreStatus = useSystemStore((s) => s.coreStatus);
+  const core = useSystemStore((s) => s.core);
 
-  if (!coreStatus) {
+  if (!core) {
     return (
       <div className="max-w-6xl mx-auto p-6 flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
@@ -107,8 +107,8 @@ export function SystemArchitectureView() {
     );
   }
 
-  const { machineInfo, audioEngine, storageLocations, networkInfo, apiInfo, streamingServices, libraryStats } = coreStatus;
-  const memPct = (machineInfo.memoryUsed / machineInfo.memoryTotal) * 100;
+  const { machineInfo, audioEngine, storageLocations, networkInfo, apiInfo, streamingServices, libraryStats } = core;
+  const memPct = machineInfo.memoryTotal > 0 ? (machineInfo.memoryUsed / machineInfo.memoryTotal) * 100 : 0;
 
   const statusConfig: Record<string, { label: string; color: string; bgClass: string }> = {
     running: { label: 'Online', color: 'text-signal-green', bgClass: 'bg-signal-green/15 text-signal-green border-signal-green/30' },
@@ -117,7 +117,7 @@ export function SystemArchitectureView() {
     error: { label: 'Error', color: 'text-signal-red', bgClass: 'bg-signal-red/15 text-signal-red border-signal-red/30' },
   };
 
-  const st = statusConfig[coreStatus.status] ?? statusConfig.error;
+  const st = statusConfig[core.status] ?? statusConfig.error;
 
   return (
     <ScrollArea className="h-full">
@@ -133,20 +133,20 @@ export function SystemArchitectureView() {
                   <Server className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-foreground">{coreStatus.name}</h3>
+                  <h3 className="font-medium text-foreground">{core.name}</h3>
                   <div className="flex items-center gap-3 mt-1.5">
                     <Badge variant="outline" className={`text-[10px] px-2 py-0 border ${st.bgClass}`}>
-                      {coreStatus.status === 'running' && <CheckCircle2 className="h-3 w-3 mr-1" />}
-                      {coreStatus.status === 'starting' && <RefreshCw className="h-3 w-3 mr-1 animate-spin" />}
-                      {coreStatus.status === 'error' && <AlertTriangle className="h-3 w-3 mr-1" />}
+                      {core.status === 'running' && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                      {core.status === 'starting' && <RefreshCw className="h-3 w-3 mr-1 animate-spin" />}
+                      {core.status === 'error' && <AlertTriangle className="h-3 w-3 mr-1" />}
                       {st.label}
                     </Badge>
-                    <span className="font-mono text-xs text-muted-foreground">v{coreStatus.version}</span>
+                    <span className="font-mono text-xs text-muted-foreground">v{core.version}</span>
                   </div>
                   <div className="flex items-center gap-1.5 mt-1.5">
                     <Clock className="h-3 w-3 text-muted-foreground" />
                     <span className="font-mono text-xs text-muted-foreground">
-                      Uptime: {formatUptime(coreStatus.uptime)}
+                      Uptime: {formatUptime(core.uptime)}
                     </span>
                   </div>
                 </div>
@@ -366,7 +366,7 @@ export function SystemArchitectureView() {
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>Discovery Mode</span>
-                  <span className="font-mono text-foreground uppercase">{coreStatus.discoveryMode}</span>
+                  <span className="font-mono text-foreground uppercase">{core.discoveryMode}</span>
                 </div>
               </div>
             </div>

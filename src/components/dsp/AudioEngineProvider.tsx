@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from 'react';
 import { usePlayerStore } from '@/store/player';
 import { usePodcastStore } from '@/store/podcast';
 import { useDSPEngineStore } from '@/store/dsp-engine';
+import { useSystemStore } from '@/store/system';
 import {
   getAudioContext,
   connectMediaElement,
@@ -66,6 +67,15 @@ function normalizeUrl(raw: string): string {
 export function AudioEngineProvider({ children }: { children: React.ReactNode }) {
   const volumeRef = useRef(72);
   const modeRef = useRef<'music' | 'radio' | 'podcast'>('music');
+
+  // ── Initialize system uptime counter ──
+  useEffect(() => {
+    const sysStore = useSystemStore.getState();
+    sysStore.initUptime();
+    return () => {
+      useSystemStore.getState().stopUptime();
+    };
+  }, []);
 
   // Audio element event handlers
   useEffect(() => {
