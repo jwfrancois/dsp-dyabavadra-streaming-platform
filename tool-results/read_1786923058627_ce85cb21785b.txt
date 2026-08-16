@@ -1,0 +1,1019 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import React, { useMemo, useState, useEffect, useCallback } from 'react';
+     4→     4→import { useUIStore } from '@/store/ui';
+     5→     5→import { usePlayerStore } from '@/store/player';
+     6→     6→import { useSystemStore } from '@/store/system';
+     7→     7→import { formatDuration, formatFileSize, getCoverGradient, formatSampleRate } from '@/lib/data';
+     8→     8→import type { Track } from '@/lib/data';
+     9→     9→import { cn } from '@/lib/utils';
+    10→    10→import { radioStations } from '@/lib/radio-stations';
+    11→    11→import { useLocalLibraryStore } from '@/store/local-library';
+    12→    12→import { useHistoryStore } from '@/store/history';
+    13→    13→import { useProfilesStore } from '@/store/profiles';
+    14→    14→import { Card, CardContent } from '@/components/ui/card';
+    15→    15→import { Button } from '@/components/ui/button';
+    16→    16→import { Badge } from '@/components/ui/badge';
+    17→    17→import { ScrollArea } from '@/components/ui/scroll-area';
+    18→    18→import {
+    19→    19→  Play, ArrowRight, Clock, Star, Sparkles,
+    20→    20→  Headphones, Calendar, Music2, Radio, Waves,
+    21→    21→  TrendingUp, Disc3, Library, Zap, Info,
+    22→    22→  Search, Keyboard, Sun, Moon, Coffee, Sunrise,
+    23→    23→  Heart, Shuffle,
+    24→    24→  ChevronLeft, ChevronRight,
+    25→    25→} from 'lucide-react';
+    26→    26→
+    27→    27→// ── Quality badge helper ──
+    28→    28→function QualityBadge({ format, sampleRate, bitDepth }: { format: string; sampleRate: number; bitDepth: number }) {
+    29→    29→  const isHiRes = sampleRate > 48000 || bitDepth > 16;
+    30→    30→  const isLossless = ['FLAC', 'WAV', 'AIFF', 'ALAC', 'DSF', 'DFF', 'WavPack', 'APE', 'TAK'].includes(format.toUpperCase());
+    31→    31→  const isDSD = ['DSF', 'DFF', 'DSD'].includes(format.toUpperCase());
+    32→    32→
+    33→    33→  if (isDSD) return <Badge className="text-[9px] bg-purple-500/20 text-purple-400 border-purple-500/30 h-4 px-1">DSD</Badge>;
+    34→    34→  if (isHiRes && isLossless) return <Badge className="text-[9px] bg-primary/20 text-primary border-primary/30 h-4 px-1">Hi-Res</Badge>;
+    35→    35→  if (isLossless) return <Badge className="text-[9px] bg-signal-green/20 text-signal-green border-signal-green/30 h-4 px-1">Lossless</Badge>;
+    36→    36→  return null;
+    37→    37→}
+    38→    38→
+    39→    39→// ── Time-based greeting ──
+    40→    40→function getGreeting(): { text: string; icon: React.ReactNode; emoji: string } {
+    41→    41→  const hour = new Date().getHours();
+    42→    42→  if (hour < 6) return { text: 'Night Owl Mode', icon: <Moon className="w-5 h-5" />, emoji: '' };
+    43→    43→  if (hour < 12) return { text: 'Good Morning', icon: <Sunrise className="w-5 h-5" />, emoji: '' };
+    44→    44→  if (hour < 14) return { text: 'Good Afternoon', icon: <Sun className="w-5 h-5" />, emoji: '' };
+    45→    45→  if (hour < 18) return { text: 'Good Afternoon', icon: <Sun className="w-5 h-5" />, emoji: '' };
+    46→    46→  if (hour < 22) return { text: 'Good Evening', icon: <Moon className="w-5 h-5" />, emoji: '' };
+    47→    47→  return { text: 'Night Owl Mode', icon: <Moon className="w-5 h-5" />, emoji: '' };
+    48→    48→}
+    49→    49→
+    50→    50→// ── Track conversion helper ──
+    51→    51→function localToTrack(t: any): Track {
+    52→    52→  return {
+    53→    53→    id: t.id, title: t.title, albumId: t.album, albumName: t.album,
+    54→    54→    artistId: t.artist, artistName: t.artist, trackNumber: t.trackNumber,
+    55→    55→    discNumber: t.discNumber || 0, duration: t.duration, format: t.format,
+    56→    56→    bitDepth: t.bitDepth, sampleRate: t.sampleRate, channels: t.channels,
+    57→    57→    bitrate: t.bitrate, filePath: t.filePath, fileSize: t.fileSize,
+    58→    58→    composers: t.composer ? [t.composer] : [], performers: [], genre: t.genre,
+    59→    59→    loved: false, playCount: 0, source: 'local', isAvailable: true,
+    60→    60→  };
+    61→    61→}
+    62→    62→
+    63→    63→// ── Time ago helper ──
+    64→    64→function timeAgo(isoString: string): string {
+    65→    65→  const diffMin = Math.floor((Date.now() - new Date(isoString).getTime()) / 60000);
+    66→    66→  if (diffMin < 1) return 'Just now';
+    67→    67→  if (diffMin < 60) return `${diffMin}m ago`;
+    68→    68→  const diffHr = Math.floor(diffMin / 60);
+    69→    69→  if (diffHr < 24) return `${diffHr}h ago`;
+    70→    70→  return `${Math.floor(diffHr / 24)}d ago`;
+    71→    71→}
+    72→    72→
+    73→    73→// ── Genre color helper ──
+    74→    74→const genreGradients = [
+    75→    75→  'from-violet-600 to-purple-800', 'from-rose-600 to-pink-800',
+    76→    76→  'from-blue-600 to-indigo-800', 'from-emerald-600 to-teal-800',
+    77→    77→  'from-amber-600 to-orange-800', 'from-cyan-600 to-sky-800',
+    78→    78→  'from-fuchsia-600 to-pink-800', 'from-lime-600 to-green-800',
+    79→    79→];
+    80→    80→function getGenreGradient(genre: string): string {
+    81→    81→  const hash = genre.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+    82→    82→  return genreGradients[hash % genreGradients.length];
+    83→    83→}
+    84→    84→
+    85→    85→// ═══════════════════════════════════════════════════════════
+    86→    86→// ANALOG CLOCK — SVG-based with smooth animation
+    87→    87→// ═══════════════════════════════════════════════════════════
+    88→    88→
+    89→    89→function AnalogClock({ className }: { className?: string }) {
+    90→    90→  const [now, setNow] = useState(() => new Date());
+    91→    91→
+    92→    92→  useEffect(() => {
+    93→    93→    const timer = setInterval(() => setNow(new Date()), 1000);
+    94→    94→    return () => clearInterval(timer);
+    95→    95→  }, []);
+    96→    96→
+    97→    97→  const hours = now.getHours() % 12;
+    98→    98→  const minutes = now.getMinutes();
+    99→    99→  const seconds = now.getSeconds();
+   100→   100→
+   101→   101→  const hourAngle = (hours * 30) + (minutes * 0.5);
+   102→   102→  const minuteAngle = minutes * 6;
+   103→   103→  const secondAngle = seconds * 6;
+   104→   104→
+   105→   105→  const timeStr = now.toLocaleTimeString('en-US', {
+   106→   106→    hour: '2-digit', minute: '2-digit', hour12: true
+   107→   107→  });
+   108→   108→  const dateStr = now.toLocaleDateString('en-US', {
+   109→   109→    weekday: 'short', month: 'short', day: 'numeric'
+   110→   110→  });
+   111→   111→
+   112→   112→  const size = 180;
+   113→   113→  const center = size / 2;
+   114→   114→  const radius = center - 8;
+   115→   115→
+   116→   116→  return (
+   117→   117→    <div className={cn('flex flex-col items-center gap-2', className)}>
+   118→   118→      <svg viewBox={`0 0 ${size} ${size}`} className="w-full max-w-[200px] drop-shadow-2xl">
+   119→   119→        <defs>
+   120→   120→          <radialGradient id="clockGlow" cx="50%" cy="50%" r="50%">
+   121→   121→            <stop offset="80%" stopColor="transparent" />
+   122→   122→            <stop offset="100%" stopColor="hsl(var(--primary) / 0.08)" />
+   123→   123→          </radialGradient>
+   124→   124→          <linearGradient id="clockFace" x1="0%" y1="0%" x2="100%" y2="100%">
+   125→   125→            <stop offset="0%" stopColor="hsl(var(--card))" />
+   126→   126→            <stop offset="100%" stopColor="hsl(var(--card) / 0.8)" />
+   127→   127→          </linearGradient>
+   128→   128→          <filter id="handShadow">
+   129→   129→            <feDropShadow dx="0" dy="1" stdDeviation="1" floodOpacity="0.3" />
+   130→   130→          </filter>
+   131→   131→        </defs>
+   132→   132→
+   133→   133→        <circle cx={center} cy={center} r={radius + 6} fill="url(#clockGlow)" />
+   134→   134→        <circle cx={center} cy={center} r={radius} fill="url(#clockFace)" stroke="hsl(var(--border))" strokeWidth="1.5" />
+   135→   135→        <circle cx={center} cy={center} r={radius - 4} fill="none" stroke="hsl(var(--border) / 0.3)" strokeWidth="0.5" />
+   136→   136→
+   137→   137→        {Array.from({ length: 60 }).map((_, i) => {
+   138→   138→          const angle = (i * 6) * (Math.PI / 180);
+   139→   139→          const isHour = i % 5 === 0;
+   140→   140→          const outerR = radius - 6;
+   141→   141→          const innerR = isHour ? radius - 18 : radius - 10;
+   142→   142→          return (
+   143→   143→            <line key={`tick-${i}`}
+   144→   144→              x1={center + Math.sin(angle) * innerR}
+   145→   145→              y1={center - Math.cos(angle) * innerR}
+   146→   146→              x2={center + Math.sin(angle) * outerR}
+   147→   147→              y2={center - Math.cos(angle) * outerR}
+   148→   148→              stroke={isHour ? 'hsl(var(--foreground) / 0.7)' : 'hsl(var(--muted-foreground) / 0.25)'}
+   149→   149→              strokeWidth={isHour ? 2 : 0.8}
+   150→   150→              strokeLinecap="round"
+   151→   151→            />
+   152→   152→          );
+   153→   153→        })}
+   154→   154→
+   155→   155→        {Array.from({ length: 12 }).map((_, i) => {
+   156→   156→          const num = i === 0 ? 12 : i;
+   157→   157→          const angle = (i * 30) * (Math.PI / 180);
+   158→   158→          const numR = radius - 28;
+   159→   159→          return (
+   160→   160→            <text key={`num-${i}`}
+   161→   161→              x={center + Math.sin(angle) * numR}
+   162→   162→              y={center - Math.cos(angle) * numR + 4}
+   163→   163→              textAnchor="middle"
+   164→   164→              fill="hsl(var(--foreground) / 0.5)"
+   165→   165→              fontSize="11"
+   166→   166→              fontWeight="500"
+   167→   167→              fontFamily="var(--font-geist-sans), system-ui, sans-serif"
+   168→   168→            >
+   169→   169→              {num}
+   170→   170→            </text>
+   171→   171→          );
+   172→   172→        })}
+   173→   173→
+   174→   174→        <line x1={center} y1={center}
+   175→   175→          x2={center + Math.sin((hourAngle) * Math.PI / 180) * (radius * 0.45)}
+   176→   176→          y2={center - Math.cos((hourAngle) * Math.PI / 180) * (radius * 0.45)}
+   177→   177→          stroke="hsl(var(--foreground))" strokeWidth="3.5" strokeLinecap="round" filter="url(#handShadow)" />
+   178→   178→
+   179→   179→        <line x1={center} y1={center}
+   180→   180→          x2={center + Math.sin((minuteAngle) * Math.PI / 180) * (radius * 0.65)}
+   181→   181→          y2={center - Math.cos((minuteAngle) * Math.PI / 180) * (radius * 0.65)}
+   182→   182→          stroke="hsl(var(--foreground))" strokeWidth="2.5" strokeLinecap="round" filter="url(#handShadow)" />
+   183→   183→
+   184→   184→        <g style={{ transition: 'transform 0.2s cubic-bezier(0.4, 2.08, 0.55, 0.44)', transformOrigin: `${center}px ${center}px` }}>
+   185→   185→          <line
+   186→   186→            x1={center - Math.sin((secondAngle) * Math.PI / 180) * 15}
+   187→   187→            y1={center + Math.cos((secondAngle) * Math.PI / 180) * 15}
+   188→   188→            x2={center + Math.sin((secondAngle) * Math.PI / 180) * (radius * 0.72)}
+   189→   189→            y2={center - Math.cos((secondAngle) * Math.PI / 180) * (radius * 0.72)}
+   190→   190→            stroke="hsl(var(--primary))" strokeWidth="1.2" strokeLinecap="round"
+   191→   191→          />
+   192→   192→        </g>
+   193→   193→
+   194→   194→        <circle cx={center} cy={center} r="4" fill="hsl(var(--card))" stroke="hsl(var(--primary))" strokeWidth="1.5" />
+   195→   195→        <circle cx={center} cy={center} r="1.5" fill="hsl(var(--primary))" />
+   196→   196→      </svg>
+   197→   197→
+   198→   198→      <div className="text-center">
+   199→   199→        <p className="text-sm font-medium tabular-nums" style={{ fontVariantNumeric: 'tabular-nums' }}>{timeStr}</p>
+   200→   200→        <p className="text-[11px] text-muted-foreground">{dateStr}</p>
+   201→   201→      </div>
+   202→   202→    </div>
+   203→   203→  );
+   204→   204→}
+   205→   205→
+   206→   206→// ═══════════════════════════════════════════════════════════
+   207→   207→// INTERACTIVE CALENDAR
+   208→   208→// ═══════════════════════════════════════════════════════════
+   209→   209→
+   210→   210→function InteractiveCalendar({ className }: { className?: string }) {
+   211→   211→  const today = new Date();
+   212→   212→  const [viewDate, setViewDate] = useState(() => new Date());
+   213→   213→  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+   214→   214→
+   215→   215→  const year = viewDate.getFullYear();
+   216→   216→  const month = viewDate.getMonth();
+   217→   217→
+   218→   218→  const monthName = viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+   219→   219→
+   220→   220→  const firstDayOfMonth = new Date(year, month, 1);
+   221→   221→  const lastDayOfMonth = new Date(year, month + 1, 0);
+   222→   222→  const daysInMonth = lastDayOfMonth.getDate();
+   223→   223→  const startingDay = firstDayOfMonth.getDay();
+   224→   224→
+   225→   225→  const days = useMemo(() => {
+   226→   226→    const result: (number | null)[] = [];
+   227→   227→    for (let i = 0; i < startingDay; i++) result.push(null);
+   228→   228→    for (let d = 1; d <= daysInMonth; d++) result.push(d);
+   229→   229→    return result;
+   230→   230→  }, [startingDay, daysInMonth]);
+   231→   231→
+   232→   232→  const prevMonth = useCallback(() => {
+   233→   233→    setViewDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1));
+   234→   234→  }, []);
+   235→   235→
+   236→   236→  const nextMonth = useCallback(() => {
+   237→   237→    setViewDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1));
+   238→   238→  }, []);
+   239→   239→
+   240→   240→  const isToday = (day: number) =>
+   241→   241→    day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+   242→   242→
+   243→   243→  const isSelected = (day: number) =>
+   244→   244→    selectedDate &&
+   245→   245→    day === selectedDate.getDate() &&
+   246→   246→    month === selectedDate.getMonth() &&
+   247→   247→    year === selectedDate.getFullYear();
+   248→   248→
+   249→   249→  const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+   250→   250→
+   251→   251→  return (
+   252→   252→    <div className={cn('rounded-xl border border-border bg-card overflow-hidden', className)}>
+   253→   253→      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-primary/5 to-accent/5 border-b border-border/50">
+   254→   254→        <button onClick={prevMonth} className="p-1 rounded-md hover:bg-accent/50 transition-colors text-muted-foreground hover:text-foreground">
+   255→   255→          <ChevronLeft className="w-4 h-4" />
+   256→   256→        </button>
+   257→   257→        <h3 className="text-sm font-semibold tracking-wide">{monthName}</h3>
+   258→   258→        <button onClick={nextMonth} className="p-1 rounded-md hover:bg-accent/50 transition-colors text-muted-foreground hover:text-foreground">
+   259→   259→          <ChevronRight className="w-4 h-4" />
+   260→   260→        </button>
+   261→   261→      </div>
+   262→   262→
+   263→   263→      <div className="grid grid-cols-7 border-b border-border/30">
+   264→   264→        {weekDays.map(d => (
+   265→   265→          <div key={d} className="py-2 text-center text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+   266→   266→            {d}
+   267→   267→          </div>
+   268→   268→        ))}
+   269→   269→      </div>
+   270→   270→
+   271→   271→      <div className="grid grid-cols-7">
+   272→   272→        {days.map((day, idx) => {
+   273→   273→          if (day === null) return <div key={`empty-${idx}`} className="h-9" />;
+   274→   274→          const todayFlag = isToday(day);
+   275→   275→          const selectedFlag = isSelected(day);
+   276→   276→          return (
+   277→   277→            <button key={day}
+   278→   278→              onClick={() => setSelectedDate(new Date(year, month, day))}
+   279→   279→              className={cn(
+   280→   280→                'h-9 flex items-center justify-center text-xs font-medium transition-all duration-200 relative',
+   281→   281→                'hover:bg-accent/40 rounded-md m-0.5',
+   282→   282→                todayFlag && !selectedFlag && 'text-primary font-bold',
+   283→   283→                selectedFlag && 'bg-primary text-primary-foreground rounded-md shadow-sm shadow-primary/20',
+   284→   284→                !todayFlag && !selectedFlag && 'text-foreground/70'
+   285→   285→              )}
+   286→   286→            >
+   287→   287→              {day}
+   288→   288→              {todayFlag && !selectedFlag && (
+   289→   289→                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
+   290→   290→              )}
+   291→   291→            </button>
+   292→   292→          );
+   293→   293→        })}
+   294→   294→      </div>
+   295→   295→
+   296→   296→      {selectedDate && (
+   297→   297→        <div className="px-4 py-2.5 border-t border-border/30 bg-primary/[0.03]">
+   298→   298→          <p className="text-xs text-muted-foreground">
+   299→   299→            Selected:{' '}
+   300→   300→            <span className="text-foreground font-medium">
+   301→   301→              {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+   302→   302→            </span>
+   303→   303→          </p>
+   304→   304→        </div>
+   305→   305→      )}
+   306→   306→    </div>
+   307→   307→  );
+   308→   308→}
+   309→   309→
+   310→   310→export function HomeView() {
+   311→   311→  const { navigate } = useUIStore();
+   312→   312→  const { play, setQueue, currentTrack, isPlaying } = usePlayerStore();
+   313→   313→  const coreStatus = useSystemStore(s => s.core);
+   314→   314→
+   315→   315→  const { tracks: localTracks, getAlbums, getArtists, getTotalSize, getTotalDuration, getFormatCounts } = useLocalLibraryStore();
+   316→   316→  const localAlbums = getAlbums();
+   317→   317→  const localArtists = getArtists();
+   318→   318→  const totalSize = getTotalSize();
+   319→   319→  const totalDuration = getTotalDuration();
+   320→   320→  const formatCounts = getFormatCounts();
+   321→   321→
+   322→   322→  const historyEntries = useHistoryStore(s => s.entries);
+   323→   323→  const getActiveProfile = useProfilesStore(s => s.getActiveProfile);
+   324→   324→  const activeProfile = getActiveProfile();
+   325→   325→
+   326→   326→  const greeting = getGreeting();
+   327→   327→
+   328→   328→  const recentTracks = localTracks.slice(0, 8);
+   329→   329→  const newestAlbums = [...localAlbums].sort((a, b) => b.year - a.year).slice(0, 6);
+   330→   330→  const recentArtists = localArtists.slice(0, 8);
+   331→   331→
+   332→   332→  // Genre distribution
+   333→   333→  const genreDistribution = useMemo(() => {
+   334→   334→    const genres: Record<string, number> = {};
+   335→   335→    localTracks.forEach(t => {
+   336→   336→      if (t.genre) {
+   337→   337→        const g = t.genre.split(';')[0].trim();
+   338→   338→        genres[g] = (genres[g] || 0) + 1;
+   339→   339→      }
+   340→   340→    });
+   341→   341→    return Object.entries(genres).sort((a, b) => b[1] - a[1]).slice(0, 6);
+   342→   342→  }, [localTracks]);
+   343→   343→
+   344→   344→  // Hi-Res tracks count
+   345→   345→  const hiResCount = useMemo(() =>
+   346→   346→    localTracks.filter(t => t.sampleRate > 48000 || t.bitDepth > 16).length,
+   347→   347→    [localTracks]
+   348→   348→  );
+   349→   349→
+   350→   350→  // Format breakdown
+   351→   351→  const formatBreakdown = useMemo(() =>
+   352→   352→    Object.entries(formatCounts).sort((a, b) => b[1] - a[1]),
+   353→   353→    [formatCounts]
+   354→   354→  );
+   355→   355→
+   356→   356→  // ── Recently Played from history ──
+   357→   357→  const recentlyPlayed = useMemo(() => {
+   358→   358→    if (historyEntries.length === 0) return [];
+   359→   359→    const seen = new Set<string>();
+   360→   360→    const result: Array<{ track: typeof localTracks[0]; playedAt: string }> = [];
+   361→   361→    for (const entry of historyEntries) {
+   362→   362→      if (seen.has(entry.trackId)) continue;
+   363→   363→      seen.add(entry.trackId);
+   364→   364→      const track = localTracks.find(t => t.id === entry.trackId);
+   365→   365→      if (track) {
+   366→   366→        result.push({ track, playedAt: entry.playedAt });
+   367→   367→        if (result.length >= 6) break;
+   368→   368→      }
+   369→   369→    }
+   370→   370→    return result;
+   371→   371→  }, [historyEntries, localTracks]);
+   372→   372→
+   373→   373→  // ── Loved Tracks from profiles ──
+   374→   374→  const lovedTracks = useMemo(() => {
+   375→   375→    if (!activeProfile || activeProfile.lovedTrackIds.length === 0) return [];
+   376→   376→    return activeProfile.lovedTrackIds
+   377→   377→      .map(id => localTracks.find(t => t.id === id))
+   378→   378→      .filter((t): t is typeof localTracks[0] => !!t)
+   379→   379→      .slice(0, 6);
+   380→   380→  }, [activeProfile, localTracks]);
+   381→   381→
+   382→   382→  // ── Genre map for Quick Play ──
+   383→   383→  const genreMap = useMemo(() => {
+   384→   384→    const map: Record<string, typeof localTracks[0][]> = {};
+   385→   385→    localTracks.forEach(t => {
+   386→   386→      if (t.genre) {
+   387→   387→        const g = t.genre.split(';')[0].trim();
+   388→   388→        if (!map[g]) map[g] = [];
+   389→   389→        map[g].push(t);
+   390→   390→      }
+   391→   391→    });
+   392→   392→    return map;
+   393→   393→  }, [localTracks]);
+   394→   394→
+   395→   395→  const quickPlayGenres = useMemo(() => {
+   396→   396→    const entries = Object.entries(genreMap);
+   397→   397→    if (entries.length < 3) return [];
+   398→   398→    return entries
+   399→   399→      .sort((a, b) => b[1].length - a[1].length)
+   400→   400→      .slice(0, 8)
+   401→   401→      .map(([genre, tracks]) => ({ genre, count: tracks.length }));
+   402→   402→  }, [genreMap]);
+   403→   403→
+   404→   404→  // ── Top Artists derived from library ──
+   405→   405→  const topArtists = useMemo(() => {
+   406→   406→    const artistAlbums: Record<string, Set<string>> = {};
+   407→   407→    localTracks.forEach(t => {
+   408→   408→      if (!artistAlbums[t.artist]) artistAlbums[t.artist] = new Set();
+   409→   409→      artistAlbums[t.artist].add(t.album);
+   410→   410→    });
+   411→   411→    return Object.entries(artistAlbums)
+   412→   412→      .map(([name, albums]) => ({
+   413→   413→        name,
+   414→   414→        trackCount: localTracks.filter(t => t.artist === name).length,
+   415→   415→        albumCount: albums.size,
+   416→   416→      }))
+   417→   417→      .sort((a, b) => b.trackCount - a.trackCount)
+   418→   418→      .slice(0, 6);
+   419→   419→  }, [localTracks]);
+   420→   420→
+   421→   421→  const playAlbum = (albumName: string, artistName: string) => {
+   422→   422→    const albumTracks = localTracks.filter(t => t.album === albumName && t.artist === artistName).sort((a, b) => a.trackNumber - b.trackNumber);
+   423→   423→    if (albumTracks.length > 0) {
+   424→   424→      const trackObjs = albumTracks.map(t => ({
+   425→   425→        id: t.id, title: t.title, albumId: t.album, albumName: t.album, artistId: t.artist, artistName: t.artist,
+   426→   426→        trackNumber: t.trackNumber, discNumber: t.discNumber, duration: t.duration, format: t.format,
+   427→   427→        bitDepth: t.bitDepth, sampleRate: t.sampleRate, channels: t.channels, bitrate: t.bitrate,
+   428→   428→        filePath: t.filePath, fileSize: t.fileSize, composers: [t.composer], performers: [],
+   429→   429→        genre: t.genre, loved: false, playCount: 0, source: 'local' as const, isAvailable: true,
+   430→   430→      }));
+   431→   431→      setQueue(trackObjs, 0);
+   432→   432→    }
+   433→   433→  };
+   434→   434→
+   435→   435→  const playTrack = (trackId: string) => {
+   436→   436→    const t = localTracks.find(tr => tr.id === trackId);
+   437→   437→    if (t) {
+   438→   438→      play({
+   439→   439→        id: t.id, title: t.title, albumId: t.album, albumName: t.album, artistId: t.artist, artistName: t.artist,
+   440→   440→        trackNumber: t.trackNumber, discNumber: t.discNumber, duration: t.duration, format: t.format,
+   441→   441→        bitDepth: t.bitDepth, sampleRate: t.sampleRate, channels: t.channels, bitrate: t.bitrate,
+   442→   442→        filePath: t.filePath, fileSize: t.fileSize, composers: [t.composer], performers: [],
+   443→   443→        genre: t.genre, loved: false, playCount: 0, source: 'local' as const, isAvailable: true,
+   444→   444→      });
+   445→   445→    }
+   446→   446→  };
+   447→   447→
+   448→   448→  // Shuffle play all tracks in a genre
+   449→   449→  const playGenreShuffled = (genre: string) => {
+   450→   450→    const genreTracks = genreMap[genre];
+   451→   451→    if (!genreTracks || genreTracks.length === 0) return;
+   452→   452→    const shuffled = [...genreTracks].sort(() => Math.random() - 0.5);
+   453→   453→    const trackObjs = shuffled.map(localToTrack);
+   454→   454→    setQueue(trackObjs, 0);
+   455→   455→  };
+   456→   456→
+   457→   457→  // Helper to get album cover art from tracks
+   458→   458→  const getAlbumCover = (albumName: string, artistName: string) => {
+   459→   459→    const track = localTracks.find(t => t.album === albumName && t.artist === artistName && t.coverArt);
+   460→   460→    return track?.coverArt || null;
+   461→   461→  };
+   462→   462→
+   463→   463→  return (
+   464→   464→    <ScrollArea className="h-full">
+   465→   465→      <div className="p-6 space-y-8 max-w-7xl mx-auto">
+   466→   466→        {/* ═══════════════════════════════════════════════
+   467→   467→            HERO — DSP Title + Analog Clock + Calendar
+   468→   468→        ═══════════════════════════════════════════════ */}
+   469→   469→        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 via-card to-accent/10 border border-border/50">
+   470→   470→          <div className="absolute inset-0 opacity-[0.03] bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjZmZmIiBvcGFjaXR5PSIwLjIiLz48L3N2Zz4=')]" />
+   471→   471→
+   472→   472→          <div className="relative z-10 p-6 sm:p-8">
+   473→   473→            {/* Cursive Title */}
+   474→   474→            <div className="text-center mb-6">
+   475→   475→              <h1
+   476→   476→                className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent leading-tight"
+   477→   477→                style={{ fontFamily: 'var(--font-dancing-script), cursive, serif' }}
+   478→   478→              >
+   479→   479→                Dyabavadra Streaming Platform
+   480→   480→              </h1>
+   481→   481→              <div className="flex items-center justify-center gap-2 mt-2">
+   482→   482→                {greeting.icon}
+   483→   483→                <p className="text-sm text-muted-foreground font-medium">{greeting.text}</p>
+   484→   484→              </div>
+   485→   485→            </div>
+   486→   486→
+   487→   487→            {/* Clock + Calendar */}
+   488→   488→            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10">
+   489→   489→              <AnalogClock className="w-[180px] sm:w-[200px] flex-shrink-0" />
+   490→   490→
+   491→   491→              <div className="hidden sm:block w-px h-48 bg-gradient-to-b from-transparent via-border to-transparent" />
+   492→   492→              <div className="sm:hidden h-px w-48 bg-gradient-to-r from-transparent via-border to-transparent" />
+   493→   493→
+   494→   494→              <InteractiveCalendar className="w-full sm:w-auto max-w-[280px] flex-shrink-0" />
+   495→   495→            </div>
+   496→   496→
+   497→   497→            <p className="text-center text-xs text-muted-foreground/60 mt-4 tracking-wide">
+   498→   498→              High-fidelity music streaming & library system
+   499→   499→            </p>
+   500→   500→          </div>
+   501→   501→        </div>
+   502→   502→
+   503→   503→        {/* ── KEYBOARD SHORTCUT TIP ── */}
+   504→   504→        <div className="flex items-center gap-2 px-4 py-2 bg-surface/50 rounded-lg border border-border/50">
+   505→   505→          <Keyboard className="w-3.5 h-3.5 text-muted-foreground" />
+   506→   506→          <p className="text-[11px] text-muted-foreground">
+   507→   507→            Press <kbd className="px-1.5 py-0.5 bg-card border border-border rounded text-[10px] font-mono mx-0.5">?</kbd> for keyboard shortcuts ·
+   508→   508→            <kbd className="px-1.5 py-0.5 bg-card border border-border rounded text-[10px] font-mono mx-0.5">Space</kbd> play/pause ·
+   509→   509→            <kbd className="px-1.5 py-0.5 bg-card border border-border rounded text-[10px] font-mono mx-0.5">/</kbd> search
+   510→   510→          </p>
+   511→   511→        </div>
+   512→   512→
+   513→   513→        {/* ── RECENTLY ADDED ── */}
+   514→   514→        {recentTracks.length > 0 && (
+   515→   515→          <section>
+   516→   516→            <div className="flex items-center justify-between mb-4">
+   517→   517→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   518→   518→                <Clock className="w-5 h-5 text-muted-foreground" />
+   519→   519→                Recently Added
+   520→   520→              </h2>
+   521→   521→              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('browse-tracks')}>
+   522→   522→                View All <ArrowRight className="w-3 h-3 ml-1" />
+   523→   523→              </Button>
+   524→   524→            </div>
+   525→   525→            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+   526→   526→              {recentTracks.map(track => (
+   527→   527→                <Card
+   528→   528→                  key={track.id}
+   529→   529→                  className="bg-card border-border hover:bg-accent/30 cursor-pointer transition-colors group"
+   530→   530→                  onClick={() => playTrack(track.id)}
+   531→   531→                >
+   532→   532→                  <CardContent className="p-3">
+   533→   533→                    <div className="flex gap-3">
+   534→   534→                      <div className="w-12 h-12 rounded-md bg-gradient-to-br flex-shrink-0 relative overflow-hidden shadow-sm">
+   535→   535→                        {track.coverArt ? (
+   536→   536→                          <img src={track.coverArt} alt="" className="w-full h-full object-cover" />
+   537→   537→                        ) : (
+   538→   538→                          <div className={`w-full h-full bg-gradient-to-br ${getCoverGradient(track.id)}`} />
+   539→   539→                        )}
+   540→   540→                      </div>
+   541→   541→                      <div className="min-w-0 flex-1">
+   542→   542→                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{track.title}</p>
+   543→   543→                        <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
+   544→   544→                        <div className="flex items-center gap-1 mt-0.5">
+   545→   545→                          <span className="text-[11px] text-muted-foreground">{formatDuration(track.duration)}</span>
+   546→   546→                          <QualityBadge format={track.format} sampleRate={track.sampleRate} bitDepth={track.bitDepth} />
+   547→   547→                        </div>
+   548→   548→                      </div>
+   549→   549→                      <Button
+   550→   550→                        variant="ghost"
+   551→   551→                        size="icon"
+   552→   552→                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+   553→   553→                        onClick={(e) => { e.stopPropagation(); playTrack(track.id); }}
+   554→   554→                      >
+   555→   555→                        <Play className="w-3 h-3 text-primary" />
+   556→   556→                      </Button>
+   557→   557→                    </div>
+   558→   558→                  </CardContent>
+   559→   559→                </Card>
+   560→   560→              ))}
+   561→   561→            </div>
+   562→   562→          </section>
+   563→   563→        )}
+   564→   564→
+   565→   565→        {/* ── RECENTLY PLAYED (from history store) ── */}
+   566→   566→        {recentlyPlayed.length > 0 && (
+   567→   567→          <section>
+   568→   568→            <div className="flex items-center justify-between mb-4">
+   569→   569→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   570→   570→                <Headphones className="w-5 h-5 text-primary" />
+   571→   571→                Recently Played
+   572→   572→              </h2>
+   573→   573→              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('browse-tracks')}>
+   574→   574→                View All <ArrowRight className="w-3 h-3 ml-1" />
+   575→   575→              </Button>
+   576→   576→            </div>
+   577→   577→            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+   578→   578→              {recentlyPlayed.map(({ track, playedAt }) => (
+   579→   579→                <Card
+   580→   580→                  key={`hp-${track.id}-${playedAt}`}
+   581→   581→                  className="bg-card border-border hover:bg-accent/30 cursor-pointer transition-colors group"
+   582→   582→                  onClick={() => playTrack(track.id)}
+   583→   583→                >
+   584→   584→                  <CardContent className="p-3">
+   585→   585→                    <div className="flex gap-3">
+   586→   586→                      <div className="w-12 h-12 rounded-md bg-gradient-to-br flex-shrink-0 relative overflow-hidden shadow-sm">
+   587→   587→                        {track.coverArt ? (
+   588→   588→                          <img src={track.coverArt} alt="" className="w-full h-full object-cover" />
+   589→   589→                        ) : (
+   590→   590→                          <div className={`w-full h-full bg-gradient-to-br ${getCoverGradient(track.id)}`} />
+   591→   591→                        )}
+   592→   592→                      </div>
+   593→   593→                      <div className="min-w-0 flex-1">
+   594→   594→                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{track.title}</p>
+   595→   595→                        <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
+   596→   596→                        <div className="flex items-center gap-1 mt-0.5">
+   597→   597→                          <span className="text-[11px] text-muted-foreground">{timeAgo(playedAt)}</span>
+   598→   598→                          <QualityBadge format={track.format} sampleRate={track.sampleRate} bitDepth={track.bitDepth} />
+   599→   599→                        </div>
+   600→   600→                      </div>
+   601→   601→                      <Button
+   602→   602→                        variant="ghost"
+   603→   603→                        size="icon"
+   604→   604→                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+   605→   605→                        onClick={(e) => { e.stopPropagation(); playTrack(track.id); }}
+   606→   606→                      >
+   607→   607→                        <Play className="w-3 h-3 text-primary" />
+   608→   608→                      </Button>
+   609→   609→                    </div>
+   610→   610→                  </CardContent>
+   611→   611→                </Card>
+   612→   612→              ))}
+   613→   613→            </div>
+   614→   614→          </section>
+   615→   615→        )}
+   616→   616→
+   617→   617→        {/* ── LOVED TRACKS (from profiles store) ── */}
+   618→   618→        {lovedTracks.length > 0 && (
+   619→   619→          <section>
+   620→   620→            <div className="flex items-center justify-between mb-4">
+   621→   621→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   622→   622→                <Heart className="w-5 h-5 text-rose-500" />
+   623→   623→                Loved Tracks
+   624→   624→              </h2>
+   625→   625→              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('browse-tracks')}>
+   626→   626→                View All <ArrowRight className="w-3 h-3 ml-1" />
+   627→   627→              </Button>
+   628→   628→            </div>
+   629→   629→            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+   630→   630→              {lovedTracks.map(track => (
+   631→   631→                <Card
+   632→   632→                  key={`loved-${track.id}`}
+   633→   633→                  className="bg-card border-border hover:bg-accent/30 cursor-pointer transition-colors group"
+   634→   634→                  onClick={() => playTrack(track.id)}
+   635→   635→                >
+   636→   636→                  <CardContent className="p-3">
+   637→   637→                    <div className="flex gap-3">
+   638→   638→                      <div className="w-12 h-12 rounded-md bg-gradient-to-br flex-shrink-0 relative overflow-hidden shadow-sm">
+   639→   639→                        {track.coverArt ? (
+   640→   640→                          <img src={track.coverArt} alt="" className="w-full h-full object-cover" />
+   641→   641→                        ) : (
+   642→   642→                          <div className={`w-full h-full bg-gradient-to-br ${getCoverGradient(track.id)}`} />
+   643→   643→                        )}
+   644→   644→                      </div>
+   645→   645→                      <div className="min-w-0 flex-1">
+   646→   646→                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{track.title}</p>
+   647→   647→                        <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
+   648→   648→                        <div className="flex items-center gap-1 mt-0.5">
+   649→   649→                          <Heart className="w-3 h-3 text-rose-500 fill-rose-500" />
+   650→   650→                          <span className="text-[11px] text-muted-foreground">{formatDuration(track.duration)}</span>
+   651→   651→                        </div>
+   652→   652→                      </div>
+   653→   653→                      <Button
+   654→   654→                        variant="ghost"
+   655→   655→                        size="icon"
+   656→   656→                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+   657→   657→                        onClick={(e) => { e.stopPropagation(); playTrack(track.id); }}
+   658→   658→                      >
+   659→   659→                        <Play className="w-3 h-3 text-primary" />
+   660→   660→                      </Button>
+   661→   661→                    </div>
+   662→   662→                  </CardContent>
+   663→   663→                </Card>
+   664→   664→              ))}
+   665→   665→            </div>
+   666→   666→          </section>
+   667→   667→        )}
+   668→   668→
+   669→   669→        {/* ── QUICK PLAY (genre-based shortcuts) ── */}
+   670→   670→        {quickPlayGenres.length >= 3 && (
+   671→   671→          <section>
+   672→   672→            <div className="flex items-center justify-between mb-4">
+   673→   673→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   674→   674→                <Shuffle className="w-5 h-5 text-violet-400" />
+   675→   675→                Quick Play
+   676→   676→              </h2>
+   677→   677→            </div>
+   678→   678→            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+   679→   679→              {quickPlayGenres.map(({ genre, count }) => (
+   680→   680→                <Card
+   681→   681→                  key={`qp-${genre}`}
+   682→   682→                  className="bg-card border-border hover:bg-accent/30 cursor-pointer transition-colors group overflow-hidden"
+   683→   683→                  onClick={() => playGenreShuffled(genre)}
+   684→   684→                >
+   685→   685→                  <CardContent className="p-0">
+   686→   686→                    <div className={`h-20 bg-gradient-to-br ${getGenreGradient(genre)} relative flex items-end p-3`}>
+   687→   687→                      <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
+   688→   688→                      <div className="relative z-10 flex items-center gap-2">
+   689→   689→                        <Shuffle className="w-4 h-4 text-white/70" />
+   690→   690→                        <span className="text-sm font-semibold text-white truncate">{genre}</span>
+   691→   691→                      </div>
+   692→   692→                      <span className="absolute top-2 right-2 text-[10px] font-medium text-white/60">{count} tracks</span>
+   693→   693→                    </div>
+   694→   694→                  </CardContent>
+   695→   695→                </Card>
+   696→   696→              ))}
+   697→   697→            </div>
+   698→   698→          </section>
+   699→   699→        )}
+   700→   700→
+   701→   701→        {/* ── TOP ARTISTS (derived from library) ── */}
+   702→   702→        {topArtists.length > 0 && (
+   703→   703→          <section>
+   704→   704→            <div className="flex items-center justify-between mb-4">
+   705→   705→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   706→   706→                <Star className="w-5 h-5 text-gold" />
+   707→   707→                Top Artists
+   708→   708→              </h2>
+   709→   709→              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('browse-artists')}>
+   710→   710→                View All <ArrowRight className="w-3 h-3 ml-1" />
+   711→   711→              </Button>
+   712→   712→            </div>
+   713→   713→            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+   714→   714→              {topArtists.map(artist => {
+   715→   715→                const artistTracks = localTracks.filter(t => t.artist === artist.name);
+   716→   716→                const coverArt = artistTracks.find(t => t.coverArt)?.coverArt;
+   717→   717→                return (
+   718→   718→                  <div
+   719→   719→                    key={artist.name}
+   720→   720→                    className="group text-center cursor-pointer"
+   721→   721→                    onClick={() => navigate('artist-detail', { artistId: artist.name })}
+   722→   722→                  >
+   723→   723→                    <div className="w-full aspect-square rounded-full bg-gradient-to-br mx-auto mb-2 cover-art-hover shadow-lg relative overflow-hidden">
+   724→   724→                      {coverArt ? (
+   725→   725→                        <img src={coverArt} alt={artist.name} className="w-full h-full object-cover" />
+   726→   726→                      ) : (
+   727→   727→                        <div className="w-full h-full flex items-center justify-center">
+   728→   728→                          <span className="text-2xl font-bold text-white/80">{artist.name[0]?.toUpperCase()}</span>
+   729→   729→                        </div>
+   730→   730→                      )}
+   731→   731→                    </div>
+   732→   732→                    <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{artist.name}</p>
+   733→   733→                    <p className="text-[11px] text-muted-foreground">{artist.trackCount} tracks · {artist.albumCount} albums</p>
+   734→   734→                  </div>
+   735→   735→                );
+   736→   736→              })}
+   737→   737→            </div>
+   738→   738→          </section>
+   739→   739→        )}
+   740→   740→
+   741→   741→        {/* ── QUICK STATS — Enhanced ── */}
+   742→   742→        <section>
+   743→   743→          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+   744→   744→            {[
+   745→   745→              { label: 'Tracks', value: localTracks.length.toString(), icon: Music2, color: 'text-primary', sub: hiResCount > 0 ? `${hiResCount} Hi-Res` : undefined },
+   746→   746→              { label: 'Albums', value: localAlbums.length.toString(), icon: Disc3, color: 'text-signal-green', sub: undefined },
+   747→   747→              { label: 'Artists', value: localArtists.length.toString(), icon: Star, color: 'text-gold', sub: undefined },
+   748→   748→              { label: 'Total Time', value: totalDuration > 3600 ? `${Math.floor(totalDuration / 3600)}d ${Math.floor((totalDuration % 3600) / 60)}h` : `${Math.floor(totalDuration / 60)}m`, icon: Clock, color: 'text-signal-amber', sub: undefined },
+   749→   749→            ].map(stat => (
+   750→   750→              <Card key={stat.label} className="bg-card border-border hover:border-primary/20 transition-colors">
+   751→   751→                <CardContent className="p-4 flex items-center gap-3">
+   752→   752→                  <div className="w-10 h-10 rounded-lg bg-surface flex items-center justify-center">
+   753→   753→                    <stat.icon className={`w-5 h-5 ${stat.color}`} />
+   754→   754→                  </div>
+   755→   755→                  <div>
+   756→   756→                    <p className="text-xl font-bold tabular-nums">{stat.value}</p>
+   757→   757→                    <p className="text-xs text-muted-foreground">{stat.label}</p>
+   758→   758→                    {stat.sub && <p className="text-[10px] text-primary">{stat.sub}</p>}
+   759→   759→                  </div>
+   760→   760→                </CardContent>
+   761→   761→              </Card>
+   762→   762→            ))}
+   763→   763→          </div>
+   764→   764→        </section>
+   765→   765→
+   766→   766→        {/* ── AUDIO QUALITY BREAKDOWN ── */}
+   767→   767→        {localTracks.length > 0 && formatBreakdown.length > 0 && (
+   768→   768→          <section>
+   769→   769→            <div className="flex items-center justify-between mb-4">
+   770→   770→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   771→   771→                <Waves className="w-5 h-5 text-primary" />
+   772→   772→                Audio Quality
+   773→   773→              </h2>
+   774→   774→            </div>
+   775→   775→            <Card className="bg-card border-border">
+   776→   776→              <CardContent className="p-4">
+   777→   777→                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+   778→   778→                  {formatBreakdown.map(([format, count]) => {
+   779→   779→                    const isLossless = ['FLAC', 'WAV', 'AIFF', 'ALAC', 'DSF', 'DFF', 'WavPack', 'APE', 'TAK'].includes(format.toUpperCase());
+   780→   780→                    const isDSD = ['DSF', 'DFF', 'DSD'].includes(format.toUpperCase());
+   781→   781→                    return (
+   782→   782→                      <div key={format} className="text-center">
+   783→   783→                        <div className="relative mx-auto w-14 h-14 rounded-xl bg-surface flex items-center justify-center mb-2">
+   784→   784→                          <span className="text-lg font-bold font-mono">{count}</span>
+   785→   785→                          {isDSD && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-purple-500 border-2 border-card" />}
+   786→   786→                          {!isDSD && isLossless && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-signal-green border-2 border-card" />}
+   787→   787→                        </div>
+   788→   788→                        <p className="text-xs font-semibold font-mono">{format}</p>
+   789→   789→                        <p className="text-[10px] text-muted-foreground">
+   790→   790→                          {isDSD ? 'DSD' : isLossless ? 'Lossless' : 'Lossy'}
+   791→   791→                        </p>
+   792→   792→                      </div>
+   793→   793→                    );
+   794→   794→                  })}
+   795→   795→                </div>
+   796→   796→                {totalSize > 0 && (
+   797→   797→                  <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between">
+   798→   798→                    <p className="text-xs text-muted-foreground">Total Library Size</p>
+   799→   799→                    <p className="text-sm font-semibold font-mono">{formatFileSize(totalSize)}</p>
+   800→   800→                  </div>
+   801→   801→                )}
+   802→   802→              </CardContent>
+   803→   803→            </Card>
+   804→   804→          </section>
+   805→   805→        )}
+   806→   806→
+   807→   807→        {/* ── GENRE DISTRIBUTION ── */}
+   808→   808→        {genreDistribution.length > 0 && (
+   809→   809→          <section>
+   810→   810→            <div className="flex items-center justify-between mb-4">
+   811→   811→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   812→   812→                <TrendingUp className="w-5 h-5 text-signal-green" />
+   813→   813→                Top Genres
+   814→   814→              </h2>
+   815→   815→              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('browse-genres')}>
+   816→   816→                All Genres <ArrowRight className="w-3 h-3 ml-1" />
+   817→   817→              </Button>
+   818→   818→            </div>
+   819→   819→            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+   820→   820→              {genreDistribution.map(([genre, count]) => (
+   821→   821→                <Card
+   822→   822→                  key={genre}
+   823→   823→                  className="bg-card border-border hover:bg-accent/30 cursor-pointer transition-colors group"
+   824→   824→                  onClick={() => navigate('genre-detail', { genre })}
+   825→   825→                >
+   826→   826→                  <CardContent className="p-3 text-center">
+   827→   827→                    <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{genre}</p>
+   828→   828→                    <p className="text-lg font-bold tabular-nums mt-1">{count}</p>
+   829→   829→                    <p className="text-[10px] text-muted-foreground">tracks</p>
+   830→   830→                  </CardContent>
+   831→   831→                </Card>
+   832→   832→              ))}
+   833→   833→            </div>
+   834→   834→          </section>
+   835→   835→        )}
+   836→   836→
+   837→   837→        {/* ── NEW RELEASES ── */}
+   838→   838→        {newestAlbums.length > 0 && (
+   839→   839→          <section>
+   840→   840→            <div className="flex items-center justify-between mb-4">
+   841→   841→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   842→   842→                <Sparkles className="w-5 h-5 text-primary" />
+   843→   843→                Albums
+   844→   844→              </h2>
+   845→   845→              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('browse-albums')}>
+   846→   846→                View All <ArrowRight className="w-3 h-3 ml-1" />
+   847→   847→              </Button>
+   848→   848→            </div>
+   849→   849→            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+   850→   850→              {newestAlbums.map(album => {
+   851→   851→                const coverArt = getAlbumCover(album.name, album.artist);
+   852→   852→                return (
+   853→   853→                  <div
+   854→   854→                    key={`${album.name}-${album.artist}`}
+   855→   855→                    className="group cursor-pointer"
+   856→   856→                    onClick={() => playAlbum(album.name, album.artist)}
+   857→   857→                  >
+   858→   858→                    <div className="relative mb-2">
+   859→   859→                      <div className="w-full aspect-square rounded-lg bg-gradient-to-br cover-art-hover shadow-lg relative overflow-hidden">
+   860→   860→                        {coverArt ? (
+   861→   861→                          <img src={coverArt} alt={album.name} className="w-full h-full object-cover" />
+   862→   862→                        ) : (
+   863→   863→                          <div className={`w-full h-full bg-gradient-to-br ${getCoverGradient(album.name)}`} />
+   864→   864→                        )}
+   865→   865→                      </div>
+   866→   866→                      {/* Play overlay */}
+   867→   867→                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+   868→   868→                        <div className="w-10 h-10 rounded-full bg-primary/90 flex items-center justify-center shadow-lg">
+   869→   869→                          <Play className="w-5 h-5 text-primary-foreground ml-0.5" />
+   870→   870→                        </div>
+   871→   871→                      </div>
+   872→   872→                    </div>
+   873→   873→                    <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{album.name}</p>
+   874→   874→                    <p className="text-xs text-muted-foreground truncate">{album.artist}{album.year ? ` · ${album.year}` : ''}</p>
+   875→   875→                  </div>
+   876→   876→                );
+   877→   877→              })}
+   878→   878→            </div>
+   879→   879→          </section>
+   880→   880→        )}
+   881→   881→
+   882→   882→        {/* ── BROWSE ARTISTS ── */}
+   883→   883→        {recentArtists.length > 0 && (
+   884→   884→          <section>
+   885→   885→            <div className="flex items-center justify-between mb-4">
+   886→   886→              <h2 className="text-lg font-semibold">Artists</h2>
+   887→   887→              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('browse-artists')}>
+   888→   888→                View All <ArrowRight className="w-3 h-3 ml-1" />
+   889→   889→              </Button>
+   890→   890→            </div>
+   891→   891→            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
+   892→   892→              {recentArtists.map(artist => {
+   893→   893→                const artistTracks = localTracks.filter(t => t.artist === artist);
+   894→   894→                const coverArt = artistTracks.find(t => t.coverArt)?.coverArt;
+   895→   895→                return (
+   896→   896→                  <div
+   897→   897→                    key={artist}
+   898→   898→                    className="group text-center cursor-pointer"
+   899→   899→                    onClick={() => navigate('artist-detail', { artistId: artist })}
+   900→   900→                  >
+   901→   901→                    <div className="w-full aspect-square rounded-full bg-gradient-to-br mx-auto mb-2 cover-art-hover shadow-lg relative overflow-hidden">
+   902→   902→                      {coverArt ? (
+   903→   903→                        <img src={coverArt} alt={artist} className="w-full h-full object-cover" />
+   904→   904→                      ) : (
+   905→   905→                        <div className={`w-full h-full bg-gradient-to-br ${getCoverGradient(artist)}`} />
+   906→   906→                      )}
+   907→   907→                    </div>
+   908→   908→                    <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{artist}</p>
+   909→   909→                    <p className="text-[11px] text-muted-foreground">{artistTracks.length} tracks</p>
+   910→   910→                  </div>
+   911→   911→                );
+   912→   912→              })}
+   913→   913→            </div>
+   914→   914→          </section>
+   915→   915→        )}
+   916→   916→
+   917→   917→        {/* ── INTERNET RADIO ── */}
+   918→   918→        <section>
+   919→   919→          <div className="flex items-center justify-between mb-4">
+   920→   920→            <h2 className="text-lg font-semibold flex items-center gap-2">
+   921→   921→              <Radio className="w-5 h-5 text-signal-green" />
+   922→   922→              Internet Radio
+   923→   923→            </h2>
+   924→   924→            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('radio')}>
+   925→   925→              All Stations <ArrowRight className="w-3 h-3 ml-1" />
+   926→   926→            </Button>
+   927→   927→          </div>
+   928→   928→          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+   929→   929→            {radioStations.slice(0, 4).map(station => (
+   930→   930→              <Card
+   931→   931→                key={station.id}
+   932→   932→                className="bg-card border-border hover:bg-accent/30 cursor-pointer transition-colors group"
+   933→   933→                onClick={() => navigate('radio')}
+   934→   934→              >
+   935→   935→                <CardContent className="p-3">
+   936→   936→                  <div className="flex gap-3">
+   937→   937→                    <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${getCoverGradient(station.id)} flex-shrink-0 flex items-center justify-center`}>
+   938→   938→                      <Radio className="w-4 h-4 text-white/60" />
+   939→   939→                    </div>
+   940→   940→                    <div className="min-w-0 flex-1">
+   941→   941→                      <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{station.name}</p>
+   942→   942→                      <div className="flex items-center gap-1 mt-0.5">
+   943→   943→                        <Badge variant="outline" className="text-[9px] px-1 py-0 text-signal-green border-signal-green/30">LIVE</Badge>
+   944→   944→                        <span className="text-[10px] text-muted-foreground">{station.genre}</span>
+   945→   945→                      </div>
+   946→   946→                    </div>
+   947→   947→                  </div>
+   948→   948→                </CardContent>
+   949→   949→              </Card>
+   950→   950→            ))}
+   951→   951→          </div>
+   952→   952→        </section>
+   953→   953→
+   954→   954→        {/* ── SYSTEM STATUS ── */}
+   955→   955→        {coreStatus && (
+   956→   956→          <section>
+   957→   957→            <div className="flex items-center justify-between mb-4">
+   958→   958→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   959→   959→                <Zap className="w-5 h-5 text-signal-amber" />
+   960→   960→                DSP Core
+   961→   961→              </h2>
+   962→   962→              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('system')}>
+   963→   963→                System Details <ArrowRight className="w-3 h-3 ml-1" />
+   964→   964→              </Button>
+   965→   965→            </div>
+   966→   966→            <Card className="bg-card border-border">
+   967→   967→              <CardContent className="p-4">
+   968→   968→                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+   969→   969→                  <div>
+   970→   970→                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Core Status</p>
+   971→   971→                    <div className="flex items-center gap-1.5 mt-1">
+   972→   972→                      <div className="w-2 h-2 rounded-full bg-signal-green animate-pulse" />
+   973→   973→                      <p className="text-sm font-medium">{coreStatus.name}</p>
+   974→   974→                    </div>
+   975→   975→                  </div>
+   976→   976→                  <div>
+   977→   977→                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Uptime</p>
+   978→   978→                    <p className="text-sm font-medium font-mono mt-1">{coreStatus.uptime}s</p>
+   979→   979→                  </div>
+   980→   980→                  <div>
+   981→   981→                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Audio Engine</p>
+   982→   982→                    <p className="text-sm font-medium mt-1">{(coreStatus.audioEngine as any)?.name || 'Web Audio API'}</p>
+   983→   983→                  </div>
+   984→   984→                  <div>
+   985→   985→                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Supported Formats</p>
+   986→   986→                    <p className="text-sm font-medium mt-1">{coreStatus.audioEngine?.supportedFormats?.length || 6} formats</p>
+   987→   987→                  </div>
+   988→   988→                </div>
+   989→   989→              </CardContent>
+   990→   990→            </Card>
+   991→   991→          </section>
+   992→   992→        )}
+   993→   993→
+   994→   994→        {/* ── EMPTY STATE ── */}
+   995→   995→        {localTracks.length === 0 && (
+   996→   996→          <section className="text-center py-12">
+   997→   997→            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-surface flex items-center justify-center">
+   998→   998→              <Library className="w-10 h-10 text-muted-foreground/40" />
+   999→   999→            </div>
+  1000→  1000→            <h2 className="text-xl font-semibold mb-2">Your Library Awaits</h2>
+  1001→  1001→            <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6">
+  1002→  1002→              Import your music collection to unlock DSP&apos;s full audiophile experience.
+  1003→  1003→              Supports FLAC, WAV, DSD, MQA, AIFF, and 17 other formats with bit-perfect playback.
+  1004→  1004→            </p>
+  1005→  1005→            <div className="flex gap-3 justify-center">
+  1006→  1006→              <Button onClick={() => navigate('library')}>
+  1007→  1007→                <Library className="w-4 h-4 mr-2" /> Scan Library
+  1008→  1008→              </Button>
+  1009→  1009→              <Button variant="outline" onClick={() => navigate('radio')}>
+  1010→  1010→                <Radio className="w-4 h-4 mr-2" /> Try Radio
+  1011→  1011→              </Button>
+  1012→  1012→            </div>
+  1013→  1013→          </section>
+  1014→  1014→        )}
+  1015→  1015→      </div>
+  1016→  1016→    </ScrollArea>
+  1017→  1017→  );
+  1018→  1018→}
+  1019→  1019→
