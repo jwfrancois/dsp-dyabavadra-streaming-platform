@@ -16,6 +16,7 @@ import {
   Headphones, LayoutGrid, Grip, X, Heart, Podcast, FolderOpen,
   Newspaper, Globe, Clapperboard, Workflow, Server, MonitorSpeaker,
   Gauge, Sliders, Clock, User, Shield, Activity, Puzzle, Scale,
+  BarChart3,
 } from 'lucide-react';
 import { formatDuration, getCoverGradient } from '@/lib/data';
 import { usePodcastStore } from '@/store/podcast';
@@ -51,6 +52,7 @@ const libraryItems = [
   { icon: FolderOpen, label: 'Library', view: 'library' as const },
   { icon: Play, label: 'Now Playing', view: 'now-playing' as const },
   { icon: Clock, label: 'History', view: 'play-history' as const },
+  { icon: BarChart3, label: 'Stats', view: 'listening-stats' as const },
   { icon: User, label: 'Profiles', view: 'profiles' as const },
   { icon: Speaker, label: 'Zones', view: 'zones' as const },
   { icon: Globe, label: 'Streaming', view: 'streaming' as const },

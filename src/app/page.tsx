@@ -36,9 +36,11 @@ import { SystemHealthView } from '@/components/dsp/SystemHealthView';
 import { SecurityView } from '@/components/dsp/SecurityView';
 import { PluginManagerView } from '@/components/dsp/PluginManagerView';
 import { LicensingView } from '@/components/dsp/LicensingView';
+import { ListeningStatsView } from '@/components/dsp/ListeningStatsView';
 import { ZonePicker } from '@/components/dsp/ZonePicker';
 import { AudioEngineProvider } from '@/components/dsp/AudioEngineProvider';
 import { StoreHydrationGate } from '@/components/StoreHydration';
+import { KeyboardShortcuts } from '@/components/dsp/KeyboardShortcuts';
 import { useUIStore } from '@/store/ui';
 import type { ViewName } from '@/store/player';
 import { Button } from '@/components/ui/button';
@@ -78,6 +80,7 @@ function ViewRouter({ view }: { view: ViewName }) {
     case 'security': return <SecurityView />;
     case 'plugins': return <PluginManagerView />;
     case 'licensing': return <LicensingView />;
+    case 'listening-stats': return <ListeningStatsView />;
     default: return <HomeView />;
   }
 }
@@ -88,6 +91,7 @@ export default function Page() {
   return (
     <StoreHydrationGate>
     <AudioEngineProvider>
+    <KeyboardShortcuts />
     <div className="h-screen flex flex-col bg-background text-foreground overflow-hidden">
       {/* Mobile Header */}
       <header className="lg:hidden flex items-center h-14 px-4 border-b border-border bg-card flex-shrink-0">

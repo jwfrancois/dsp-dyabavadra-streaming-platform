@@ -14,6 +14,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { useLyrics, useArtistBio, useArtistImage, useAlbumInfo } from '@/lib/use-music-metadata';
+import { AudioVisualizer } from '@/components/dsp/AudioVisualizer';
+import { LyricsPanel } from '@/components/dsp/LyricsPanel';
 import {
   Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Repeat1,
   Volume2, VolumeX, Volume1, Heart, ListMusic, Share2,
@@ -317,6 +319,18 @@ export function NowPlayingView() {
             </div>
           </div>
 
+          {/* ── AUDIO VISUALIZER ── */}
+          <div className="mb-8">
+            <AudioVisualizer
+              mode="bars"
+              width={900}
+              height={120}
+              barCount={80}
+              colorScheme="gold"
+              className="rounded-xl overflow-hidden"
+            />
+          </div>
+
           {/* ── BOTTOM PANELS ── */}
           <div className="grid md:grid-cols-[1fr_1fr] gap-6">
             {/* Left Column */}
@@ -401,30 +415,8 @@ export function NowPlayingView() {
                 </CardContent>
               </Card>
 
-              {/* Lyrics Card */}
-              <Card className="bg-card/80 backdrop-blur border-border">
-                <CardContent className="p-4">
-                  <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                    <Music className="w-4 h-4 text-primary" /> Lyrics
-                  </h3>
-                  {lyricsLoading && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                      Fetching lyrics...
-                    </div>
-                  )}
-                  {lyricsData && !lyricsLoading ? (
-                    <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground leading-relaxed">{lyricsData.preview}</p>
-                      <a href={lyricsData.fullLyricsUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
-                        View full lyrics on {lyricsData.sourceName} <ExternalLink className="w-2.5 h-2.5" />
-                      </a>
-                    </div>
-                  ) : !lyricsLoading ? (
-                    <p className="text-xs text-muted-foreground italic">Lyrics not available for this track</p>
-                  ) : null}
-                </CardContent>
-              </Card>
+              {/* Lyrics — Synced + Plain with LRC support */}
+              <LyricsPanel />
 
               {/* Up Next */}
               <Card className="bg-card/80 backdrop-blur border-border">

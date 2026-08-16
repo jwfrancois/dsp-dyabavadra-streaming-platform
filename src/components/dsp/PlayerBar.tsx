@@ -352,11 +352,19 @@ export function PlayerBar() {
 
       {/* Right: Volume, Zone, Queue */}
       <div className="flex items-center gap-2 w-64 justify-end flex-shrink-0">
+        {/* Audio quality badge — Hi-Res / Lossless / DSD */}
+        {(() => {
+          const t = currentTrack!;
+          const isDSD = ['DSF', 'DFF', 'DSD'].includes(t.format.toUpperCase());
+          const isHiRes = t.sampleRate > 48000 || t.bitDepth > 16;
+          const isLossless = ['FLAC', 'WAV', 'AIFF', 'ALAC', 'DSF', 'DFF', 'WavPack', 'APE', 'TAK'].includes(t.format.toUpperCase());
+          if (isDSD) return <Badge className="text-[9px] bg-purple-500/20 text-purple-400 border-purple-500/30 h-5 px-1.5">DSD {t.sampleRate/1000 > 0 ? `${(t.sampleRate/1000).toFixed(1)}MHz` : ''}</Badge>;
+          if (isHiRes && isLossless) return <Badge className="text-[9px] bg-primary/20 text-primary border-primary/30 h-5 px-1.5">Hi-Res</Badge>;
+          if (isLossless) return <Badge className="text-[9px] bg-signal-green/20 text-signal-green border-signal-green/30 h-5 px-1.5">Lossless</Badge>;
+          return <Badge variant="outline" className="text-[10px] h-5 px-1.5 font-mono">{t.format}</Badge>;
+        })()}
         <Badge variant="outline" className="text-[10px] h-5 px-1.5 font-mono">
-          {currentTrack!.format}
-        </Badge>
-        <Badge variant="outline" className="text-[10px] h-5 px-1.5 font-mono">
-          {formatSampleRate(currentTrack!.sampleRate)}
+          {formatSampleRate(currentTrack!.sampleRate)}/{currentTrack!.bitDepth}bit
         </Badge>
         <div className="flex items-center gap-1.5">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>

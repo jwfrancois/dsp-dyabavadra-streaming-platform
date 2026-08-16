@@ -1,0 +1,663 @@
+     1→# DSP (Dyabavadra Streaming Platform) — Competitive Analysis & Gap Report
+     2→
+     3→> **Scope**: Audit of 7 best-in-class music platforms vs. DSP's current codebase.
+     4→> **Tech constraint**: Recommendations scoped to what's achievable in a Next.js + Web Audio API web app.
+     5→> **Date**: July 2025
+     6→
+     7→---
+     8→
+     9→## PART 1: Platform-by-Platform Deep Dive
+    10→
+    11→---
+    12→
+    13→### 1. ROON — The Audiophile Gold Standard
+    14→
+    15→**Price**: $12.99/mo (lifetime $899) | **Architecture**: Core + Remote + RAAT protocol + ARC (mobile)
+    16→
+    17→#### Key Differentiating Features
+    18→
+    19→| Feature | Details |
+    20→|---------|---------|
+    21→| **Metadata Engine** | Proprietary enriched dataset sourced from MusicBrainz, TiVo/AllMusic, Rovi. Cross-references performers, composers, producers, engineers. Every person is a link to deep biographical info. |
+    22→| **Classical Music** | Composer-first hierarchy (not artist-album-track). Supports multi-part works (movements), period, instrumentation, form. Lists conductor, ensemble, soloists, recording venue, and date per recording. |
+    23→| **Versions** | Shows all album versions (different masterings, sample rates, encodings) across local + streaming (Qobuz, TIDAL, nugs, KKBOX). User can highlight a favorite version. |
+    24→| **MUSE DSP Engine** | Parametric + procedural EQ, volume leveling, upsampling, room correction (convolution), headphone crossfeed. Works on PCM, MQA, DSD. Up to 768kHz/32-bit PCM and DSD512. |
+    25→| **Signal Path Display** | Transparent real-time view of every processing step between source file and DAC output. Shows sample rate, bit depth, bit-perfect status per stage. |
+    26→| **Multi-Room Sync** | Synchronized playback to multiple endpoints via RAAT protocol. Zone grouping with sample-accurate sync. |
+    27→| **Discovery** | Infinite cross-linking: influences, followers, collaborators, related artists — even for artists NOT in your library. |
+    28→| **Lyrics** | Synced (line-by-line scrolling) and static lyric sheets for millions of tracks. |
+    29→| **Localization** | "Fluency" — UI genres, credit roles, artist name transliteration to other character sets. Wikipedia reviews in 20 languages. |
+    30→| **Bit-Perfect** | Checks DAC capabilities, adjusts sample rate/bit depth automatically. ASIO/WASAPI/CoreAudio exclusive mode. |
+    31→
+    32→#### What Roon Does BETTER Than Anyone
+    33→- **Metadata density**: No other platform comes close to linking composers → performers → recording venues → works → movements.
+    34→- **Unified library**: Seamlessly merges local files + 4 streaming services into one browsable, cross-referenced graph.
+    35→- **Classical music**: The only platform that treats classical music as first-class with proper work/movement hierarchy.
+    36→- **Signal Path transparency**: The gold standard for showing exactly what's happening to the audio.
+    37→
+    38→#### UX Patterns Worth Copying
+    39→1. **Everything is a link** — tap any person, place, or credit to explore deeper.
+    40→2. **Version comparison** — see all masterings of an album side-by-side with quality indicators.
+    41→3. **Focus/focus+ layouts** — clean, visual browsing that scales from album art grids to dense metadata tables.
+    42→4. **Valence** (AI-powered recommendations launched 2024) — uses listening habits + metadata graph for discovery.
+    43→
+    44→---
+    45→
+    46→### 2. SPOTIFY — The Discovery King
+    47→
+    48→**Price**: Free / $11.99/mo Premium | **Users**: 640M+
+    49→
+    50→#### Key Differentiating Features
+    51→
+    52→| Feature | Details |
+    53→|---------|---------|
+    54→| **AI DJ** | Personalized AI guide with voice narration. Selects tracks based on user taste profile. Powered by generative AI + Spotify's recommendation models. |
+    55→| **Daylist** | Auto-updating playlist that changes 3x/day based on time-of-day, listening patterns, and inferred mood. Creative, whimsical titles ("late night soft indie vibes"). |
+    56→| **AI Playlist** | Prompt-based playlist generation ("a playlist for a road trip through the desert"). Uses NLP to interpret intent. |
+    57→| **Blend** | Social feature that creates a shared playlist merging taste profiles of 2-10 users. Shows "taste match" score. |
+    58→| **Collaborative Playlists** | Real-time multi-user playlist editing. Invite via link. |
+    59→| **Wrapped** | Annual data storytelling experience. 2.3 billion impressions (2025). Highly shareable, gamified year-in-review. |
+    60→| **Discover Weekly / Release Radar** | ML-driven weekly fresh music recommendations. Algorithm considers co-listening patterns, audio analysis, and user behavior. |
+    61→| **Smart Shuffle** | Adds sonically similar songs to existing playlists in real-time. |
+    62→| **Canvas** | Short visual loops that play over tracks — adds visual identity to songs. |
+    63→| **Spotify Connect** | Cross-device playback control (phone → speaker → TV). |
+    64→
+    65→#### What Spotify Does BETTER Than Anyone
+    66→- **Discovery UX**: The best algorithmic recommendations in the industry. Daylist and AI DJ are genuinely delightful.
+    67→- **Social/viral features**: Wrapped, collaborative playlists, Blend — all designed for sharing.
+    68→- **Frictionless listening**: The fastest path from "open app" to "music playing" of any platform.
+    69→- **Data storytelling**: Wrapped proves that presenting user data back to them in a beautiful way drives massive engagement.
+    70→
+    71→#### UX Patterns Worth Copying
+    72→1. **Daylist's auto-evolving concept** — context-aware playlists that shift with time/mood.
+    73→2. **Blend taste-matching** — visual representation of how two users' tastes overlap.
+    74→3. **AI DJ narration** — voice-guided listening that explains WHY a track was chosen.
+    75→4. **Wrapped's shareable cards** — data visualization as social content.
+    76→5. **"Add to queue" vs "Play next"** — clear, immediate queue manipulation.
+    77→
+    78→---
+    79→
+    80→### 3. APPLE MUSIC — Quality Meets Ecosystem
+    81→
+    82→**Price**: $11.99/mo (included in Apple One) | **Catalog**: 100M+ tracks
+    83→
+    84→#### Key Differentiating Features
+    85→
+    86→| Feature | Details |
+    87→|---------|---------|
+    88→| **Lossless Audio** | ALAC up to 24-bit/192 kHz across entire catalog. No extra cost. |
+    89→| **Spatial Audio (Dolby Atmos)** | Thousands of tracks in immersive spatial audio. Head-tracked on AirPods Pro/Max. |
+    90→| **Apple Music Classical** | Dedicated app (now web too, 5M+ tracks). Composer → Work → Recording hierarchy. Search by composer, opus number, conductor, ensemble, soloist. |
+    91→| **Siri Integration** | Voice control for playback, search, and queue management. |
+    92→| **Curated Playlists** | Human-edited playlists by music journalists and experts. Apple Music Editorial team. |
+    93→| **Sing** | Real-time lyrics with adjustable vocal volume (karaoke mode). |
+    94→| **Apple Music Replay** | Year-in-review feature (Spotify Wrapped competitor). |
+    95→| **Dynamic Island / Live Activities** | Tight iOS integration for playback controls. |
+    96→
+    97→#### What Apple Music Does BETTER Than Anyone
+    98→- **Spatial Audio catalog**: The largest Dolby Atmos music library.
+    99→- **Classical app**: Best dedicated classical music experience after Roon (now on web).
+   100→- **Ecosystem integration**: Siri, AirPlay, HomePod, Dynamic Island, CarPlay — seamless.
+   101→- **Value proposition**: Lossless + Spatial at no extra cost over base price.
+   102→
+   103→#### UX Patterns Worth Copying
+   104→1. **Classical app's search by metadata** — opus number, key, conductor, period.
+   105→2. **Sing mode** — adjustable vocal volume for karaoke.
+   106→3. **Lossless badge** — clear visual indicators for quality tier on every track.
+   107→4. **Editorial sections** — human-curated content with magazine-quality presentation.
+   108→
+   109→---
+   110→
+   111→### 4. TIDAL & QOBUZ — The Audiophile Streamers
+   112→
+   113→**Tidal**: $11.49/mo (HiFi) / $19.49/mo (HiFi Plus) | **Qobuz**: $10.83/mo (Studio) / $15/mo (Sublime)
+   114→
+   115→#### Key Differentiating Features
+   116→
+   117→| Feature | TIDAL | Qobuz |
+   118→|---------|-------|-------|
+   119→| **Max Quality** | FLAC up to 24-bit/192 kHz (dropped MQA in 2024) | FLAC up to 24-bit/192 kHz |
+   120→| **MQA** | Dropped in 2024, replaced with FLAC HiRes | Never supported (purist approach) |
+   121→| **Artist Payouts** | TIDAL pays ~1.5x Spotify per stream | Qobuz pays highest per-stream rate among streamers |
+   122→| **Booklet/Liner Notes** | Limited | **Qobuz provides digital booklets** for many albums |
+   123→| **Mastering Quality** | "Master Quality" tier | Qobuz consistently sounds more focused/natural in blind tests |
+   124→| **Discovery** | Improving algorithm, TIDAL Rising for emerging artists | Weaker discovery; relies on editorial curation |
+   125→| **Videos** | Music videos, live sessions | Music videos, interviews |
+   126→| **Offline** | Full offline downloads at selected quality | Full offline downloads |
+   127→
+   128→#### What They Do BETTER Than Others
+   129→- **Qobuz**: Liner notes/booklets, highest artist payouts, purist approach (no MQA), consistently praised sound quality.
+   130→- **TIDAL**: Better discovery features, music videos, larger user base, artist-first initiatives (TIDAL Rising, artist-owned).
+   131→
+   132→#### UX Patterns Worth Copying
+   133→1. **Qobuz's digital booklets** — PDF-style liner notes that enrich the album experience.
+   134→2. **Quality badges on every track** — clear display of format, sample rate, bit depth.
+   135→3. **TIDAL's Master Quality indicator** — visual confirmation of hi-res stream.
+   136→4. **Album credits visibility** — detailed production credits easily accessible.
+   137→
+   138→---
+   139→
+   140→### 5. AUDIRVANA — The Bit-Perfect Purist
+   141→
+   142→**Price**: $14.99/mo (Studio) / $119.99 (Origin, perpetual) | **Platform**: macOS, Windows
+   143→
+   144→#### Key Differentiating Features
+   145→
+   146→| Feature | Details |
+   147→|---------|---------|
+   148→| **Bit-Perfect by Default** | DAC receives exact data from source file. No hidden processing. |
+   149→| **Format Support** | FLAC, WAV, AIFF, ALAC, DSD (DSF/DFF/ISO), up to 32-bit/768kHz PCM, DSD512. |
+   150→| **Qobuz Integration** | Native streaming of Qobuz in Hi-Res, seamlessly integrated with local library. |
+   151→| **DAC Integration** | Exclusive mode (ASIO/WASAPI/CoreAudio). Auto sample rate switching per track. |
+   152→| **Memory Play** | Loads entire track into RAM before playback — eliminates disk I/O jitter. |
+   153→| **Volume Control Modes** | Integer mode (lossless digital volume), hybrid mode, direct hardware control. |
+   154→| **Minimal UI** | Clean, functional interface focused on sound quality, not social features. |
+   155→
+   156→#### What Audirvana Does BETTER Than Anyone
+   157→- **True bit-perfect** with automatic sample rate switching.
+   158→- **Memory play** — zero disk activity during playback.
+   159→- **DAC integration** — the most direct path from file to DAC.
+   160→
+   161→#### UX Patterns Worth Copying
+   162→1. **Integer volume control** — lossless digital volume that preserves bit-perfect output.
+   163→2. **Auto sample rate display** — always shows what the DAC is currently receiving.
+   164→3. **Minimal chrome** — UI that gets out of the way of the music.
+   165→
+   166→---
+   167→
+   168→### 6. PLEXAMP — Visual Design + Sonic Intelligence
+   169→
+   170→**Price**: Free with Plex Pass ($4.99/mo) | **Platform**: macOS, Windows, Linux, iOS, Android
+   171→
+   172→#### Key Differentiating Features
+   173→
+   174→| Feature | Details |
+   175→|---------|---------|
+   176→| **Sonic Analysis** | Neural network analyzes every track in your library creating a sonic fingerprint (tempo, mood, energy, key, instrumentation). Powers DJ, radios, and recommendations. |
+   177→| **Visualizers** | Multiple stunning audio visualizer modes (Glow, Waveform, Spectrum, Retro-fio). Reactive to real-time audio using WebGL/Canvas. |
+   178→| **Plexamp DJ** | AI-powered DJ that mixes tracks from your library based on sonic similarity + BPM matching. |
+   179→| **Sonically Similar Radio** | Generates endless streams of music that sounds like a seed track/artist. |
+   180→| **Compact/Mini Mode** | Ultra-small Always-On-Top player. |
+   181→| **Rich Visual Design** | Album art-focused UI with smooth animations. Multiple layout themes. |
+   182→| **Local-First** | No cloud dependency for local library playback. |
+   183→
+   184→#### What Plexamp Does BETTER Than Anyone
+   185→- **Audio visualizations**: The most beautiful and varied visualizer in any music app.
+   186→- **Sonic analysis for local libraries**: No other self-hosted solution does audio-feature extraction at this level.
+   187→- **Visual design polish**: Feels like a premium product despite being an "indie" app.
+   188→
+   189→#### UX Patterns Worth Copying
+   190→1. **Sonic fingerprinting** — analyze audio features (not just metadata) for recommendations.
+   191→2. **Multiple visualizer modes** — give users visual options that react to the music.
+   192→3. **Mini/compact mode** — always-on-top tiny player for desktop.
+   193→4. **DJ-style transitions** — beat-matched crossfades between tracks.
+   194→
+   195→---
+   196→
+   197→### 7. NAVIDROME — The Open Source Champion
+   198→
+   199→**Price**: Free (MIT License) | **Platform**: Self-hosted, any OS, Docker
+   200→
+   201→#### Key Differentiating Features
+   202→
+   203→| Feature | Details |
+   204→|---------|---------|
+   205→| **Lightweight** | Single Go binary. ~15MB RAM. Runs on Raspberry Pi. Handles 100K+ track libraries. |
+   206→| **Subsonic API** | Compatible with 50+ existing Subsonic client apps. |
+   207→| **Web UI** | Modern, responsive web interface. Custom themes supported. |
+   208→| **Smart Playlists** | Rule-based auto-updating playlists (newest, most played, genre filters, etc.). |
+   209→| **Multi-Library** | Support for multiple music libraries with separate configs. |
+   210→| **Jukebox Mode** | Server-side playback (audio output on the server machine). |
+   211→| **Last.fm/ListenBrainz Scrobbling** | Built-in scrobbling support. |
+   212→| **Plugins** | Extensible plugin system (AudioMuse AI plugin available). |
+   213→| **Podcast Support** | Native podcast subscription and playback. |
+   214→| **Sharing** | Share specific tracks/albums via public links. |
+   215→
+   216→#### What Navidrome Does BETTER Than Anyone
+   217→- **Resource efficiency**: The lightest self-hosted option by far.
+   218→- **Subsonic compatibility**: Largest ecosystem of client apps.
+   219→- **Zero cost + open source**: Complete freedom.
+   220→
+   221→#### UX Patterns Worth Copying
+   222→1. **Smart playlists with live rules** — auto-updating collections based on criteria.
+   223→2. **Jukebox mode** — server-side audio output.
+   224→3. **Plugin architecture** — community extensions for features the core doesn't provide.
+   225→4. **Theme system** — user-customizable visual themes.
+   226→
+   227→---
+   228→
+   229→## PART 2: DSP CURRENT STATE AUDIT
+   230→
+   231→After examining the DSP codebase (`/src/`), here's what currently exists:
+   232→
+   233→### What DSP Already Has
+   234→| Feature | Status | Implementation |
+   235→|---------|--------|----------------|
+   236→| **Web Audio DSP Pipeline** | ✅ Real | `audio-engine.ts` — parametric EQ, crossfeed (bs2b-style), loudness normalization, volume limiter, master gain |
+   237→| **Signal Path Display** | ✅ Real | `SignalPathView.tsx` — shows format/rate/depth/bit-perfect per processing stage |
+   238→| **Per-Zone DSP Config** | ✅ Real | `dsp-engine.ts` store — separate DSP configs per output zone |
+   239→| **Zone Management** | ✅ Real | `ZonesView.tsx`, `ZonePicker.tsx` — multi-zone concept with endpoint management |
+   240→| **Endpoint Management** | ✅ Real | `OutputEndpointsView.tsx` — DAC details, protocol, buffer, clock source |
+   241→| **Local File Playback** | ✅ Real | `AudioEngineProvider.tsx` + `/api/library/stream` — browser file import + server-side streaming |
+   242→| **Library Scanning** | ✅ Real | `library-data.ts`, `/api/library/scan` — file discovery, metadata parsing, music-metadata npm package |
+   243→| **Metadata: Basic** | ✅ Real | Track/Album/Artist types with composers, performers, credits, format, bitDepth, sampleRate |
+   244→| **Classical Music: Structure** | ⚠️ Partial | `WorkDetailView.tsx`, `ComposerDetailView.tsx`, `PerformerDetailView.tsx` exist but are stub/placeholder |
+   245→| **Podcast Support** | ✅ Real | Full podcast store, feed parsing, speed control, sleep timer, silence skip |
+   246→| **Radio Streaming** | ✅ Real | Internet radio with proxy, station favorites, genre browsing |
+   247→| **Play Queue** | ✅ Real | Full queue management: add, remove, reorder (dnd-kit), shuffle, repeat |
+   248→| **User Profiles** | ✅ Real | Multiple profiles, loved tracks, play history per profile |
+   249→| **Smart Collections** | ⚠️ Partial | `LibraryManagementView.tsx` has rules but no real evaluation engine |
+   250→| **DSP Config UI** | ✅ Real | `DSPConfigView.tsx` — full EQ band editor, crossfeed presets, volume limit, loudness config |
+   251→| **Plugin System** | ⚠️ UI only | `PluginManagerView.tsx` exists, types defined, but no runtime plugin loading |
+   252→| **Search** | ✅ Real | `SearchView.tsx` — search across tracks, albums, artists |
+   253→| **Play History** | ⚠️ Partial | Store exists, no rich analytics/visualization |
+   254→| **Browse Views** | ✅ Real | Artists, Albums, Tracks, Genres, Playlists — all with grid/list views |
+   255→| **Cover Art** | ✅ Real | `CoverArt.tsx` — embedded art extraction, gradient fallbacks |
+   256→| **Licensing View** | ✅ Real | Codec/protocol licensing tracking |
+   257→| **System Health** | ✅ Real | `SystemHealthView.tsx` — CPU, memory, engine load monitoring |
+   258→| **Streaming Service Integration** | ⚠️ Types only | `StreamingView.tsx` shows Tidal/Qobuz connection UI, but no real OAuth flow |
+   259→
+   260→### What DSP is Missing (Explicitly Absent from Codebase)
+   261→- Audio visualization (no Canvas/WebGL, no AnalyserNode usage)
+   262→- Real recommendation/discovery engine (store is stub)
+   263→- Lyrics display (no component or API)
+   264→- Collaborative/social features
+   265→- Gapless playback (store flag exists, no implementation)
+   266→- Any audio analysis / sonic fingerprinting
+   267→- Real Loudness measurement (uses fallbackGain, not actual LUFS)
+   268→
+   269→---
+   270→
+   271→## PART 3: GAP ANALYSIS — Prioritized by Impact
+   272→
+   273→### TIER 1: Critical Gaps (High Impact, Feasible in Web Audio)
+   274→
+   275→#### GAP-1: Audio Visualization (AnalyserNode)
+   276→**Who does it best**: Plexamp
+   277→**Current State**: DSP has zero visualization. No `AnalyserNode` is created in `audio-engine.ts`.
+   278→**Why Critical**: Visual feedback is the single most impactful UX differentiator for a web-based player. It's what makes the app feel *alive*.
+   279→
+   280→**Implementation (Web Audio API)**:
+   281→```
+   282→Add AnalyserNode branch from the DSP chain → Canvas/WebGL renderers
+   283→```
+   284→- Add `AnalyserNode` to the DSP chain (before master gain)
+   285→- Create 3 visualization modes:
+   286→  - **Spectrum bars** — frequency domain (`getByteFrequencyData`)
+   287→  - **Waveform** — time domain (`getByteTimeDomainData`) 
+   288→  - **Circular visualizer** — frequency mapped to radial bars (Plexamp Glow-style)
+   289→- Use `requestAnimationFrame` loop with Canvas API (no WebGL needed for initial impl)
+   290→- Expose visualization data to React via a custom hook (`useAudioAnalyser`)
+   291→- ~3-4 days effort
+   292→
+   293→---
+   294→
+   295→#### GAP-2: Real-Time Loudness Measurement (EBU R128 / ReplayGain)
+   296→**Who does it best**: Roon (MUSE engine), Audirvana
+   297→**Current State**: DSP has `LoudnessConfig` with `targetLUFS` and method fields, but the audio engine just applies a static `fallbackGain` (1.0). No actual LUFS measurement.
+   298→**Why Critical**: The loudness normalization feature is currently non-functional. This is a core audiophile feature.
+   299→
+   300→**Implementation (Web Audio API)**:
+   301→```
+   302→OfflineAudioContext → RMS measurement → LUFS calculation → gain compensation
+   303→```
+   304→- Implement EBU R128 short-term loudness measurement using `OfflineAudioContext`
+   305→- Pre-scan tracks on load to measure integrated loudness
+   306→- Cache LUFS values per track in IndexedDB / server-side DB
+   307→- Apply real-time gain compensation in the loudness GainNode
+   308→- Show measured LUFS value in Now Playing and Signal Path views
+   309→- ~5-7 days effort
+   310→
+   311→---
+   312→
+   313→#### GAP-3: Gapless Playback
+   314→**Who does it best**: Roon, Apple Music, every serious player
+   315→**Current State**: Store has `gaplessPlayback: boolean` flag. No implementation. Web Audio `HTMLAudioElement` doesn't natively support gapless.
+   316→**Why Critical**: Audible gaps between tracks (especially in classical/concept albums) break the listening experience. This is table-stakes.
+   317→
+   318→**Implementation (Web Audio API)**:
+   319→```
+   320→Web Audio API → AudioBufferSourceNode scheduling with precise timing
+   321→```
+   322→- Switch from `HTMLAudioElement` to `AudioBufferSourceNode` for local files
+   323→- Use `AudioContext.currentTime` for sample-accurate scheduling
+   324→- Pre-decode next track while current plays
+   325→- Crossfade overlap (0-500ms configurable)
+   326→- For streaming URLs, use MediaSource Extensions (MSE) or keep HTMLAudioElement with timed pre-loading
+   327→- ~5-7 days effort
+   328→
+   329→---
+   330→
+   331→#### GAP-4: Lyrics Display (Synced + Static)
+   332→**Who does it best**: Apple Music (Sing), Spotify, Roon
+   333→**Current State**: Track type has `lyrics?: string` field. `useLyrics` hook exists in `NowPlayingView.tsx` but implementation is unclear/external. No lyrics display component.
+   334→**Why Critical**: Lyrics are the #1 most-requested feature in any music app. It's expected behavior.
+   335→
+   336→**Implementation**:
+   337→```
+   338→LRCLIB.net API (free) → sync lyric parsing → scroll-along component
+   339→```
+   340→- Integrate LRCLIB.net or Musixmatch API for lyrics fetching
+   341→- Parse LRC format (timestamped lyrics) for synced display
+   342→- Create `LyricsView` component with:
+   343→  - Auto-scroll to current line (smooth CSS transform)
+   344→  - Tap-to-seek on lyric lines
+   345→  - Static/synced toggle
+   346→- Cache lyrics server-side in DB
+   347→- ~3-4 days effort
+   348→
+   349→---
+   350→
+   351→### TIER 2: High-Impact Gaps (Strong Differentiation)
+   352→
+   353→#### GAP-5: Smart Discovery / Recommendation Engine
+   354→**Who does it best**: Spotify (AI DJ, Daylist, Discover Weekly)
+   355→**Current State**: `discovery.ts` store has `startRadioFrom()` that returns an empty radio with no tracks. No collaborative filtering, no audio analysis.
+   356→**Why Important**: Without recommendations, users must know what they want. This limits engagement and library exploration.
+   357→
+   358→**Implementation**:
+   359→```
+   360→Content-based filtering using audio features + metadata + play history
+   361→```
+   362→- Implement a simple content-based recommendation using:
+   363→  - Metadata similarity (same genre, artist, label)
+   364→  - Play history patterns (co-occurrence, frequency)
+   365→  - Audio feature similarity (if GAP-7 implemented)
+   366→- Build a "For You" homepage section with:
+   367→  - Recently played → similar tracks
+   368→  - Genre deep-dives
+   369→  - "Rediscover" — forgotten favorites
+   370→  - Time-based suggestions (morning/afternoon/evening, inspired by Daylist)
+   371→- Server-side scoring + caching (Next.js API routes + DB)
+   372→- ~7-10 days effort
+   373→
+   374→---
+   375→
+   376→#### GAP-6: Real Classical Music Support
+   377→**Who does it best**: Roon, Apple Music Classical
+   378→**Current State**: `WorkDetailView.tsx`, `ComposerDetailView.tsx`, `PerformerDetailView.tsx` exist but are **empty stubs**. Track type has `composers: string[]` and `performers: Credit[]` but no work/movement hierarchy.
+   379→**Why Important**: Classical music metadata is fundamentally different from pop. If DSP claims audiophile credentials, classical support must be real.
+   380→
+   381→**Implementation**:
+   382→```
+   383→Work/Movement data model → Composer-first browse mode → Recording comparison
+   384→```
+   385→- Define `Work`, `Movement`, `Recording` data models
+   386→- Parse classical metadata from MusicBrainz API (work ID, movement, opus number, key)
+   387→- Implement Composer-first browse mode:
+   388→  - Composer → Works → Recordings → Tracks
+   389→  - Alternative: Composer → Period → Works
+   390→- Show recording comparison table (conductor, ensemble, year, quality)
+   391→- ~7-10 days effort
+   392→
+   393→---
+   394→
+   395→#### GAP-7: Sonic Analysis / Audio Feature Extraction
+   396→**Who does it best**: Plexamp (neural network), Spotify (internal)
+   397→**Current State**: Zero audio analysis. No feature extraction.
+   398→**Why Important**: Metadata-based recommendations miss the mark for mood/energy matching. Sonic analysis enables "sounds like" features and better recommendations.
+   399→
+   400→**Implementation**:
+   401→```
+   402→Web Audio API AnalyserNode → statistical feature extraction → DB storage
+   403→```
+   404→- During library scan or on-demand, extract audio features:
+   405→  - RMS energy, spectral centroid, spectral rolloff, zero-crossing rate
+   406→  - BPM/tempo estimation (autocorrelation or onset detection)
+   407→  - Key detection (chroma features)
+   408→  - Dynamic range (DR value)
+   409→- Use `OfflineAudioContext` + `AnalyserNode` for server-side extraction (or WASM in browser)
+   410→- Store features as JSON in track metadata
+   411→- Power "sonically similar" recommendations and radio stations
+   412→- ~7-10 days effort
+   413→
+   414→---
+   415→
+   416→#### GAP-8: Volume Leveling / Smart Volume
+   417→**Who does it best**: Spotify (built-in, transparent), Roon (volume leveling)
+   418→**Current State**: `LoudnessConfig` exists. Volume limiter works (brick-wall DynamicsCompressor). No track-to-track leveling.
+   419→**Why Important**: Jumping between tracks with wildly different volumes (classical vs. pop vs. podcast) is jarring.
+   420→
+   421→**Implementation**:
+   422→```
+   423→Pre-computed LUFS per track → gain ramp between tracks
+   424→```
+   425→- Prerequisite: GAP-2 (loudness measurement)
+   426→- Store ReplayGain / LUFS values per track
+   427→- Apply gain adjustment in the DSP chain before output
+   428→- Smooth gain ramp (100-300ms) between tracks to avoid clicks
+   429→- Show leveling status in signal path
+   430→- ~2-3 days (after GAP-2)
+   431→
+   432→---
+   433→
+   434→### TIER 3: Medium-Impact Gaps (Polish & Engagement)
+   435→
+   436→#### GAP-9: Listening Stats / Wrapped-Style Analytics
+   437→**Who does it best**: Spotify (Wrapped), Apple Music (Replay)
+   438→**Current State**: `PlayHistoryView.tsx` exists. `PlayHistoryEntry` has playedAt, completed, zone, source. No analytics, no charts, no visualizations.
+   439→**Why Important**: Data storytelling drives engagement. Users love seeing their listening patterns visualized.
+   440→
+   441→**Implementation**:
+   442→```
+   443→Aggregate play history → charts (recharts) → shareable summary cards
+   444→```
+   445→- Top artists, albums, tracks (by play count, total time)
+   446→- Genre breakdown pie chart
+   447→- Listening time by day/week/month line chart
+   448→- Audio quality distribution (format/sample rate breakdown)
+   449→- "Your Year in Music" shareable card (image generation via Canvas or HTML-to-image)
+   450→- DSP already has `recharts` in dependencies!
+   451→- ~4-5 days effort
+   452→
+   453→---
+   454→
+   455→#### GAP-10: Room Correction / Convolution
+   456→**Who does it best**: Roon (MUSE), Audirvana
+   457→**Current State**: `RoomCorrection` type exists with filterName, samplerate, channels, delayMs. Not implemented in `audio-engine.ts`.
+   458→**Why Important**: Room correction is the single biggest audio quality improvement for most listeners. This is a key audiophile feature.
+   459→
+   460→**Implementation (Web Audio API)**:
+   461→```
+   462→ConvolverNode → impulse response WAV → per-channel application
+   463→```
+   464→- Load impulse response (IR) WAV file via file upload or URL
+   465→- Create `ConvolverNode` in the DSP chain
+   466→- Support mono/stereo/multi-channel IRs
+   467→- Allow per-zone room correction profiles
+   468→- Show IR frequency response curve in the UI
+   469→- ~3-5 days effort
+   470→
+   471→---
+   472→
+   473→#### GAP-11: Real Upsampling
+   474→**Who does it best**: Roon (MUSE), Audirvana, HQPlayer
+   475→**Current State**: `UpsamplingConfig` type exists with targetRate, targetBitDepth, filterType. Not implemented.
+   476→**Why Important**: Upsampling can improve DAC performance (many DACs sound better at higher rates).
+   477→
+   478→**Implementation (Web Audio API)**:
+   479→```
+   480→AudioContext sample rate → OfflineAudioContext resampling → ScriptProcessorNode/AudioWorklet
+   481→```
+   482→- Create `AudioWorklet` (or `ScriptProcessorNode` as fallback) for custom resampling
+   483→- Support target rates: 48kHz, 88.2kHz, 96kHz, 176.4kHz, 192kHz
+   484→- Implement windowed-sinc interpolation (quality resampling)
+   485→- Show the resampling in Signal Path with before/after rates
+   486→- **Limitation**: Browser AudioContext max sample rate is typically 96kHz (varies by browser). Can use OfflineAudioContext for higher.
+   487→- ~5-7 days effort
+   488→
+   489→---
+   490→
+   491→#### GAP-12: Collaborative Playlists
+   492→**Who does it best**: Spotify, Apple Music
+   493→**Current State**: Playlist type exists. No sharing, no collaboration.
+   494→**Why Important**: Social features increase retention and make the platform "sticky."
+   495→
+   496→**Implementation**:
+   497→```
+   498→Share link → real-time sync (WebSocket) → multi-user edit
+   499→```
+   500→- Generate share links for playlists
+   501→- Real-time collaboration via WebSocket (Next.js API routes)
+   502→- Show contributor avatars
+   503→- Permission model: owner, editor, viewer
+   504→- ~5-7 days effort
+   505→
+   506→---
+   507→
+   508→#### GAP-13: Crossfade Between Tracks
+   509→**Who does it best**: Plexamp DJ, Spotify
+   510→**Current State**: Not implemented.
+   511→**Why Important**: Smooth transitions between tracks elevate the listening experience from "jukebox" to "curated flow."
+   512→
+   513→**Implementation (Web Audio API)**:
+   514→```
+   515→Two simultaneous AudioBufferSourceNodes with gain ramps
+   516→```
+   517→- Overlap next track's start with current track's end
+   518→- Gain ramp down on outgoing, ramp up on incoming
+   519→- Configurable crossfade duration (0-12 seconds)
+   520→- Smart crossfade: beat-matched if BPM data available
+   521→- Part of GAP-3 (gapless) architecture
+   522→- ~2-3 days (with GAP-3)
+   523→
+   524→---
+   525→
+   526→#### GAP-14: Keyboard Shortcuts / Global Hotkeys
+   527→**Who does it best**: Spotify, Plexamp
+   528→**Current State**: Not implemented.
+   529→**Why Important**: Power users expect keyboard control. It's a small effort, high perceived value.
+   530→
+   531→**Implementation**:
+   532→- Global `keydown` listener in `AudioEngineProvider`
+   533→- Space = play/pause, ←/→ = seek, ↑/↓ = volume
+   534→- Cmd/Ctrl+→ = next, Cmd/Ctrl+← = previous
+   535→- `/` = focus search
+   536→- Show shortcut overlay on `?` key press
+   537→- ~1-2 days effort
+   538→
+   539→---
+   540→
+   541→### TIER 4: Lower Priority (Nice-to-Have, Higher Effort)
+   542→
+   543→#### GAP-15: Album Liner Notes / Booklets
+   544→**Inspired by**: Qobuz
+   545→**Effort**: ~3-5 days
+   546→**Implementation**: Upload PDF/images per album. Display in a dedicated modal with page navigation.
+   547→
+   548→#### GAP-16: Theme System
+   549→**Inspired by**: Navidrome
+   550→**Effort**: ~3-5 days
+   551→**Implementation**: CSS custom properties + theme persistence. DSP already uses `next-themes` for dark mode.
+   552→
+   553→#### GAP-17: "AI DJ" Style Narrated Discovery
+   554→**Inspired by**: Spotify AI DJ
+   555→**Effort**: ~10+ days (requires LLM integration)
+   556→**Implementation**: Use LLM API to generate track introductions. TTS for narration. Would require z-ai-web-dev-sdk.
+   557→
+   558→#### GAP-18: Mobile PWA / Installable App
+   559→**Inspired by**: All platforms
+   560→**Effort**: ~2-3 days
+   561→**Implementation**: Add `manifest.json`, service worker, offline caching. DSP is already a SPA.
+   562→
+   563→#### GAP-19: Last.fm / ListenBrainz Scrobbling
+   564→**Inspired by**: Navidrome
+   565→**Effort**: ~2-3 days
+   566→**Implementation**: Call Last.fm scrobble API on track complete (50% played threshold). Settings page for API key.
+   567→
+   568→#### GAP-20: Headphone Correction Profiles
+   569→**Inspired by**: Roon, AutoEq
+   570→**Current State**: `HeadphoneCorrection` type exists. Not implemented.
+   571→**Effort**: ~5-7 days
+   572→**Implementation**: Import EQ curves from AutoEq database. Apply via BiquadFilterNode chain.
+   573→
+   574→---
+   575→
+   576→## PART 4: IMPLEMENTATION ROADMAP
+   577→
+   578→### Phase 1: Foundation (Weeks 1-3) — *Make it feel alive*
+   579→
+   580→| Priority | Gap | Effort | Impact |
+   581→|----------|-----|--------|--------|
+   582→| 1 | GAP-1: Audio Visualization | 3-4 days | ★★★★★ |
+   583→| 2 | GAP-4: Lyrics Display | 3-4 days | ★★★★★ |
+   584→| 3 | GAP-14: Keyboard Shortcuts | 1-2 days | ★★★★☆ |
+   585→| 4 | GAP-18: PWA Installable | 2-3 days | ★★★★☆ |
+   586→
+   587→### Phase 2: Audio Quality (Weeks 4-6) — *Earn the "audiophile" label*
+   588→
+   589→| Priority | Gap | Effort | Impact |
+   590→|----------|-----|--------|--------|
+   591→| 5 | GAP-2: Real Loudness Measurement | 5-7 days | ★★★★★ |
+   592→| 6 | GAP-8: Volume Leveling | 2-3 days | ★★★★☆ |
+   593→| 7 | GAP-3: Gapless Playback | 5-7 days | ★★★★★ |
+   594→| 8 | GAP-13: Crossfade | 2-3 days | ★★★★☆ |
+   595→| 9 | GAP-10: Room Correction (ConvolverNode) | 3-5 days | ★★★★☆ |
+   596→
+   597→### Phase 3: Intelligence (Weeks 7-10) — *Make it smart*
+   598→
+   599→| Priority | Gap | Effort | Impact |
+   600→|----------|-----|--------|--------|
+   601→| 10 | GAP-7: Sonic Analysis | 7-10 days | ★★★★★ |
+   602→| 11 | GAP-5: Smart Discovery | 7-10 days | ★★★★★ |
+   603→| 12 | GAP-6: Classical Music | 7-10 days | ★★★★☆ |
+   604→
+   605→### Phase 4: Engagement (Weeks 11-13) — *Make it sticky*
+   606→
+   607→| Priority | Gap | Effort | Impact |
+   608→|----------|-----|--------|--------|
+   609→| 13 | GAP-9: Listening Stats | 4-5 days | ★★★★☆ |
+   610→| 14 | GAP-12: Collaborative Playlists | 5-7 days | ★★★☆☆ |
+   611→| 15 | GAP-19: Last.fm Scrobbling | 2-3 days | ★★★☆☆ |
+   612→| 16 | GAP-11: Upsampling | 5-7 days | ★★★☆☆ |
+   613→
+   614→### Phase 5: Polish (Weeks 14+) — *Make it exceptional*
+   615→
+   616→| Priority | Gap | Effort | Impact |
+   617→|----------|-----|--------|--------|
+   618→| 17 | GAP-20: Headphone Correction | 5-7 days | ★★★★☆ |
+   619→| 18 | GAP-15: Liner Notes | 3-5 days | ★★☆☆☆ |
+   620→| 19 | GAP-16: Theme System | 3-5 days | ★★★☆☆ |
+   621→| 20 | GAP-17: AI DJ | 10+ days | ★★★★☆ |
+   622→
+   623→---
+   624→
+   625→## PART 5: QUICK WINS (Under 1 Day Each)
+   626→
+   627→These can be done immediately for maximum visual/UX impact:
+   628→
+   629→1. **Add `AnalyserNode` to the DSP chain** — just 5 lines of code to start capturing frequency data
+   630→2. **Track-level quality badges** — show "Hi-Res", "Lossless", "DSD" badges on tracks (data already exists in Track type)
+   631→3. **"Now Playing" blur backdrop** — extract dominant color from cover art, apply as gradient background (inspired by Spotify)
+   632→4. **Duration/size in track list** — format and display file size + bitrate in browse views
+   633→5. **Audio quality indicator in PlayerBar** — show "FLAC 24/96" or "MP3 320k" next to the track title
+   634→6. **Drag-to-reorder in playlists** — dnd-kit is already installed
+   635→7. **"Love" heart animation** — add a micro-animation when toggling loved tracks
+   636→8. **Play count display** — show play count on tracks/albums (data model supports it)
+   637→
+   638→---
+   639→
+   640→## SUMMARY: DSP's Competitive Position
+   641→
+   642→```
+   643→                    AUDIO QUALITY    DISCOVERY    VISUAL UX    SOCIAL    CLASSICAL
+   644→                    ─────────────    ─────────    ─────────    ──────    ────────
+   645→Roon                ██████████       ████████░░   ████████░░   ██░░░░░░░   ██████████
+   646→Spotify             ██████░░░░       ██████████   ███████░░░   ██████████   ██░░░░░░░
+   647→Apple Music         █████████░       ████████░░   ████████░░   ███████░░░   ████████░░
+   648→Tidal/Qobuz         ██████████       ██████░░░░   ██████░░░░   ██████░░░░   ████░░░░░
+   649→Audirvana           ██████████       ██░░░░░░░   █████░░░░░   ░░░░░░░░░   █████░░░░
+   650→Plexamp             ██████░░░░       ████████░░   ██████████   ██░░░░░░░   ░░░░░░░░░
+   651→Navidrome           ██████░░░░       ████░░░░░   ██████░░░░   ██░░░░░░░   ██░░░░░░░
+   652→                    ─────────────    ─────────    ─────────    ──────    ────────
+   653→DSP (current)       ████████░░       ██░░░░░░░   ██████░░░░   ░░░░░░░░░   ██░░░░░░░
+   654→DSP (after Phase 1) ████████░░       ██░░░░░░░   █████████░   ░░░░░░░░░   ██░░░░░░░
+   655→DSP (after Phase 3) █████████░       ████████░░   █████████░   ░░░░░░░░░   ████████░░
+   656→```
+   657→
+   658→**DSP's core strength**: The Web Audio DSP pipeline (EQ, crossfeed, limiter, signal path) is genuinely best-in-class for a web app. No other web-based player has this level of DSP configurability.
+   659→
+   660→**DSP's biggest weakness**: Zero visual feedback (no visualizer), zero discovery intelligence, and non-functional loudness normalization. The classical music views are stubs. These three gaps, if addressed, would transform DSP from "technically impressive demo" to "daily-driver player."
+   661→
+   662→**Recommended first action**: Implement GAP-1 (Audio Visualization) and GAP-4 (Lyrics) this week. Together they take ~7 days and will make the app feel 10x more polished and engaging.
+   663→

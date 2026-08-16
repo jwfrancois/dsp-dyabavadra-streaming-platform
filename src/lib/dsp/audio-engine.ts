@@ -15,6 +15,10 @@ let _ctx: AudioContext | null = null;
 let _source: MediaElementAudioSourceNode | null = null;
 let _mediaConnected = false;
 
+// ── Analyser for visualization ──
+let _analyser: AnalyserNode | null = null;
+const FFT_SIZE = 2048;
+
 // ── DSP Node Chain ──
 interface DSPChain {
   eqNodes: BiquadFilterNode[];
@@ -30,6 +34,27 @@ interface DSPChain {
   destination: AudioDestinationNode;
 }
 
+// ── Get the AnalyserNode for visualization ──
+export function getAnalyser(): AnalyserNode | null {
+  return _analyser;
+}
+
+// ── Get frequency data from the analyser ──
+export function getFrequencyData(): Uint8Array {
+  if (!_analyser) return new Uint8Array(0);
+  const data = new Uint8Array(_analyser.frequencyBinCount);
+  _analyser.getByteFrequencyData(data);
+  return data;
+}
+
+// ── Get time domain data (waveform) from the analyser ──
+export function getWaveformData(): Uint8Array {
+  if (!_analyser) return new Uint8Array(0);
+  const data = new Uint8Array(_analyser.frequencyBinCount);
+  _analyser.getByteTimeDomainData(data);
+  return data;
+}
+
 let _chain: DSPChain | null = null;
 let _currentConfig: DSPConfig | null = null;
 
@@ -42,6 +67,19 @@ export function getAudioContext(): AudioContext {
     _ctx.resume();
   }
   return _ctx;
+}
+
+// ── Ensure analyser node exists ──
+function ensureAnalyser(): AnalyserNode {
+  if (!_analyser) {
+    const ctx = getAudioContext();
+    _analyser = ctx.createAnalyser();
+    _analyser.fftSize = FFT_SIZE;
+    _analyser.smoothingTimeConstant = 0.8;
+    _analyser.minDecibels = -90;
+    _analyser.maxDecibels = -10;
+  }
+  return _analyser;
 }
 
 // ── Connect a media element to the DSP chain ──
@@ -205,8 +243,13 @@ export function rebuildChain(config: DSPConfig | null): void {
   };
   _chain = chain;
 
-  // Chain connections: Source → EQ → Crossfeed → Loudness → Limiter → Master → Destination
+  // Chain connections: Source → EQ → Crossfeed → Loudness → Limiter → Master → Analyser → Destination
+  const analyser = ensureAnalyser();
   let currentNode: AudioNode = ctx.destination;
+
+  // Analyser → Destination (always, for visualization — does not modify audio)
+  analyser.connect(currentNode);
+  currentNode = analyser;
 
   // Master → Destination (always)
   masterGain.connect(currentNode);
@@ -271,10 +314,11 @@ export function rebuildChain(config: DSPConfig | null): void {
   if (crossfeedSplitter) modules.push('Crossfeed');
   if (loudnessGain) modules.push('Loudness');
   if (volumeLimiter) modules.push('Limiter');
-  if (modules.length > 0) {
+  modules.push('Analyser');
+  if (modules.length > 1) {
     console.log(`[DSP Engine] Active: ${modules.join(' → ')} → Master → Output`);
   } else {
-    console.log('[DSP Engine] All DSP modules bypassed — direct passthrough');
+    console.log('[DSP Engine] All DSP modules bypassed — passthrough + Analyser');
   }
 }
 
@@ -459,5 +503,6 @@ export function resetDSP(): void {
     } catch {}
     _chain = null;
   }
+  if (_analyser) { try { _analyser.disconnect(); } catch {} _analyser = null; }
   _currentConfig = null;
 }
