@@ -58,3 +58,26 @@ Stage Summary:
 - Added collapsible queue peek (next 5 tracks), gapless/bit-perfect badges, detailed format row
 - Album/artist/genre clickable navigation, add-to-playlist dropdown
 - Improved visualizer (180px, 96 bars, glow backdrop), lyrics/visualizer toggle
+---
+Task ID: 1
+Agent: Main Agent
+Task: Build out Jellyfin Media Server integration — API client, store, UI, proxy, routing
+
+Work Log:
+- Read existing codebase: player store, streaming store, UI patterns, API proxy routes, sidebar navigation
+- Created `/src/lib/jellyfin.ts` — full Jellyfin REST API client (auth, browse, search, playback, images, favorites, sessions)
+- Created `/src/store/jellyfin.ts` — Zustand store with connection management, library browsing cache, pagination, search, and Track conversion
+- Created `/src/app/api/proxy/jellyfin/route.ts` — audio stream proxy with Range support and Jellyfin auth forwarding
+- Updated `/src/store/player.ts` — buildAudioUrl and resolveAudioUrl now route Jellyfin tracks (jf- prefix) through /api/proxy/jellyfin
+- Created `/src/components/dsp/JellyfinView.tsx` — main library browser with connection panel, album/artist/track/playlist tabs, grid/list views
+- Created `/src/components/dsp/JellyfinArtistView.tsx` — artist detail with album grid and track list
+- Created `/src/components/dsp/JellyfinAlbumView.tsx` — album detail with track listing, format info, play all/shuffle
+- Created `/src/components/dsp/JellyfinPlaylistView.tsx` — playlist detail with track listing
+- Updated `/src/lib/data.ts` — added 'jellyfin', 'jellyfin-artist', 'jellyfin-album', 'jellyfin-playlist' to ViewName type
+- Updated `/src/app/page.tsx` — added imports and route cases for 4 new Jellyfin views
+- Updated `/src/components/dsp/Sidebar.tsx` — added Jellyfin navigation item in Library section
+
+Stage Summary:
+- Full Jellyfin integration built and compiling cleanly (next build passes)
+- 8 new files created, 4 existing files modified
+- User can: connect to Jellyfin server, browse albums/artists/tracks/playlists, view detail pages, play music through DSP pipeline

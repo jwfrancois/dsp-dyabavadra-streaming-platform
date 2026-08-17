@@ -59,6 +59,7 @@ const libraryItems = [
   { icon: User, label: 'Profiles', view: 'profiles' as const },
   { icon: Speaker, label: 'Zones', view: 'zones' as const },
   { icon: Globe, label: 'Streaming', view: 'streaming' as const },
+  { icon: Radio, label: 'Jellyfin', view: 'jellyfin' as const },
   { icon: Search, label: 'Search', view: 'search' as const },
   { icon: Settings, label: 'Settings', view: 'settings' as const },
 ];

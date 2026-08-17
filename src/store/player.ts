@@ -17,8 +17,13 @@ function buildAudioUrl(track: Track): string {
 
   // 3. Server-side scanned tracks streamed from filesystem
   if (track.filePath) {
-    if (track.filePath.startsWith('http://') || track.filePath.startsWith('https://'))
+    if (track.filePath.startsWith('http://') || track.filePath.startsWith('https://')) {
+      // Jellyfin tracks have IDs prefixed with 'jf-' — route through Jellyfin proxy
+      if (track.id.startsWith('jf-')) {
+        return `/api/proxy/jellyfin?url=${encodeURIComponent(track.filePath)}`;
+      }
       return `/api/proxy/podcast?url=${encodeURIComponent(track.filePath)}`;
+    }
     if (track.filePath.startsWith('/'))
       return `/api/library/stream?file=${encodeURIComponent(track.filePath)}`;
   }
@@ -38,7 +43,12 @@ export async function resolveAudioUrl(track: Track): Promise<string> {
   // 2. Check existing blob URL
   if (track.blobUrl) return track.blobUrl;
 
-  // 3. Try to get from IndexedDB (for client-imported tracks)
+  // 3. Jellyfin tracks — use dedicated proxy
+  if (track.id.startsWith('jf-') && track.filePath && (track.filePath.startsWith('http://') || track.filePath.startsWith('https://'))) {
+    return `/api/proxy/jellyfin?url=${encodeURIComponent(track.filePath)}`;
+  }
+
+  // 4. Try to get from IndexedDB (for client-imported tracks)
   if ((track as any).isLocal && track.id) {
     try {
       const { getAudioBlobURL } = await import('@/lib/audio-db');
@@ -49,7 +59,7 @@ export async function resolveAudioUrl(track: Track): Promise<string> {
     }
   }
 
-  // 4. Fall back to server streaming
+  // 5. Fall back to server streaming
   return buildAudioUrl(track);
 }
 

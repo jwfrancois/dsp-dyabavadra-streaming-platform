@@ -1,0 +1,574 @@
+     1→'use client';
+     2→
+     3→import React from 'react';
+     4→import { useUIStore } from '@/store/ui';
+     5→import { usePlayerStore } from '@/store/player';
+     6→import { useLocalLibraryStore, type LocalTrack } from '@/store/local-library';
+     7→import { formatDuration, formatSampleRate, formatFileSize, getCoverGradient, type Track } from '@/lib/data';
+     8→import { Card, CardContent } from '@/components/ui/card';
+     9→import { Button } from '@/components/ui/button';
+    10→import { Badge } from '@/components/ui/badge';
+    11→import { ScrollArea } from '@/components/ui/scroll-area';
+    12→import { Separator } from '@/components/ui/separator';
+    13→import { useArtistBio, useDiscography, useArtistImage, useSimilarArtists } from '@/lib/use-music-metadata';
+    14→import {
+    15→  Play, ArrowLeft, Clock, Heart, Mic2, User,
+    16→  Music, Star, ChevronRight, Radio, HardDrive, BookOpen,
+    17→  ExternalLink, Globe, Disc3, Calendar, Award,
+    18→  Users, Waves,
+    19→} from 'lucide-react';
+    20→
+    21→/** Convert a LocalTrack to the Track format for the player queue */
+    22→function localTrackToTrack(lt: LocalTrack): Track {
+    23→  return {
+    24→    id: lt.id,
+    25→    title: lt.title,
+    26→    albumId: lt.album,
+    27→    albumName: lt.album,
+    28→    artistId: lt.artist,
+    29→    artistName: lt.artist,
+    30→    trackNumber: lt.trackNumber,
+    31→    discNumber: lt.discNumber,
+    32→    duration: lt.duration,
+    33→    format: lt.format,
+    34→    bitDepth: lt.bitDepth,
+    35→    sampleRate: lt.sampleRate,
+    36→    channels: lt.channels,
+    37→    bitrate: lt.bitrate,
+    38→    filePath: lt.filePath,
+    39→    fileSize: lt.fileSize,
+    40→    composers: lt.composer ? [lt.composer] : [],
+    41→    performers: [],
+    42→    genre: lt.genre,
+    43→    loved: false,
+    44→    playCount: 0,
+    45→    source: 'local' as const,
+    46→    isAvailable: true,
+    47→    blobUrl: (lt as any).blobUrl as string | undefined,
+    48→  };
+    49→}
+    50→
+    51→export function ArtistDetailView() {
+    52→  const { viewParams, navigate } = useUIStore();
+    53→  const { play, setQueue, currentTrack, isPlaying } = usePlayerStore();
+    54→  const localTracks = useLocalLibraryStore(s => s.tracks);
+    55→  const artistId = viewParams.artistId;
+    56→
+    57→  // Parse artistId: format is "local-artist-{artistName}"
+    58→  const artistName = React.useMemo(() => {
+    59→    if (!artistId || !artistId.startsWith('local-artist-')) return null;
+    60→    return artistId.replace(/^local-artist-/, '');
+    61→  }, [artistId]);
+    62→
+    63→  // Web metadata
+    64→  const { data: artistBio, loading: bioLoading, error: bioError } = useArtistBio(artistName || '');
+    65→  const { data: artistImage, loading: artistImageLoading } = useArtistImage(artistName || '');
+    66→  const { data: discographyData, loading: discogLoading } = useDiscography(artistName || '');
+    67→  const { data: similarArtists, loading: similarLoading } = useSimilarArtists(artistName || '');
+    68→
+    69→  // Get all tracks for this artist from the local library
+    70→  const artistLocalTracks = React.useMemo(() => {
+    71→    if (!artistName) return [];
+    72→    return localTracks
+    73→      .filter(t => t.artist === artistName || t.albumArtist === artistName)
+    74→      .sort((a, b) => {
+    75→        const albumOrder = a.album.localeCompare(b.album);
+    76→        if (albumOrder !== 0) return albumOrder;
+    77→        return (a.discNumber - b.discNumber) || (a.trackNumber - b.trackNumber);
+    78→      });
+    79→  }, [localTracks, artistName]);
+    80→
+    81→  // Convert to Track format for player
+    82→  const artistTracks = React.useMemo(() => artistLocalTracks.map(localTrackToTrack), [artistLocalTracks]);
+    83→
+    84→  // Derive albums for this artist
+    85→  const artistAlbums = React.useMemo(() => {
+    86→    const albumMap = new Map<string, {
+    87→      id: string;
+    88→      title: string;
+    89→      artistName: string;
+    90→      year: number;
+    91→      genre: string;
+    92→      format: string;
+    93→      sampleRate: number;
+    94→      bitDepth: number;
+    95→      channels: number;
+    96→      coverArt: string | null;
+    97→      trackCount: number;
+    98→      totalDuration: number;
+    99→    }>();
+   100→    for (const lt of artistLocalTracks) {
+   101→      const key = `${lt.albumArtist || lt.artist}|||${lt.album}`;
+   102→      const existing = albumMap.get(key);
+   103→      if (existing) {
+   104→        existing.trackCount++;
+   105→        existing.totalDuration += lt.duration;
+   106→        if (!existing.coverArt && lt.coverArt) existing.coverArt = lt.coverArt;
+   107→      } else {
+   108→        albumMap.set(key, {
+   109→          id: `local-album-${lt.albumArtist || lt.artist}|||${lt.album}`,
+   110→          title: lt.album,
+   111→          artistName: lt.albumArtist || lt.artist,
+   112→          year: lt.year,
+   113→          genre: lt.genre,
+   114→          format: lt.format,
+   115→          sampleRate: lt.sampleRate,
+   116→          bitDepth: lt.bitDepth,
+   117→          channels: lt.channels,
+   118→          coverArt: lt.coverArt,
+   119→          trackCount: 1,
+   120→          totalDuration: lt.duration,
+   121→        });
+   122→      }
+   123→    }
+   124→    return Array.from(albumMap.values()).sort((a, b) => b.year - a.year);
+   125→  }, [artistLocalTracks]);
+   126→
+   127→  // Get genres for this artist
+   128→  const artistGenres = React.useMemo(() => {
+   129→    const genres = new Set<string>();
+   130→    for (const lt of artistLocalTracks) {
+   131→      if (lt.genre) genres.add(lt.genre);
+   132→    }
+   133→    return [...genres].sort();
+   134→  }, [artistLocalTracks]);
+   135→
+   136→  // Aggregate formats
+   137→  const formatBreakdown = React.useMemo(() => {
+   138→    const counts: Record<string, number> = {};
+   139→    for (const lt of artistLocalTracks) {
+   140→      const fmt = lt.format.toUpperCase();
+   141→      counts[fmt] = (counts[fmt] || 0) + 1;
+   142→    }
+   143→    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+   144→  }, [artistLocalTracks]);
+   145→
+   146→  // Aggregate composers
+   147→  const allComposers = React.useMemo(() => {
+   148→    const compMap = new Map<string, number>();
+   149→    for (const lt of artistLocalTracks) {
+   150→      if (lt.composer) {
+   151→        compMap.set(lt.composer, (compMap.get(lt.composer) || 0) + 1);
+   152→      }
+   153→    }
+   154→    return Array.from(compMap.entries()).sort((a, b) => b[1] - a[1]);
+   155→  }, [artistLocalTracks]);
+   156→
+   157→  // Total library stats for this artist
+   158→  const totalDuration = React.useMemo(() => artistLocalTracks.reduce((s, t) => s + t.duration, 0), [artistLocalTracks]);
+   159→  const totalSize = React.useMemo(() => artistLocalTracks.reduce((s, t) => s + t.fileSize, 0), [artistLocalTracks]);
+   160→
+   161→  const playAll = () => {
+   162→    if (artistTracks.length > 0) setQueue(artistTracks, 0);
+   163→  };
+   164→
+   165→  const playAlbum = (albumKey: string) => {
+   166→    const albumTrackList = artistTracks.filter(t => {
+   167→      const key = `${t.artistName}|||${t.albumName}`;
+   168→      return key === albumKey;
+   169→    });
+   170→    if (albumTrackList.length > 0) setQueue(albumTrackList, 0);
+   171→  };
+   172→
+   173→  // Shuffle play
+   174→  const shuffleAll = () => {
+   175→    if (artistTracks.length > 0) {
+   176→      const shuffled = [...artistTracks].sort(() => Math.random() - 0.5);
+   177→      setQueue(shuffled, 0);
+   178→    }
+   179→  };
+   180→
+   181→  // Not found state
+   182→  if (!artistName) {
+   183→    return (
+   184→      <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
+   185→        <User className="w-12 h-12" />
+   186→        <p>Artist not found</p>
+   187→        <Button variant="ghost" size="sm" onClick={() => navigate('browse-artists')}>
+   188→          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Artists
+   189→        </Button>
+   190→      </div>
+   191→    );
+   192→  }
+   193→
+   194→  if (artistLocalTracks.length === 0) {
+   195→    return (
+   196→      <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
+   197→        <User className="w-12 h-12" />
+   198→        <p>No tracks found for this artist</p>
+   199→        <p className="text-xs">&quot;{artistName}&quot;</p>
+   200→        <Button variant="ghost" size="sm" onClick={() => navigate('browse-artists')}>
+   201→          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Artists
+   202→        </Button>
+   203→      </div>
+   204→    );
+   205→  }
+   206→
+   207→  return (
+   208→    <div className="h-full">
+   209→      <ScrollArea className="h-full">
+   210→        <div className="max-w-5xl mx-auto p-6">
+   211→          <Button variant="ghost" size="sm" className="mb-4 text-muted-foreground hover:text-foreground" onClick={() => navigate('browse-artists')}>
+   212→            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Artists
+   213→          </Button>
+   214→
+   215→          {/* ── HERO SECTION ── */}
+   216→          <div className="relative mb-8 rounded-2xl overflow-hidden bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-border/50">
+   217→            {/* Background gradient blur effect */}
+   218→            <div className={`absolute inset-0 bg-gradient-to-br ${getCoverGradient(artistId)} opacity-20 blur-3xl`} />
+   219→
+   220→            <div className="relative flex flex-col md:flex-row gap-6 p-6 md:p-8">
+   221→              {/* Artist Photo */}
+   222→              <div className="flex-shrink-0 self-center">
+   223→                <div className="w-48 h-48 md:w-56 md:h-56 rounded-full shadow-2xl relative overflow-hidden ring-2 ring-primary/20 ring-offset-4 ring-offset-transparent">
+   224→                  {artistImageLoading ? (
+   225→                    <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+   226→                      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+   227→                    </div>
+   228→                  ) : (
+   229→                    <div className={`w-full h-full bg-gradient-to-br ${getCoverGradient(artistId)} flex items-center justify-center`}>
+   230→                      <User className="w-20 h-20 text-white/20" />
+   231→                    </div>
+   232→                  )}
+   233→                  {/* Shine overlay */}
+   234→                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.15),transparent_60%)]" />
+   235→                </div>
+   236→              </div>
+   237→
+   238→              {/* Artist Info */}
+   239→              <div className="flex-1 text-center md:text-left flex flex-col justify-center">
+   240→                <div className="flex flex-wrap gap-2 mb-3 justify-center md:justify-start">
+   241→                  <Badge variant="outline" className="text-[10px]">
+   242→                    <HardDrive className="w-2.5 h-2.5 mr-0.5" /> Local Artist
+   243→                  </Badge>
+   244→                  {artistGenres.map(g => (
+   245→                    <Badge
+   246→                      key={g}
+   247→                      variant="secondary"
+   248→                      className="text-xs cursor-pointer hover:bg-primary/30 transition-colors"
+   249→                      onClick={() => navigate('genre-detail', { genreName: g })}
+   250→                    >
+   251→                      {g}
+   252→                    </Badge>
+   253→                  ))}
+   254→                </div>
+   255→
+   256→                <h1 className="text-4xl md:text-5xl font-bold mb-2 tracking-tight">{artistName}</h1>
+   257→
+   258→                <p className="text-sm text-muted-foreground mb-4">
+   259→                  {artistAlbums.length} album{artistAlbums.length !== 1 ? 's' : ''} · {artistTracks.length} track{artistTracks.length !== 1 ? 's' : ''} · {formatDuration(totalDuration)} total
+   260→                </p>
+   261→
+   262→                <div className="flex gap-3 mb-4 justify-center md:justify-start">
+   263→                  <Button onClick={playAll} className="shadow-lg shadow-primary/20">
+   264→                    <Play className="w-4 h-4 mr-2" /> Play All
+   265→                  </Button>
+   266→                  <Button size="sm" variant="outline" onClick={shuffleAll}>
+   267→                    <Radio className="w-4 h-4 mr-2" /> Shuffle
+   268→                  </Button>
+   269→                  <Button size="sm" variant="outline">
+   270→                    <Heart className="w-4 h-4 mr-2" /> Follow
+   271→                  </Button>
+   272→                  <Button size="sm" variant="outline" onClick={() => navigate('radio')}>
+   273→                    <Radio className="w-4 h-4 mr-2" /> Artist Radio
+   274→                  </Button>
+   275→                </div>
+   276→              </div>
+   277→            </div>
+   278→          </div>
+   279→
+   280→          {/* ── STATS ROW ── */}
+   281→          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+   282→            {[
+   283→              { label: 'Albums', value: artistAlbums.length.toString(), icon: Disc3, color: 'text-purple-400' },
+   284→              { label: 'Tracks', value: artistTracks.length.toString(), icon: Music, color: 'text-blue-400' },
+   285→              { label: 'Total Duration', value: formatDuration(totalDuration), icon: Clock, color: 'text-green-400' },
+   286→              { label: 'Genres', value: artistGenres.length.toString(), icon: Star, color: 'text-amber-400' },
+   287→            ].map(stat => (
+   288→              <Card key={stat.label} className="bg-card/80 backdrop-blur border-border hover:border-primary/20 transition-colors">
+   289→                <CardContent className="p-3 flex items-center gap-3">
+   290→                  <stat.icon className={`w-5 h-5 ${stat.color}`} />
+   291→                  <div>
+   292→                    <p className="text-lg font-bold tabular-nums">{stat.value}</p>
+   293→                    <p className="text-[11px] text-muted-foreground">{stat.label}</p>
+   294→                  </div>
+   295→                </CardContent>
+   296→              </Card>
+   297→            ))}
+   298→          </div>
+   299→
+   300→          {/* ── ARTIST BIOGRAPHY (from web) ── */}
+   301→          <section className="mb-8">
+   302→            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+   303→              <BookOpen className="w-5 h-5 text-primary" /> About {artistName}
+   304→            </h2>
+   305→            {bioLoading && (
+   306→              <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+   307→                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+   308→                Fetching biography from web...
+   309→              </div>
+   310→            )}
+   311→            {bioError && (
+   312→              <p className="text-xs text-muted-foreground py-2">Unable to fetch biography: {bioError}</p>
+   313→            )}
+   314→            {artistBio && !bioLoading && (
+   315→              <div className="space-y-3">
+   316→                {artistBio.summaries.map((s, i) => (
+   317→                  <Card key={i} className="bg-card/80 backdrop-blur border-border hover:border-primary/20 transition-colors">
+   318→                    <CardContent className="p-4">
+   319→                      <div className="flex items-start justify-between gap-3">
+   320→                        <div className="flex-1">
+   321→                          <div className="flex items-center gap-2 mb-2">
+   322→                            <Globe className="w-3 h-3 text-muted-foreground" />
+   323→                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{s.source}</p>
+   324→                          </div>
+   325→                          <h3 className="text-sm font-medium mb-2">{s.title}</h3>
+   326→                          <p className="text-xs text-muted-foreground leading-relaxed">{s.snippet}</p>
+   327→                        </div>
+   328→                        <a
+   329→                          href={s.url}
+   330→                          target="_blank"
+   331→                          rel="noopener noreferrer"
+   332→                          className="text-xs text-primary hover:underline flex-shrink-0 inline-flex items-center gap-1 mt-1"
+   333→                        >
+   334→                          Full article <ExternalLink className="w-3 h-3" />
+   335→                        </a>
+   336→                      </div>
+   337→                    </CardContent>
+   338→                  </Card>
+   339→                ))}
+   340→                {artistBio.readMoreUrl && (
+   341→                  <a
+   342→                    href={artistBio.readMoreUrl}
+   343→                    target="_blank"
+   344→                    rel="noopener noreferrer"
+   345→                    className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+   346→                  >
+   347→                    Read full biography <ExternalLink className="w-3 h-3" />
+   348→                  </a>
+   349→                )}
+   350→              </div>
+   351→            )}
+   352→          </section>
+   353→
+   354→          {/* ── WEB DISCOGRAPHY ── */}
+   355→          {discographyData && !discogLoading && (
+   356→            <section className="mb-8">
+   357→              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+   358→                <Globe className="w-5 h-5 text-blue-400" /> Discography (Web)
+   359→              </h2>
+   360→              <div className="space-y-2">
+   361→                {(discographyData as any).sources?.map((s: { title: string; snippet: string; url: string; source: string }, i: number) => (
+   362→                  <Card key={i} className="bg-card/80 backdrop-blur border-border">
+   363→                    <CardContent className="p-3">
+   364→                      <div className="flex items-start justify-between gap-3">
+   365→                        <div className="flex-1">
+   366→                          <p className="text-xs text-muted-foreground mb-1">{s.source}</p>
+   367→                          <h3 className="text-sm font-medium mb-1">{s.title}</h3>
+   368→                          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{s.snippet}</p>
+   369→                        </div>
+   370→                        <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex-shrink-0 inline-flex items-center gap-1">
+   371→                          View <ExternalLink className="w-3 h-3" />
+   372→                        </a>
+   373→                      </div>
+   374→                    </CardContent>
+   375→                  </Card>
+   376→                ))}
+   377→              </div>
+   378→            </section>
+   379→          )}
+   380→
+   381→          {/* ── SIMILAR ARTISTS ── */}
+   382→          {similarArtists && !similarLoading && similarArtists.results.length > 0 && (
+   383→            <section className="mb-8">
+   384→              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+   385→                <Users className="w-5 h-5 text-muted-foreground" /> Related Artists
+   386→              </h2>
+   387→              <div className="flex flex-wrap gap-2">
+   388→                {similarArtists.results.map((sa, i) => (
+   389→                  <Badge
+   390→                    key={i}
+   391→                    variant="outline"
+   392→                    className="px-3 py-1.5 cursor-pointer hover:bg-accent/50 transition-colors"
+   393→                    onClick={() => navigate('search', { query: sa.name })}
+   394→                  >
+   395→                    {sa.name}
+   396→                    <ExternalLink className="w-2.5 h-2.5 ml-1 opacity-50" />
+   397→                  </Badge>
+   398→                ))}
+   399→              </div>
+   400→            </section>
+   401→          )}
+   402→
+   403→          <Separator className="my-6" />
+   404→
+   405→          {/* ── LOCAL DISCOGRAPHY ── */}
+   406→          {artistAlbums.length > 0 && (
+   407→            <section className="mb-8">
+   408→              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+   409→                <Disc3 className="w-5 h-5 text-primary" /> Discography
+   410→                <Badge variant="outline" className="text-[10px]">{artistAlbums.length} album{artistAlbums.length !== 1 ? 's' : ''}</Badge>
+   411→              </h2>
+   412→              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+   413→                {artistAlbums.map(album => (
+   414→                  <div
+   415→                    key={album.id}
+   416→                    className="group cursor-pointer"
+   417→                    onClick={() => navigate('album-detail', { albumId: album.id })}
+   418→                  >
+   419→                    <div className="relative mb-2">
+   420→                      {album.coverArt ? (
+   421→                        <div className="w-full aspect-square rounded-lg overflow-hidden shadow-lg group-hover:shadow-xl transition-shadow">
+   422→                          <img src={album.coverArt} alt={album.title} className="w-full h-full object-cover" />
+   423→                        </div>
+   424→                      ) : (
+   425→                        <div className={`w-full aspect-square rounded-lg bg-gradient-to-br ${getCoverGradient(album.id)} shadow-lg group-hover:shadow-xl transition-shadow`} />
+   426→                      )}
+   427→                      {/* Shine overlay */}
+   428→                      <div className="absolute inset-0 rounded-lg bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.12),transparent_60%)] pointer-events-none" />
+   429→                      {/* Format badge */}
+   430→                      <Badge variant="secondary" className="absolute top-2 left-2 text-[9px] font-mono bg-black/50 backdrop-blur border-0">
+   431→                        {album.format} {formatSampleRate(album.sampleRate)}
+   432→                      </Badge>
+   433→                      {/* Play button */}
+   434→                      <Button
+   435→                        variant="default"
+   436→                        size="icon"
+   437→                        className="absolute bottom-2 right-2 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-all translate-y-1 group-hover:translate-y-0 shadow-lg"
+   438→                        onClick={(e) => { e.stopPropagation(); playAlbum(`${album.artistName}|||${album.title}`); }}
+   439→                      >
+   440→                        <Play className="w-3.5 h-3.5 ml-0.5" />
+   441→                      </Button>
+   442→                    </div>
+   443→                    <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{album.title}</p>
+   444→                    <div className="flex items-center gap-1.5">
+   445→                      <p className="text-xs text-muted-foreground">
+   446→                        {album.year > 0 ? album.year : 'Unknown year'}
+   447→                      </p>
+   448→                      <span className="text-muted-foreground/30">·</span>
+   449→                      <p className="text-xs text-muted-foreground">
+   450→                        {album.trackCount} track{album.trackCount !== 1 ? 's' : ''}
+   451→                      </p>
+   452→                    </div>
+   453→                  </div>
+   454→                ))}
+   455→              </div>
+   456→            </section>
+   457→          )}
+   458→
+   459→          {/* ── FORMAT BREAKDOWN ── */}
+   460→          {formatBreakdown.length > 0 && (
+   461→            <section className="mb-8">
+   462→              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+   463→                <Waves className="w-5 h-5 text-muted-foreground" /> Audio Formats
+   464→              </h2>
+   465→              <div className="flex flex-wrap gap-2">
+   466→                {formatBreakdown.map(([fmt, count]) => (
+   467→                  <Badge key={fmt} variant="outline" className="px-3 py-1.5 font-mono text-xs">
+   468→                    {fmt} <span className="text-muted-foreground ml-1">({count})</span>
+   469→                  </Badge>
+   470→                ))}
+   471→                <Badge variant="outline" className="px-3 py-1.5 text-xs">
+   472→                  <HardDrive className="w-3 h-3 mr-1" /> Total: {formatFileSize(totalSize)}
+   473→                </Badge>
+   474→              </div>
+   475→            </section>
+   476→          )}
+   477→
+   478→          <Separator className="my-6" />
+   479→
+   480→          {/* ── ALL TRACKS ── */}
+   481→          <section className="mb-8">
+   482→            <div className="flex items-center justify-between mb-4">
+   483→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   484→                <Music className="w-5 h-5 text-primary" /> All Tracks
+   485→              </h2>
+   486→              <span className="text-xs text-muted-foreground">{artistTracks.length} tracks · {formatDuration(totalDuration)}</span>
+   487→            </div>
+   488→            <div className="space-y-0.5">
+   489→              {artistTracks.map((track, i) => {
+   490→                const lt = artistLocalTracks[i];
+   491→                return (
+   492→                  <div
+   493→                    key={track.id}
+   494→                    className={`flex items-center gap-3 p-2.5 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors group ${
+   495→                      currentTrack?.id === track.id ? 'bg-accent/40' : ''
+   496→                    }`}
+   497→                    onClick={() => play(track)}
+   498→                  >
+   499→                    <span className="text-sm text-muted-foreground w-6 text-right tabular-nums">
+   500→                      {currentTrack?.id === track.id && isPlaying ? (
+   501→                        <Music className="w-3 h-3 text-primary" />
+   502→                      ) : (
+   503→                        <span className="group-hover:hidden">{i + 1}</span>
+   504→                      )}
+   505→                      <Play className="w-3 h-3 text-primary hidden group-hover:block ml-auto" />
+   506→                    </span>
+   507→                    {lt?.coverArt ? (
+   508→                      <img src={lt.coverArt} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
+   509→                    ) : (
+   510→                      <div className={`w-10 h-10 rounded bg-gradient-to-br ${getCoverGradient(track.id)} flex-shrink-0`} />
+   511→                    )}
+   512→                    <div className="flex-1 min-w-0">
+   513→                      <p className="text-sm font-medium truncate">{track.title}</p>
+   514→                      <div className="flex items-center gap-2 mt-0.5">
+   515→                        <span className="text-[11px] text-muted-foreground truncate">{track.albumName}</span>
+   516→                        <span className="text-[11px] text-muted-foreground/50 hidden sm:inline">·</span>
+   517→                        <span className="text-[10px] text-muted-foreground font-mono hidden sm:inline">{track.format} {formatSampleRate(track.sampleRate)}/{track.bitDepth}-bit</span>
+   518→                      </div>
+   519→                    </div>
+   520→                    <span className="text-xs text-muted-foreground hidden sm:block tabular-nums">{formatDuration(track.duration)}</span>
+   521→                  </div>
+   522→                );
+   523→              })}
+   524→            </div>
+   525→          </section>
+   526→
+   527→          {/* ── COMPOSERS ── */}
+   528→          {allComposers.length > 0 && (
+   529→            <section className="mb-8">
+   530→              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+   531→                <Mic2 className="w-5 h-5 text-muted-foreground" /> Composers
+   532→              </h2>
+   533→              <div className="flex flex-wrap gap-2">
+   534→                {allComposers.map(([name, count]) => (
+   535→                  <Badge
+   536→                    key={name}
+   537→                    variant="outline"
+   538→                    className="cursor-pointer hover:bg-accent/50 transition-colors px-3 py-1.5"
+   539→                    onClick={() => navigate('search', { query: name })}
+   540→                  >
+   541→                    {name} <span className="text-muted-foreground ml-1">({count})</span>
+   542→                  </Badge>
+   543→                ))}
+   544→              </div>
+   545→            </section>
+   546→          )}
+   547→
+   548→          {/* ── ARTIST IMAGE SOURCE ── */}
+   549→          {artistImage && !artistImageLoading && (
+   550→            <section className="mb-8">
+   551→              <Card className="bg-card/80 backdrop-blur border-border">
+   552→                <CardContent className="p-4">
+   553→                  <div className="flex items-center gap-2 mb-2">
+   554→                    <Globe className="w-4 h-4 text-muted-foreground" />
+   555→                    <p className="text-xs text-muted-foreground">Artist information sourced from {artistImage.source}</p>
+   556→                  </div>
+   557→                  <a
+   558→                    href={artistImage.imageUrl}
+   559→                    target="_blank"
+   560→                    rel="noopener noreferrer"
+   561→                    className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+   562→                  >
+   563→                    View artist page <ExternalLink className="w-3 h-3" />
+   564→                  </a>
+   565→                </CardContent>
+   566→              </Card>
+   567→            </section>
+   568→          )}
+   569→        </div>
+   570→      </ScrollArea>
+   571→    </div>
+   572→  );
+   573→}
+   574→

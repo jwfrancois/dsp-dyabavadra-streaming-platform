@@ -38,6 +38,10 @@ import { SecurityView } from '@/components/dsp/SecurityView';
 import { PluginManagerView } from '@/components/dsp/PluginManagerView';
 import { LicensingView } from '@/components/dsp/LicensingView';
 import { ListeningStatsView } from '@/components/dsp/ListeningStatsView';
+import { JellyfinView } from '@/components/dsp/JellyfinView';
+import { JellyfinArtistView } from '@/components/dsp/JellyfinArtistView';
+import { JellyfinAlbumView } from '@/components/dsp/JellyfinAlbumView';
+import { JellyfinPlaylistView } from '@/components/dsp/JellyfinPlaylistView';
 import { ZonePicker } from '@/components/dsp/ZonePicker';
 import { AudioEngineProvider } from '@/components/dsp/AudioEngineProvider';
 import { StoreHydrationGate } from '@/components/StoreHydration';
@@ -84,6 +88,10 @@ function ViewRouter({ view }: { view: ViewName }) {
     case 'plugins': return <PluginManagerView />;
     case 'licensing': return <LicensingView />;
     case 'listening-stats': return <ListeningStatsView />;
+    case 'jellyfin': return <JellyfinView />;
+    case 'jellyfin-artist': return <JellyfinArtistView />;
+    case 'jellyfin-album': return <JellyfinAlbumView />;
+    case 'jellyfin-playlist': return <JellyfinPlaylistView />;
     default: return <HomeView />;
   }
 }
