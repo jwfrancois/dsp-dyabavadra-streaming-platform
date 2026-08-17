@@ -262,13 +262,23 @@ export class JellyfinClient {
     };
   }
 
-  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const baseUrl = this.getBaseUrl();
+  private async request<T>(path: string, options: RequestInit = {}, skipAuth = false): Promise<T> {
+    const injectedBaseUrl = (options.headers as Record<string, string> | undefined)?.__baseUrl;
+    const baseUrl = skipAuth
+      ? normalizeServerUrl(injectedBaseUrl || '')
+      : this.getBaseUrl();
     const url = `${baseUrl}${path}`;
-    const headers: Record<string, string> = {
-      ...this.getHeaders(),
-      ...(options.headers as Record<string, string> | undefined),
-    };
+
+    // Build headers — extract __baseUrl before passing to fetch
+    const externalHeaders = { ...(options.headers as Record<string, string> | undefined) };
+    delete externalHeaders['__baseUrl'];
+
+    const headers: Record<string, string> = skipAuth
+      ? externalHeaders
+      : {
+          ...this.getHeaders(),
+          ...externalHeaders,
+        };
 
     // Remove Content-Type for GET/DELETE if no body
     if (!options.body && (options.method === 'GET' || options.method === 'DELETE')) {
@@ -324,7 +334,7 @@ export class JellyfinClient {
   async connect(serverUrl: string, username: string, password: string): Promise<JellyfinConfig> {
     const baseUrl = normalizeServerUrl(serverUrl);
 
-    // Step 1: Authenticate
+    // Step 1: Authenticate (skip auth headers — we don't have a token yet)
     const authResponse = await this.request<JellyfinAuthResponse>(
       '/Users/AuthenticateByName',
       {
@@ -332,9 +342,12 @@ export class JellyfinClient {
         body: JSON.stringify({ Username: username, Pw: password }),
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': `MediaBrowser Client="DSP", Device="Browser", DeviceId="dsp-jellyfin-${typeof window !== 'undefined' ? window.navigator.userAgent.slice(0, 32).replace(/[^a-zA-Z0-9]/g, '') : 'ssr'}", Version="1.0.0"`,
-        },
-      }
+          '__baseUrl': baseUrl,
+        } as Record<string, string>,
+      },
+      true // skipAuth
     );
 
     const token = authResponse.AccessToken;
