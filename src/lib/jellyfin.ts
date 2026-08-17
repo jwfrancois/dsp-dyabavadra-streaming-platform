@@ -405,25 +405,30 @@ export class JellyfinClient {
       // If system info fails, continue with defaults
     }
 
-    // Step 3: Auto-detect music and podcast libraries using /Library/VirtualFolders
-    // This is the authoritative Jellyfin API — each virtual folder has a CollectionType
-    // (e.g. "music", "podcasts", "movies", "tvshows") regardless of user-chosen folder names.
+    // Step 3: Auto-detect music and podcast libraries
+    // Jellyfin's /Library/VirtualFolders returns an ARRAY of folder objects.
+    // Each has CollectionType ("music", "podcasts", etc.) and ItemId (the view ID for ParentId queries).
     let musicLibraryId = '';
     let podcastLibraryId = '';
     try {
-      const vfResponse = await this.request<{ Items?: Array<{ Name: string; CollectionType?: string; ItemId?: string; Id?: string }> }>('/Library/VirtualFolders');
-      const folders = vfResponse.Items ?? [];
+      const vfData = await this.request<Array<{ Name: string; CollectionType?: string; ItemId?: string }> | { Items?: Array<{ Name: string; CollectionType?: string; ItemId?: string }> }>('/Library/VirtualFolders');
+      // The API returns either a plain array or { Items: [...] } depending on Jellyfin version
+      const folders = Array.isArray(vfData) ? vfData : (vfData.Items ?? []);
       for (const folder of folders) {
         const ct = (folder.CollectionType || '').toLowerCase();
         if (ct === 'music' && !musicLibraryId) {
-          musicLibraryId = folder.ItemId || folder.Id || '';
+          musicLibraryId = folder.ItemId || '';
         }
-        if (ct === 'podcasts' && !podcastLibraryId) {
-          podcastLibraryId = folder.ItemId || folder.Id || '';
+        if ((ct === 'podcasts' || ct === 'podcast') && !podcastLibraryId) {
+          podcastLibraryId = folder.ItemId || '';
         }
       }
-      // Fallback: if VirtualFolders didn't expose ItemId/Id, try Views-based matching as backup
-      if (!musicLibraryId || !podcastLibraryId) {
+    } catch {
+ // VirtualFolders may fail; fall through to Views-based detection
+    }
+    // Fallback: use /Users/{userId}/Views to find libraries by name
+    if (!musicLibraryId || !podcastLibraryId) {
+      try {
         const views = await this.getViews();
         for (const item of views.Items) {
           if (item.Type !== 'CollectionFolder') continue;
@@ -431,14 +436,16 @@ export class JellyfinClient {
           if (!musicLibraryId && name.includes('music') && !name.includes('podcast')) {
             musicLibraryId = item.Id;
           }
-          if (!podcastLibraryId && name.includes('podcast')) {
+          if (!podcastLibraryId && (name.includes('podcast'))) {
             podcastLibraryId = item.Id;
           }
         }
+      } catch {
+        // Continue without auto-detected library
       }
-    } catch {
-      // Continue without auto-detected library — queries will work globally
     }
+
+    console.log(`[Jellyfin] Library detection: musicLibraryId=${musicLibraryId || '(none)'}, podcastLibraryId=${podcastLibraryId || '(none)'}`);
 
     // Step 4: Build and save config
     const config: JellyfinConfig = {
@@ -509,15 +516,15 @@ export class JellyfinClient {
     if (!this.config) throw new JellyfinNotAuthenticatedError();
 
     try {
-      const vfResponse = await this.request<{ Items?: Array<{ Name: string; CollectionType?: string; ItemId?: string; Id?: string }> }>('/Library/VirtualFolders');
-      const folders = vfResponse.Items ?? [];
+      const vfData = await this.request<Array<{ Name: string; CollectionType?: string; ItemId?: string }> | { Items?: Array<{ Name: string; CollectionType?: string; ItemId?: string }> }>('/Library/VirtualFolders');
+      const folders = Array.isArray(vfData) ? vfData : (vfData.Items ?? []);
       for (const folder of folders) {
         const ct = (folder.CollectionType || '').toLowerCase();
         if (ct === 'music' && !this.config.musicLibraryId) {
-          this.config.musicLibraryId = folder.ItemId || folder.Id || '';
+          this.config.musicLibraryId = folder.ItemId || '';
         }
-        if (ct === 'podcasts' && !this.config.podcastLibraryId) {
-          this.config.podcastLibraryId = folder.ItemId || folder.Id || '';
+        if ((ct === 'podcasts' || ct === 'podcast') && !this.config.podcastLibraryId) {
+          this.config.podcastLibraryId = folder.ItemId || '';
         }
       }
       // Fallback to Views-based matching
@@ -605,15 +612,15 @@ export class JellyfinClient {
     let musicLibraryId = '';
     let podcastLibraryId = '';
     try {
-      const vfResponse = await this.request<{ Items?: Array<{ Name: string; CollectionType?: string; ItemId?: string; Id?: string }> }>('/Library/VirtualFolders');
-      const folders = vfResponse.Items ?? [];
+      const vfData = await this.request<Array<{ Name: string; CollectionType?: string; ItemId?: string }> | { Items?: Array<{ Name: string; CollectionType?: string; ItemId?: string }> }>('/Library/VirtualFolders');
+      const folders = Array.isArray(vfData) ? vfData : (vfData.Items ?? []);
       for (const folder of folders) {
         const ct = (folder.CollectionType || '').toLowerCase();
         if (ct === 'music' && !musicLibraryId) {
-          musicLibraryId = folder.ItemId || folder.Id || '';
+          musicLibraryId = folder.ItemId || '';
         }
-        if (ct === 'podcasts' && !podcastLibraryId) {
-          podcastLibraryId = folder.ItemId || folder.Id || '';
+        if ((ct === 'podcasts' || ct === 'podcast') && !podcastLibraryId) {
+          podcastLibraryId = folder.ItemId || '';
         }
       }
       if (!musicLibraryId || !podcastLibraryId) {
@@ -951,14 +958,41 @@ export class JellyfinClient {
 
   /**
    * Get all podcast shows from the server.
-   * Jellyfin stores podcasts as "Series" items inside the podcast library.
-   * We query globally but prefer the podcast library if detected.
-   * Uses IncludeItemTypes=["Series"] to match how Jellyfin indexes podcast feeds.
+   * Jellyfin stores podcasts in a dedicated library with CollectionType="podcasts".
+   * Podcast shows can appear as Series, BoxSet, Folder, or other types depending on version.
+   * Strategy: if we know the podcast library ID, query its top-level items directly.
+   * If not, search globally by multiple possible types.
    */
   async getPodcasts(limit: number = 200): Promise<JellyfinItemsResponse> {
-    const queryParams: Record<string, unknown> = {
+    console.log(`[Jellyfin] getPodcasts called. podcastLibraryId=${this.config?.podcastLibraryId || '(none)'}`);
+    // If we have a podcast library ID, query its contents directly (non-recursive = top-level shows)
+    if (this.config?.podcastLibraryId) {
+      const qs = buildQueryString({
+        UserId: this.config!.userId,
+        ParentId: this.config.podcastLibraryId,
+        SortBy: 'SortName',
+        SortOrder: 'Ascending',
+        Recursive: false,
+        Fields: [
+          'PrimaryImageAspectRatio',
+          'BasicSyncInfo',
+          'Genres',
+          'Overview',
+          'Tags',
+          'DateCreated',
+          'ChildCount',
+        ],
+        Limit: limit,
+      });
+      return this.request<JellyfinItemsResponse>(
+        `/Users/${this.config!.userId}/Items${qs}`
+      );
+    }
+
+    // No podcast library detected — try multiple item types globally
+    const qs = buildQueryString({
       UserId: this.config!.userId,
-      IncludeItemTypes: ['Series'],
+      IncludeItemTypes: ['Series', 'BoxSet', 'Folder'],
       SortBy: 'SortName',
       SortOrder: 'Ascending',
       Recursive: true,
@@ -972,14 +1006,7 @@ export class JellyfinClient {
         'ChildCount',
       ],
       Limit: limit,
-    };
-
-    // Scope to the podcast library if auto-detected on connect
-    if (this.config?.podcastLibraryId) {
-      queryParams.ParentId = this.config.podcastLibraryId;
-    }
-
-    const qs = buildQueryString(queryParams as Record<string, string | number | boolean | undefined | null | string[] | number[]>);
+    });
     return this.request<JellyfinItemsResponse>(
       `/Users/${this.config!.userId}/Items${qs}`
     );

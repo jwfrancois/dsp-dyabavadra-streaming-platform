@@ -753,6 +753,10 @@ export const useJellyfinStore = create<JellyfinState>((set, get) => ({
 
     try {
       const response = await jellyfinClient.getPodcasts();
+      console.log(`[Jellyfin Store] fetchPodcasts: got ${response.Items.length} items, TotalRecordCount=${response.TotalRecordCount}`);
+      if (response.Items.length > 0) {
+        console.log(`[Jellyfin Store] First few items types:`, response.Items.slice(0, 5).map(i => ({ name: i.Name, type: i.Type, id: i.Id })));
+      }
       const mapped = response.Items.map(mapPodcastShow);
       set({ podcastShows: mapped, totalPodcastShows: response.TotalRecordCount, isLoadingPodcasts: false });
     } catch (err) {
@@ -762,6 +766,7 @@ export const useJellyfinStore = create<JellyfinState>((set, get) => ({
           : err instanceof Error
             ? err.message
             : 'Failed to fetch podcasts';
+      console.error('[Jellyfin Store] fetchPodcasts error:', message, err);
       set({ isLoadingPodcasts: false, error: message });
     }
   },
