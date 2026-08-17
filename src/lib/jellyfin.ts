@@ -552,20 +552,13 @@ export class JellyfinClient {
 
   /**
    * Connect using an API key instead of username/password.
-   * This is useful for admin-level access or when the user prefers key-based auth.
+   * Jellyfin API keys can be passed as X-Emby-Token header OR as ?api_key= query param.
+   * We use both for maximum compatibility across Jellyfin versions.
    */
   async connectWithApiKey(serverUrl: string, apiKey: string): Promise<JellyfinConfig> {
     const baseUrl = normalizeServerUrl(serverUrl);
 
-    // Authenticate with API key via /Users/AuthenticateByName using the api_key query param
-    // Jellyfin allows API key auth by passing the key as the password for a special user
-    const deviceId = typeof window !== 'undefined'
-      ? window.navigator.userAgent.slice(0, 32).replace(/[^a-zA-Z0-9]/g, '')
-      : 'ssr';
-    const mediaBrowserAuth = `MediaBrowser Client="DSP", Device="Browser", DeviceId="dsp-jellyfin-${deviceId}", Version="1.0.0"`;
-
-    // First, get the user info using the API key
-    // We temporarily set the config so request() will forward the API key as the token
+    // Set up a temporary config so request() can forward the API key
     this.config = {
       serverUrl: baseUrl,
       username: 'API Key User',
@@ -579,9 +572,43 @@ export class JellyfinClient {
       musicLibraryId: '',
       podcastLibraryId: '',
     };
-    const userInfo = await this.request<JellyfinItem & { ServerId: string; HasPassword: boolean; AccessToken: string }>(
-      '/Users/Me'
-    );
+
+    // Step 1: Get user info — try with api_key query param (most compatible)
+    let userInfo: JellyfinItem & { ServerId: string; HasPassword: boolean; AccessToken: string };
+    try {
+      userInfo = await this.request<JellyfinItem & { ServerId: string; HasPassword: boolean; AccessToken: string }>(
+        `/Users/Me?api_key=${encodeURIComponent(apiKey)}`
+      );
+    } catch (err) {
+      console.error('[Jellyfin] connectWithApiKey: /Users/Me failed, trying /System/Info as fallback', err);
+      // Fallback: try /System/Info which is more permissive, then get user from there
+      try {
+        const sysInfo = await this.getSystemInfo();
+        // /System/Info doesn't return user info, but we know the server works
+        // Try to list users to find the API key's associated user
+        const usersResp = await this.request<{ Items: JellyfinItem[] }>('/Users?api_key=' + encodeURIComponent(apiKey));
+        if (usersResp.Items && usersResp.Items.length > 0) {
+          // Use the first admin user (API keys are typically created by admins)
+          const user = usersResp.Items.find(u => (u as any).Policy?.IsAdministrator) || usersResp.Items[0];
+          userInfo = {
+            ...user,
+            ServerId: sysInfo.Id || '',
+            HasPassword: false,
+            AccessToken: apiKey,
+          };
+        } else {
+          throw new Error('No users found on server');
+        }
+      } catch (err2) {
+        console.error('[Jellyfin] connectWithApiKey: all authentication attempts failed', err2);
+        throw new JellyfinApiError(
+          `Could not authenticate with API key. Please verify the key is valid and the server is accessible. ${err instanceof Error ? err.message : ''}`,
+          401,
+          '/Users/Me',
+          err
+        );
+      }
+    }
 
     const token = apiKey;
     const userId = userInfo.Id;
