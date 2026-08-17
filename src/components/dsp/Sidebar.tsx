@@ -71,6 +71,8 @@ export function Sidebar() {
   const newEpisodes = getTotalNewEpisodes();
   const [systemCollapsed, setSystemCollapsed] = React.useState(true);
   const [discoveryCollapsed, setDiscoveryCollapsed] = React.useState(true);
+  const [browseCollapsed, setBrowseCollapsed] = React.useState(false);
+  const [libraryCollapsed, setLibraryCollapsed] = React.useState(false);
 
   // Fix 1: Active Zone — derive from player store's activeZoneId
   const zoneName = activeZoneId === 'zone-1' ? 'Main Listening Room' :
@@ -133,14 +135,20 @@ export function Sidebar() {
         <Separator className="bg-sidebar-border" />
 
         <ScrollArea className="flex-1">
-          {/* Navigation */}
+          {/* Browse — collapsible */}
           <div className="p-2">
-            {sidebarOpen && (
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 mb-2">
-                Browse
-              </p>
-            )}
-            {navItems.map(item => {
+            {sidebarOpen ? (
+              <button
+                className="flex items-center justify-between w-full px-3 mb-2 group"
+                onClick={() => setBrowseCollapsed(!browseCollapsed)}
+              >
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Browse
+                </p>
+                <ChevronDown className={`w-3 h-3 text-muted-foreground/50 transition-transform duration-200 ${browseCollapsed ? '-rotate-90' : ''}`} />
+              </button>
+            ) : null}
+            {(!sidebarOpen || !browseCollapsed) && navItems.map(item => {
               const Icon = item.icon;
               const isActive = currentView === item.view;
               return (
@@ -236,14 +244,20 @@ export function Sidebar() {
 
           <Separator className="bg-sidebar-border mx-3" />
 
-          {/* Library / Tools */}
+          {/* Library / Tools — collapsible */}
           <div className="p-2 mt-2">
-            {sidebarOpen && (
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 mb-2">
-                Library
-              </p>
-            )}
-            {libraryItems.map(item => {
+            {sidebarOpen ? (
+              <button
+                className="flex items-center justify-between w-full px-3 mb-2 group"
+                onClick={() => setLibraryCollapsed(!libraryCollapsed)}
+              >
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Library
+                </p>
+                <ChevronDown className={`w-3 h-3 text-muted-foreground/50 transition-transform duration-200 ${libraryCollapsed ? '-rotate-90' : ''}`} />
+              </button>
+            ) : null}
+            {(!sidebarOpen || !libraryCollapsed) && libraryItems.map(item => {
               const Icon = item.icon;
               const isActive = currentView === item.view;
               return (
