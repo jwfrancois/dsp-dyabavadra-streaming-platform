@@ -608,11 +608,10 @@ export function JellyfinView() {
   }, []);
 
   const handlePlayPodcastEpisode = useCallback((episode: JellyfinPodcastEpisode) => {
-    // Convert podcast episode to a playable track using the Jellyfin stream URL
     const config = store.config;
     if (!config) return;
     const baseUrl = config.serverUrl.replace(/\/+$/, '');
-    const streamUrl = `/api/proxy/jellyfin?url=${encodeURIComponent(`${baseUrl}/Audio/${episode.id}/stream?static=true&api_key=${config.accessToken}&UserId=${config.userId}`)}&token=${encodeURIComponent(config.accessToken)}`;
+    const streamUrl = `${baseUrl}/Audio/${episode.id}/stream?static=true&api_key=${config.accessToken}&UserId=${config.userId}`;
 
     const dspTrack: Track = {
       id: `jf-${episode.id}`,
@@ -650,7 +649,7 @@ export function JellyfinView() {
     const baseUrl = config.serverUrl.replace(/\/+$/, '');
 
     const dspTracks = episodes.map((episode, index) => {
-      const streamUrl = `/api/proxy/jellyfin?url=${encodeURIComponent(`${baseUrl}/Audio/${episode.id}/stream?static=true&api_key=${config.accessToken}&UserId=${config.userId}`)}&token=${encodeURIComponent(config.accessToken)}`;
+      const streamUrl = `${baseUrl}/Audio/${episode.id}/stream?static=true&api_key=${config.accessToken}&UserId=${config.userId}`;
       return {
         id: `jf-${episode.id}`,
         title: episode.name,
