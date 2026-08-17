@@ -117,6 +117,10 @@ export function AudioEngineProvider({ children }: { children: React.ReactNode })
         }
       } else if (modeRef.current === 'podcast') {
         usePlayerStore.setState({ isPlaying: false });
+      } else if (modeRef.current === 'music') {
+        // Music: reset isPlaying so the user can retry via togglePlay
+        console.warn('[AudioEngine] Music playback error — resetting isPlaying');
+        usePlayerStore.setState({ isPlaying: false });
       }
     };
 
@@ -201,6 +205,7 @@ export function AudioEngineProvider({ children }: { children: React.ReactNode })
           // URL changed: load new source
           if (url) {
             console.log('[AudioEngine] Loading:', url.substring(0, 120));
+            console.log('[AudioEngine] Mode:', mode, 'isPlaying:', isPlaying);
             a.pause();
             stopTimeTracking();
             a.src = url;

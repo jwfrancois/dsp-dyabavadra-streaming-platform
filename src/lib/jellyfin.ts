@@ -1032,7 +1032,7 @@ export class JellyfinClient {
     const qs = buildQueryString({
       UserId: this.config!.userId,
       ParentId: showId,
-      IncludeItemTypes: ['Audio', 'Episode'],
+      IncludeItemTypes: ['Audio'],
       SortBy: 'DateCreated',
       SortOrder: 'Descending',
       Recursive: true,

@@ -332,6 +332,7 @@ interface JellyfinState {
 
   // Actions — Convert
   convertToTrack: (jfTrack: JellyfinTrack) => Track;
+  convertPodcastEpisodeToTrack: (jfEpisode: JellyfinPodcastEpisode) => Track;
 
   // Actions — Helpers
   getArtistImageUrl: (itemId: string, imageTag?: string) => string;
@@ -1030,6 +1031,39 @@ export const useJellyfinStore = create<JellyfinState>((set, get) => ({
       genre: '',
       loved: jfTrack.isFavorite,
       playCount: jfTrack.playCount,
+      source: 'local',
+      isAvailable: true,
+    };
+  },
+
+  convertPodcastEpisodeToTrack: (jfEpisode: JellyfinPodcastEpisode): Track => {
+    const config = get().config;
+    const filePath = config
+      ? buildStreamUrl(jfEpisode.id, config)
+      : `jellyfin://${jfEpisode.id}`;
+
+    return {
+      id: `jf-${jfEpisode.id}`,
+      title: jfEpisode.name,
+      albumId: `jf-${jfEpisode.showId}`,
+      albumName: jfEpisode.showName,
+      artistId: '',
+      artistName: jfEpisode.showName,
+      trackNumber: 0,
+      discNumber: 1,
+      duration: jfEpisode.duration,
+      format: '',
+      bitDepth: 0,
+      sampleRate: 0,
+      channels: 0,
+      bitrate: 0,
+      filePath,
+      fileSize: 0,
+      composers: [],
+      performers: [],
+      genre: '',
+      loved: jfEpisode.isFavorite,
+      playCount: jfEpisode.playCount,
       source: 'local',
       isAvailable: true,
     };

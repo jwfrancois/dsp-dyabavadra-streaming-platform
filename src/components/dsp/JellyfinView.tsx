@@ -5,7 +5,7 @@ import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
 import { useJellyfinStore, type JellyfinArtist, type JellyfinAlbum, type JellyfinTrack, type JellyfinPodcastShow, type JellyfinPodcastEpisode } from '@/store/jellyfin';
 import { jellyfinClient } from '@/lib/jellyfin';
-import { formatDuration, formatSampleRate, formatFileSize, type Track } from '@/lib/data';
+import { formatDuration, formatSampleRate, formatFileSize } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -608,76 +608,16 @@ export function JellyfinView() {
   }, []);
 
   const handlePlayPodcastEpisode = useCallback((episode: JellyfinPodcastEpisode) => {
-    const config = store.config;
-    if (!config) return;
-    const baseUrl = config.serverUrl.replace(/\/+$/, '');
-    const streamUrl = `${baseUrl}/Audio/${episode.id}/stream?static=true&api_key=${config.accessToken}&UserId=${config.userId}`;
-
-    const dspTrack: Track = {
-      id: `jf-${episode.id}`,
-      title: episode.name,
-      albumId: `jf-${episode.showId}`,
-      albumName: episode.showName,
-      artistId: '',
-      artistName: '',
-      trackNumber: 0,
-      discNumber: 1,
-      duration: episode.duration,
-      format: '',
-      bitDepth: 0,
-      sampleRate: 0,
-      channels: 0,
-      bitrate: 0,
-      filePath: streamUrl,
-      fileSize: 0,
-      composers: [],
-      performers: [],
-      genre: '',
-      loved: episode.isFavorite,
-      playCount: episode.playCount,
-      source: 'local',
-      isAvailable: true,
-    };
+    const dspTrack = store.convertPodcastEpisodeToTrack(episode);
     play(dspTrack);
-  }, [store.config, play]);
+  }, [play, store]);
 
   const handlePlayAllPodcastEpisodes = useCallback((showId: string) => {
     const episodes = store.podcastEpisodes;
     if (episodes.length === 0) return;
-    const config = store.config;
-    if (!config) return;
-    const baseUrl = config.serverUrl.replace(/\/+$/, '');
-
-    const dspTracks = episodes.map((episode, index) => {
-      const streamUrl = `${baseUrl}/Audio/${episode.id}/stream?static=true&api_key=${config.accessToken}&UserId=${config.userId}`;
-      return {
-        id: `jf-${episode.id}`,
-        title: episode.name,
-        albumId: `jf-${episode.showId}`,
-        albumName: episode.showName,
-        artistId: '',
-        artistName: '',
-        trackNumber: index + 1,
-        discNumber: 1,
-        duration: episode.duration,
-        format: '',
-        bitDepth: 0,
-        sampleRate: 0,
-        channels: 0,
-        bitrate: 0,
-        filePath: streamUrl,
-        fileSize: 0,
-        composers: [],
-        performers: [],
-        genre: '',
-        loved: episode.isFavorite,
-        playCount: episode.playCount,
-        source: 'local',
-        isAvailable: true,
-      } as Track;
-    });
+    const dspTracks = episodes.map((episode) => store.convertPodcastEpisodeToTrack(episode));
     setQueue(dspTracks, 0);
-  }, [store.config, store.podcastEpisodes, setQueue]);
+  }, [setQueue, store]);
 
   const handleLoadMore = useCallback(() => {
     if (activeTab === 'albums') store.loadMoreAlbums();
