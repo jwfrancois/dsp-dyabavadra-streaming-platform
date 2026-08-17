@@ -253,43 +253,64 @@ export class JellyfinClient {
     return normalizeServerUrl(this.config.serverUrl);
   }
 
-  private getHeaders(): Record<string, string> {
-    if (!this.config) throw new JellyfinNotAuthenticatedError();
-    return {
-      'X-Emby-Token': this.config.accessToken,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    };
-  }
-
+  /**
+   * Make an API request through the Next.js server-side proxy.
+   * This avoids browser CORS issues when connecting to self-hosted Jellyfin servers.
+   * The proxy at /api/jellyfin/[...path] forwards requests server-to-server.
+   */
   private async request<T>(path: string, options: RequestInit = {}, skipAuth = false): Promise<T> {
-    const injectedBaseUrl = (options.headers as Record<string, string> | undefined)?.__baseUrl;
-    const baseUrl = skipAuth
+    // Extract injected metadata from headers (used during connect flow)
+    const injectedHeaders = (options.headers as Record<string, string> | undefined);
+    const injectedBaseUrl = injectedHeaders?.__baseUrl;
+    const injectedAuth = injectedHeaders?.__authorization;
+
+    // Determine the target Jellyfin server URL
+    const serverUrl = skipAuth
       ? normalizeServerUrl(injectedBaseUrl || '')
       : this.getBaseUrl();
-    const url = `${baseUrl}${path}`;
 
-    // Build headers — extract __baseUrl before passing to fetch
-    const externalHeaders = { ...(options.headers as Record<string, string> | undefined) };
-    delete externalHeaders['__baseUrl'];
+    if (!serverUrl) {
+      throw new JellyfinApiError(
+        'No Jellyfin server URL configured. Please connect first.',
+        0,
+        path
+      );
+    }
 
-    const headers: Record<string, string> = skipAuth
-      ? externalHeaders
-      : {
-          ...this.getHeaders(),
-          ...externalHeaders,
-        };
+    // Build the proxy URL: /api/jellyfin/Users/AuthenticateByName
+    const proxyUrl = `/api/jellyfin${path}`;
+
+    // Build headers for the proxy — the proxy reads these to forward correctly
+    const proxyHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'X-Jellyfin-Server-Url': serverUrl,
+    };
+
+    // Tell the proxy to skip forwarding the auth token for login endpoints
+    if (skipAuth) {
+      proxyHeaders['X-Jellyfin-Skip-Auth'] = 'true';
+    } else if (this.config) {
+      // Forward the auth token for authenticated requests
+      proxyHeaders['X-Jellyfin-Token'] = this.config.accessToken;
+    }
+
+    // Forward the MediaBrowser authorization header if present (for login)
+    if (injectedAuth) {
+      proxyHeaders['X-Jellyfin-Authorization'] = injectedAuth;
+    }
 
     // Remove Content-Type for GET/DELETE if no body
     if (!options.body && (options.method === 'GET' || options.method === 'DELETE')) {
-      delete headers['Content-Type'];
+      delete proxyHeaders['Content-Type'];
     }
 
     let response: Response;
     try {
-      response = await fetch(url, {
-        ...options,
-        headers,
+      response = await fetch(proxyUrl, {
+        method: options.method || 'GET',
+        headers: proxyHeaders,
+        body: options.body || undefined,
       });
     } catch (err) {
       throw new JellyfinApiError(
@@ -335,16 +356,19 @@ export class JellyfinClient {
     const baseUrl = normalizeServerUrl(serverUrl);
 
     // Step 1: Authenticate (skip auth headers — we don't have a token yet)
+    const deviceId = typeof window !== 'undefined'
+      ? window.navigator.userAgent.slice(0, 32).replace(/[^a-zA-Z0-9]/g, '')
+      : 'ssr';
+    const mediaBrowserAuth = `MediaBrowser Client="DSP", Device="Browser", DeviceId="dsp-jellyfin-${deviceId}", Version="1.0.0"`;
+
     const authResponse = await this.request<JellyfinAuthResponse>(
       '/Users/AuthenticateByName',
       {
         method: 'POST',
         body: JSON.stringify({ Username: username, Pw: password }),
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `MediaBrowser Client="DSP", Device="Browser", DeviceId="dsp-jellyfin-${typeof window !== 'undefined' ? window.navigator.userAgent.slice(0, 32).replace(/[^a-zA-Z0-9]/g, '') : 'ssr'}", Version="1.0.0"`,
           '__baseUrl': baseUrl,
+          '__authorization': mediaBrowserAuth,
         } as Record<string, string>,
       },
       true // skipAuth
@@ -851,6 +875,7 @@ export class JellyfinClient {
 
   /**
    * Get the cover art / image URL for an item.
+   * Returns a URL that routes through the Next.js proxy to avoid CORS issues.
    */
   getImageUrl(
     itemId: string,
@@ -863,6 +888,7 @@ export class JellyfinClient {
     const baseUrl = this.getBaseUrl();
     const token = this.config.accessToken;
 
+    // Build the direct Jellyfin URL
     const params: Record<string, string | number> = {
       api_key: token,
     };
@@ -871,7 +897,10 @@ export class JellyfinClient {
     if (maxHeight) params.maxHeight = maxHeight;
 
     const qs = buildQueryString(params);
-    return `${baseUrl}/Items/${itemId}/Images/${imageType}${qs}`;
+    const directUrl = `${baseUrl}/Items/${itemId}/Images/${imageType}${qs}`;
+
+    // Route through the existing audio proxy (it handles any content type)
+    return `/api/proxy/jellyfin?url=${encodeURIComponent(directUrl)}&token=${encodeURIComponent(token)}`;
   }
 
   // ═══════════════════════════════════════════════════════

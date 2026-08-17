@@ -326,12 +326,23 @@ export const useJellyfinStore = create<JellyfinState>((set, get) => ({
       get().fetchRecentAlbums();
       return true;
     } catch (err) {
-      const message =
-        err instanceof JellyfinApiError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Connection failed';
+      let message: string;
+      if (err instanceof JellyfinApiError) {
+        if (err.statusCode === 0) {
+          // Network error — the proxy itself couldn't reach the server
+          message = 'Could not reach the Jellyfin server. Check the server URL and ensure the server is running and accessible.';
+        } else if (err.statusCode === 401) {
+          message = 'Authentication failed. Please check your username and password.';
+        } else if (err.statusCode === 404) {
+          message = 'Jellyfin server found but the API endpoint was not available. Ensure you are running Jellyfin 10.7+.';
+        } else {
+          message = err.message;
+        }
+      } else if (err instanceof Error) {
+        message = err.message;
+      } else {
+        message = 'Connection failed';
+      }
       set({ connectionStatus: 'error', error: message });
       return false;
     }

@@ -1,0 +1,984 @@
+     1→// ═══════════════════════════════════════════════════════
+     2→// JELLYFIN API CLIENT — DSP Streaming Platform
+     3→// ═══════════════════════════════════════════════════════
+     4→
+     5→// ─── Constants ───
+     6→
+     7→const STORAGE_KEY = 'dsp-jellyfin-config';
+     8→const DEFAULT_MAX_BITRATE = 128000000; // 128 Mbps — effectively unlimited, lets server decide
+     9→const TICKS_PER_SECOND = 10000000;
+    10→
+    11→// ─── Error Classes ───
+    12→
+    13→export class JellyfinApiError extends Error {
+    14→  constructor(
+    15→    message: string,
+    16→    public readonly statusCode: number,
+    17→    public readonly path?: string,
+    18→    public readonly originalError?: unknown
+    19→  ) {
+    20→    super(message);
+    21→    this.name = 'JellyfinApiError';
+    22→  }
+    23→}
+    24→
+    25→export class JellyfinNotAuthenticatedError extends Error {
+    26→  constructor() {
+    27→    super('Jellyfin client is not authenticated. Call connect() first.');
+    28→    this.name = 'JellyfinNotAuthenticatedError';
+    29→  }
+    30→}
+    31→
+    32→// ─── Types ───
+    33→
+    34→/** Persisted Jellyfin connection configuration */
+    35→export interface JellyfinConfig {
+    36→  serverUrl: string;       // e.g., "https://jellyfin.example.com"
+    37→  username: string;
+    38→  accessToken: string;
+    39→  userId: string;
+    40→  serverId: string;
+    41→  serverName: string;
+    42→  serverVersion: string;
+    43→  connectedAt: string;      // ISO date
+    44→  lastHeartbeat: string;    // ISO date
+    45→  musicLibraryId: string;   // the media folder ID for "Music"
+    46→}
+    47→
+    48→/** Generic Jellyfin API item (music album, track, artist, etc.) */
+    49→export interface JellyfinItem {
+    50→  Id: string;
+    51→  Name: string;
+    52→  Type: string;          // 'MusicAlbum', 'MusicArtist', 'Audio', 'Playlist', 'CollectionFolder'
+    53→  SortName?: string;
+    54→  ProductionYear?: number;
+    55→  PremiereDate?: string;
+    56→  Overview?: string;
+    57→  CommunityRating?: number;
+    58→  OfficialRating?: string;
+    59→  Genres?: string[];
+    60→  Tags?: string[];
+    61→  Studios?: Array<{ Name: string; Id: string }>;
+    62→  Artists?: string[];
+    63→  AlbumArtists?: Array<{ Name: string; Id: string }>;
+    64→  AlbumArtist?: string;
+    65→  AlbumId?: string;
+    66→  ArtistItems?: Array<{ Name: string; Id: string }>;
+    67→  RunTimeTicks?: number;   // Jellyfin uses ticks (1 tick = 100ns = 0.0001ms)
+    68→  ParentId?: string;
+    69→  Path?: string;
+    70→  Size?: number;
+    71→  Container?: string;       // "mp3", "flac", "wav", "m4a", etc.
+    72→  BitRate?: number;         // in bps
+    73→  SampleRate?: number;
+    74→  BitsPerSample?: number;
+    75→  Channels?: number;
+    76→  Width?: number;
+    77→  Height?: number;
+    78→  ImageTags?: Record<string, string>;  // { "Primary": "guid" }
+    79→  BackdropImageTags?: string[];
+    80→  UserData?: {
+    81→    PlaybackPositionTicks: number;
+    82→    PlayCount: number;
+    83→    IsFavorite: boolean;
+    84→    Played: boolean;
+    85→    UnplayedItemCount?: number;
+    86→    PlayedPercentage?: number;
+    87→  };
+    88→  People?: Array<{
+    89→    Id: string;
+    90→    Name: string;
+    91→    Role: string;
+    92→    Type: string;
+    93→    PrimaryImageTag?: string;
+    94→  }>;
+    95→  ChildCount?: number;
+    96→}
+    97→
+    98→/** Paged items response from Jellyfin */
+    99→export interface JellyfinItemsResponse {
+   100→  Items: JellyfinItem[];
+   101→  TotalRecordCount: number;
+   102→  StartIndex: number;
+   103→}
+   104→
+   105→/** Authentication response from /Users/AuthenticateByName */
+   106→export interface JellyfinAuthResponse {
+   107→  User: JellyfinItem & {
+   108→    ServerId: string;
+   109→    HasPassword: boolean;
+   110→    AccessToken: string;
+   111→  };
+   112→  AccessToken: string;
+   113→  ServerId: string;
+   114→}
+   115→
+   116→/** Server info from /System/Info */
+   117→export interface JellyfinSystemInfo {
+   118→  Id: string;
+   119→  ServerName: string;
+   120→  Version: string;
+   121→  ProductName: string;
+   122→  OperatingSystem: string;
+   123→  OperatingSystemDisplayName: string;
+   124→  HasPendingRestart: boolean;
+   125→  CanSelfRestart: boolean;
+   126→  HttpServerPortNumber: number;
+   127→  HttpsPortNumber: number;
+   128→  SupportsRemoteControl: boolean;
+   129→  SupportsLibraryManagement: boolean;
+   130→  LocalAddress: string;
+   131→}
+   132→
+   133→/** Playback info from /Items/{id}/PlaybackInfo */
+   134→export interface JellyfinPlaybackInfo {
+   135→  MediaSources: Array<{
+   136→    Id: string;
+   137→    Name: string;
+   138→    Path: string;
+   139→    Size: number;
+   140→    Container: string;
+   141→    Bitrate: number;
+   142→    MediaStreams: Array<{
+   143→      Codec: string;
+   144→      Type: string;
+   145→      Language?: string;
+   146→      SampleRate?: number;
+   147→      BitDepth?: number;
+   148→      Channels?: number;
+   149→      BitRate?: number;
+   150→      Index: number;
+   151→    }>;
+   152→    SupportsTranscoding: boolean;
+   153→    SupportsDirectStream: boolean;
+   154→    SupportsDirectPlay: boolean;
+   155→    TranscodingUrl?: string;
+   156→    DirectStreamUrl?: string;
+   157→  }>;
+   158→}
+   159→
+   160→// ─── Utility Functions ───
+   161→
+   162→/** Convert Jellyfin ticks (100ns units) to seconds */
+   163→export function ticksToSeconds(ticks: number | undefined): number {
+   164→  if (ticks === undefined || ticks === null) return 0;
+   165→  return Math.floor(ticks / TICKS_PER_SECOND);
+   166→}
+   167→
+   168→/** Convert seconds to Jellyfin ticks */
+   169→export function secondsToTicks(seconds: number): number {
+   170→  return Math.floor(seconds * TICKS_PER_SECOND);
+   171→}
+   172→
+   173→/** Strip trailing slash from a URL */
+   174→function normalizeServerUrl(url: string): string {
+   175→  return url.replace(/\/+$/, '');
+   176→}
+   177→
+   178→/** Build a query string from a record, filtering out undefined/null/empty values */
+   179→function buildQueryString(params: Record<string, string | number | boolean | undefined | null | string[] | number[]>): string {
+   180→  const parts: string[] = [];
+   181→  for (const [key, value] of Object.entries(params)) {
+   182→    if (value === undefined || value === null || value === '') continue;
+   183→    if (Array.isArray(value)) {
+   184→      if (value.length > 0) {
+   185→        parts.push(`${encodeURIComponent(key)}=${value.map(v => encodeURIComponent(String(v))).join(',')}`);
+   186→      }
+   187→    } else {
+   188→      parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+   189→    }
+   190→  }
+   191→  return parts.length > 0 ? `?${parts.join('&')}` : '';
+   192→}
+   193→
+   194→// ─── Client Class ───
+   195→
+   196→export class JellyfinClient {
+   197→  private config: JellyfinConfig | null = null;
+   198→  private storageAvailable = true;
+   199→
+   200→  constructor() {
+   201→    // Check if localStorage is available (SSR-safe)
+   202→    try {
+   203→      const testKey = '__dsp_jellyfin_test__';
+   204→      if (typeof window !== 'undefined') {
+   205→        window.localStorage.setItem(testKey, '1');
+   206→        window.localStorage.removeItem(testKey);
+   207→      } else {
+   208→        this.storageAvailable = false;
+   209→      }
+   210→    } catch {
+   211→      this.storageAvailable = false;
+   212→    }
+   213→
+   214→    // Auto-load persisted config
+   215→    this.config = this.loadConfig();
+   216→  }
+   217→
+   218→  // ═══════════════════════════════════════════════════════
+   219→  // Persistence
+   220→  // ═══════════════════════════════════════════════════════
+   221→
+   222→  private saveConfig(): void {
+   223→    if (!this.config) return;
+   224→    if (this.storageAvailable && typeof window !== 'undefined') {
+   225→      try {
+   226→        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(this.config));
+   227→      } catch {
+   228→        // Storage full or unavailable — silently fail
+   229→      }
+   230→    }
+   231→  }
+   232→
+   233→  private loadConfig(): JellyfinConfig | null {
+   234→    if (!this.storageAvailable || typeof window === 'undefined') return null;
+   235→    try {
+   236→      const raw = window.localStorage.getItem(STORAGE_KEY);
+   237→      if (!raw) return null;
+   238→      const parsed = JSON.parse(raw) as JellyfinConfig;
+   239→      // Basic validation
+   240→      if (!parsed.serverUrl || !parsed.accessToken || !parsed.userId) return null;
+   241→      return parsed;
+   242→    } catch {
+   243→      return null;
+   244→    }
+   245→  }
+   246→
+   247→  // ═══════════════════════════════════════════════════════
+   248→  // Core HTTP
+   249→  // ═══════════════════════════════════════════════════════
+   250→
+   251→  private getBaseUrl(): string {
+   252→    if (!this.config) throw new JellyfinNotAuthenticatedError();
+   253→    return normalizeServerUrl(this.config.serverUrl);
+   254→  }
+   255→
+   256→  private getHeaders(): Record<string, string> {
+   257→    if (!this.config) throw new JellyfinNotAuthenticatedError();
+   258→    return {
+   259→      'X-Emby-Token': this.config.accessToken,
+   260→      'Content-Type': 'application/json',
+   261→      'Accept': 'application/json',
+   262→    };
+   263→  }
+   264→
+   265→  private async request<T>(path: string, options: RequestInit = {}, skipAuth = false): Promise<T> {
+   266→    const injectedBaseUrl = (options.headers as Record<string, string> | undefined)?.__baseUrl;
+   267→    const baseUrl = skipAuth
+   268→      ? normalizeServerUrl(injectedBaseUrl || '')
+   269→      : this.getBaseUrl();
+   270→    const url = `${baseUrl}${path}`;
+   271→
+   272→    // Build headers — extract __baseUrl before passing to fetch
+   273→    const externalHeaders = { ...(options.headers as Record<string, string> | undefined) };
+   274→    delete externalHeaders['__baseUrl'];
+   275→
+   276→    const headers: Record<string, string> = skipAuth
+   277→      ? externalHeaders
+   278→      : {
+   279→          ...this.getHeaders(),
+   280→          ...externalHeaders,
+   281→        };
+   282→
+   283→    // Remove Content-Type for GET/DELETE if no body
+   284→    if (!options.body && (options.method === 'GET' || options.method === 'DELETE')) {
+   285→      delete headers['Content-Type'];
+   286→    }
+   287→
+   288→    let response: Response;
+   289→    try {
+   290→      response = await fetch(url, {
+   291→        ...options,
+   292→        headers,
+   293→      });
+   294→    } catch (err) {
+   295→      throw new JellyfinApiError(
+   296→        `Network error: ${err instanceof Error ? err.message : 'Unknown error'}`,
+   297→        0,
+   298→        path,
+   299→        err
+   300→      );
+   301→    }
+   302→
+   303→    if (!response.ok) {
+   304→      let errorBody = '';
+   305→      try {
+   306→        errorBody = await response.text();
+   307→      } catch {
+   308→        // ignore
+   309→      }
+   310→      throw new JellyfinApiError(
+   311→        `Jellyfin API error ${response.status}: ${response.statusText} — ${errorBody}`,
+   312→        response.status,
+   313→        path
+   314→      );
+   315→    }
+   316→
+   317→    // Some endpoints return empty responses (e.g., DELETE, favorite toggles)
+   318→    const contentType = response.headers.get('content-type');
+   319→    if (contentType && contentType.includes('application/json')) {
+   320→      return response.json() as Promise<T>;
+   321→    }
+   322→
+   323→    return undefined as unknown as T;
+   324→  }
+   325→
+   326→  // ═══════════════════════════════════════════════════════
+   327→  // Authentication
+   328→  // ═══════════════════════════════════════════════════════
+   329→
+   330→  /**
+   331→   * Connect to a Jellyfin server. Authenticates and fetches server info.
+   332→   * Persists the configuration to localStorage.
+   333→   */
+   334→  async connect(serverUrl: string, username: string, password: string): Promise<JellyfinConfig> {
+   335→    const baseUrl = normalizeServerUrl(serverUrl);
+   336→
+   337→    // Step 1: Authenticate (skip auth headers — we don't have a token yet)
+   338→    const authResponse = await this.request<JellyfinAuthResponse>(
+   339→      '/Users/AuthenticateByName',
+   340→      {
+   341→        method: 'POST',
+   342→        body: JSON.stringify({ Username: username, Pw: password }),
+   343→        headers: {
+   344→          'Content-Type': 'application/json',
+   345→          'Accept': 'application/json',
+   346→          'Authorization': `MediaBrowser Client="DSP", Device="Browser", DeviceId="dsp-jellyfin-${typeof window !== 'undefined' ? window.navigator.userAgent.slice(0, 32).replace(/[^a-zA-Z0-9]/g, '') : 'ssr'}", Version="1.0.0"`,
+   347→          '__baseUrl': baseUrl,
+   348→        } as Record<string, string>,
+   349→      },
+   350→      true // skipAuth
+   351→    );
+   352→
+   353→    const token = authResponse.AccessToken;
+   354→    const userId = authResponse.User.Id;
+   355→    const serverId = authResponse.ServerId;
+   356→
+   357→    // Step 2: Fetch server info
+   358→    let serverName = 'Jellyfin';
+   359→    let serverVersion = 'unknown';
+   360→    try {
+   361→      // Temporarily set config for the getSystemInfo call
+   362→      this.config = {
+   363→        serverUrl: baseUrl,
+   364→        username,
+   365→        accessToken: token,
+   366→        userId,
+   367→        serverId,
+   368→        serverName,
+   369→        serverVersion,
+   370→        connectedAt: new Date().toISOString(),
+   371→        lastHeartbeat: new Date().toISOString(),
+   372→        musicLibraryId: '',
+   373→      };
+   374→      const sysInfo = await this.getSystemInfo();
+   375→      serverName = sysInfo.ServerName;
+   376→      serverVersion = sysInfo.Version;
+   377→    } catch {
+   378→      // If system info fails, continue with defaults
+   379→    }
+   380→
+   381→    // Step 3: Auto-detect music library
+   382→    let musicLibraryId = '';
+   383→    try {
+   384→      const views = await this.getViews();
+   385→      const musicFolder = views.Items.find(
+   386→        item => item.Type === 'CollectionFolder' && item.Name.toLowerCase().includes('music')
+   387→      );
+   388→      if (musicFolder) {
+   389→        musicLibraryId = musicFolder.Id;
+   390→      }
+   391→    } catch {
+   392→      // Continue without auto-detected library
+   393→    }
+   394→
+   395→    // Step 4: Build and save config
+   396→    const config: JellyfinConfig = {
+   397→      serverUrl: baseUrl,
+   398→      username,
+   399→      accessToken: token,
+   400→      userId,
+   401→      serverId,
+   402→      serverName,
+   403→      serverVersion,
+   404→      connectedAt: new Date().toISOString(),
+   405→      lastHeartbeat: new Date().toISOString(),
+   406→      musicLibraryId,
+   407→    };
+   408→
+   409→    this.config = config;
+   410→    this.saveConfig();
+   411→
+   412→    return config;
+   413→  }
+   414→
+   415→  /**
+   416→   * Disconnect from the Jellyfin server. Revokes the token and clears local state.
+   417→   */
+   418→  async disconnect(): Promise<void> {
+   419→    if (this.config) {
+   420→      try {
+   421→        await this.request<void>(`/Users/${this.config.userId}/Tokens`, {
+   422→          method: 'DELETE',
+   423→        });
+   424→      } catch {
+   425→        // Best-effort — continue clearing local state
+   426→      }
+   427→    }
+   428→
+   429→    this.config = null;
+   430→    if (this.storageAvailable && typeof window !== 'undefined') {
+   431→      try {
+   432→        window.localStorage.removeItem(STORAGE_KEY);
+   433→      } catch {
+   434→        // ignore
+   435→      }
+   436→    }
+   437→  }
+   438→
+   439→  /** Check if the client has a valid authenticated configuration */
+   440→  isAuthenticated(): boolean {
+   441→    return !!(
+   442→      this.config &&
+   443→      this.config.accessToken &&
+   444→      this.config.userId &&
+   445→      this.config.serverUrl
+   446→    );
+   447→  }
+   448→
+   449→  /** Get the current configuration, or null if not authenticated */
+   450→  getConfig(): JellyfinConfig | null {
+   451→    return this.config;
+   452→  }
+   453→
+   454→  // ═══════════════════════════════════════════════════════
+   455→  // Server Info
+   456→  // ═══════════════════════════════════════════════════════
+   457→
+   458→  /** Fetch system/server info */
+   459→  async getSystemInfo(): Promise<JellyfinSystemInfo> {
+   460→    return this.request<JellyfinSystemInfo>('/System/Info');
+   461→  }
+   462→
+   463→  // ═══════════════════════════════════════════════════════
+   464→  // Library Browsing
+   465→  // ═══════════════════════════════════════════════════════
+   466→
+   467→  /**
+   468→   * Get all media folders / views (Music, Movies, TV, etc.)
+   469→   */
+   470→  async getViews(): Promise<JellyfinItemsResponse> {
+   471→    return this.request<JellyfinItemsResponse>(
+   472→      `/Users/${this.config!.userId}/Views`
+   473→    );
+   474→  }
+   475→
+   476→  /**
+   477→   * Set the music library folder ID for scoped browsing.
+   478→   */
+   479→  setMusicLibrary(libraryId: string): void {
+   480→    if (!this.config) throw new JellyfinNotAuthenticatedError();
+   481→    this.config.musicLibraryId = libraryId;
+   482→    this.saveConfig();
+   483→  }
+   484→
+   485→  // ═══════════════════════════════════════════════════════
+   486→  // Items
+   487→  // ═══════════════════════════════════════════════════════
+   488→
+   489→  /**
+   490→   * Generic items query. Supports all major Jellyfin /Users/{userId}/Items parameters.
+   491→   */
+   492→  async getItems(params: {
+   493→    parentId?: string;
+   494→    includeItemTypes?: string[];
+   495→    sortBy?: string;
+   496→    sortOrder?: 'Ascending' | 'Descending';
+   497→    limit?: number;
+   498→    startIndex?: number;
+   499→    searchTerm?: string;
+   500→    fields?: string[];
+   501→    recursive?: boolean;
+   502→    genres?: string[];
+   503→    artistIds?: string[];
+   504→    albumArtistIds?: string[];
+   505→    years?: number[];
+   506→    ids?: string[];
+   507→    filters?: string[];
+   508→  }): Promise<JellyfinItemsResponse> {
+   509→    const defaultFields = [
+   510→      'PrimaryImageAspectRatio',
+   511→      'BasicSyncInfo',
+   512→      'Genres',
+   513→      'Overview',
+   514→      'People',
+   515→      'ProductionYear',
+   516→      'CommunityRating',
+   517→    ];
+   518→
+   519→    const qs = buildQueryString({
+   520→      UserId: this.config!.userId,
+   521→      ParentId: params.parentId,
+   522→      IncludeItemTypes: params.includeItemTypes,
+   523→      SortBy: params.sortBy,
+   524→      SortOrder: params.sortOrder,
+   525→      Limit: params.limit,
+   526→      StartIndex: params.startIndex,
+   527→      SearchTerm: params.searchTerm,
+   528→      Fields: params.fields ?? defaultFields,
+   529→      Recursive: params.recursive,
+   530→      Genres: params.genres,
+   531→      ArtistIds: params.artistIds,
+   532→      AlbumArtistIds: params.albumArtistIds,
+   533→      Years: params.years,
+   534→      Ids: params.ids,
+   535→      Filters: params.filters,
+   536→    });
+   537→
+   538→    return this.request<JellyfinItemsResponse>(
+   539→      `/Users/${this.config!.userId}/Items${qs}`
+   540→    );
+   541→  }
+   542→
+   543→  /** Fetch a single item by ID */
+   544→  async getItem(itemId: string): Promise<JellyfinItem> {
+   545→    const qs = buildQueryString({
+   546→      UserId: this.config!.userId,
+   547→      Fields: [
+   548→        'PrimaryImageAspectRatio',
+   549→        'BasicSyncInfo',
+   550→        'Genres',
+   551→        'Overview',
+   552→        'People',
+   553→        'ProductionYear',
+   554→        'CommunityRating',
+   555→      ],
+   556→    });
+   557→    return this.request<JellyfinItem>(`/Users/${this.config!.userId}/Items/${itemId}${qs}`);
+   558→  }
+   559→
+   560→  /** Get recently added items */
+   561→  async getRecentItems(limit: number = 20): Promise<JellyfinItemsResponse> {
+   562→    const qs = buildQueryString({
+   563→      UserId: this.config!.userId,
+   564→      Limit: limit,
+   565→      Fields: [
+   566→        'PrimaryImageAspectRatio',
+   567→        'BasicSyncInfo',
+   568→        'Genres',
+   569→        'Overview',
+   570→        'People',
+   571→        'ProductionYear',
+   572→        'CommunityRating',
+   573→      ],
+   574→      ParentId: this.config?.musicLibraryId || undefined,
+   575→    });
+   576→    return this.request<JellyfinItemsResponse>(
+   577→      `/Users/${this.config!.userId}/Items/Recent${qs}`
+   578→    );
+   579→  }
+   580→
+   581→  // ═══════════════════════════════════════════════════════
+   582→  // Artists
+   583→  // ═══════════════════════════════════════════════════════
+   584→
+   585→  /**
+   586→   * Browse album artists.
+   587→   */
+   588→  async getArtists(params?: {
+   589→    limit?: number;
+   590→    startIndex?: number;
+   591→    searchTerm?: string;
+   592→    sortBy?: string;
+   593→    sortOrder?: string;
+   594→  }): Promise<JellyfinItemsResponse> {
+   595→    const qs = buildQueryString({
+   596→      UserId: this.config!.userId,
+   597→      Limit: params?.limit,
+   598→      StartIndex: params?.startIndex,
+   599→      SearchTerm: params?.searchTerm,
+   600→      SortBy: params?.sortBy ?? 'SortName',
+   601→      SortOrder: params?.sortOrder ?? 'Ascending',
+   602→      Fields: [
+   603→        'PrimaryImageAspectRatio',
+   604→        'BasicSyncInfo',
+   605→        'Genres',
+   606→        'SortName',
+   607→      ],
+   608→    });
+   609→    return this.request<JellyfinItemsResponse>(
+   610→      `/Artists/AlbumArtists${qs}`
+   611→    );
+   612→  }
+   613→
+   614→  /**
+   615→   * Get items (albums, tracks) for a specific artist.
+   616→   */
+   617→  async getArtistItems(artistId: string, types?: string[]): Promise<JellyfinItemsResponse> {
+   618→    const qs = buildQueryString({
+   619→      UserId: this.config!.userId,
+   620→      IncludeItemTypes: types ?? ['MusicAlbum'],
+   621→      SortBy: 'SortName',
+   622→      SortOrder: 'Ascending',
+   623→      Fields: [
+   624→        'PrimaryImageAspectRatio',
+   625→        'BasicSyncInfo',
+   626→        'Genres',
+   627→        'ProductionYear',
+   628→        'CommunityRating',
+   629→      ],
+   630→    });
+   631→    return this.request<JellyfinItemsResponse>(
+   632→      `/Artists/${artistId}/Items${qs}`
+   633→    );
+   634→  }
+   635→
+   636→  // ═══════════════════════════════════════════════════════
+   637→  // Albums
+   638→  // ═══════════════════════════════════════════════════════
+   639→
+   640→  /**
+   641→   * Browse albums with optional filtering.
+   642→   */
+   643→  async getAlbums(params?: {
+   644→    limit?: number;
+   645→    startIndex?: number;
+   646→    sortBy?: string;
+   647→    sortOrder?: string;
+   648→    artistIds?: string[];
+   649→    genres?: string[];
+   650→    years?: number[];
+   651→    searchTerm?: string;
+   652→  }): Promise<JellyfinItemsResponse> {
+   653→    const queryParams: Record<string, unknown> = {
+   654→      UserId: this.config!.userId,
+   655→      IncludeItemTypes: ['MusicAlbum'],
+   656→      SortBy: params?.sortBy ?? 'SortName',
+   657→      SortOrder: params?.sortOrder ?? 'Ascending',
+   658→      Recursive: true,
+   659→      Fields: [
+   660→        'PrimaryImageAspectRatio',
+   661→        'BasicSyncInfo',
+   662→        'Genres',
+   663→        'ProductionYear',
+   664→        'CommunityRating',
+   665→        'Overview',
+   666→      ],
+   667→    };
+   668→
+   669→    if (params?.limit !== undefined) queryParams.Limit = params.limit;
+   670→    if (params?.startIndex !== undefined) queryParams.StartIndex = params.startIndex;
+   671→    if (params?.searchTerm) queryParams.SearchTerm = params.searchTerm;
+   672→    if (params?.artistIds?.length) queryParams.AlbumArtistIds = params.artistIds;
+   673→    if (params?.genres?.length) queryParams.Genres = params.genres;
+   674→    if (params?.years?.length) queryParams.Years = params.years;
+   675→
+   676→    // Scope to music library if set
+   677→    if (this.config?.musicLibraryId) {
+   678→      queryParams.ParentId = this.config.musicLibraryId;
+   679→    }
+   680→
+   681→    const qs = buildQueryString(queryParams as Record<string, string | number | boolean | undefined | null | string[] | number[]>);
+   682→    return this.request<JellyfinItemsResponse>(
+   683→      `/Users/${this.config!.userId}/Items${qs}`
+   684→    );
+   685→  }
+   686→
+   687→  /**
+   688→   * Get all tracks in an album.
+   689→   */
+   690→  async getAlbumTracks(albumId: string): Promise<JellyfinItemsResponse> {
+   691→    const qs = buildQueryString({
+   692→      UserId: this.config!.userId,
+   693→      ParentId: albumId,
+   694→      IncludeItemTypes: ['Audio'],
+   695→      SortBy: 'SortName',
+   696→      SortOrder: 'Ascending',
+   697→      Fields: [
+   698→        'PrimaryImageAspectRatio',
+   699→        'BasicSyncInfo',
+   700→        'Genres',
+   701→        'MediaSources',
+   702→        'MediaStreams',
+   703→      ],
+   704→    });
+   705→    return this.request<JellyfinItemsResponse>(
+   706→      `/Users/${this.config!.userId}/Items${qs}`
+   707→    );
+   708→  }
+   709→
+   710→  // ═══════════════════════════════════════════════════════
+   711→  // Playlists
+   712→  // ═══════════════════════════════════════════════════════
+   713→
+   714→  /** Get all playlists */
+   715→  async getPlaylists(limit: number = 100): Promise<JellyfinItemsResponse> {
+   716→    const qs = buildQueryString({
+   717→      UserId: this.config!.userId,
+   718→      IncludeItemTypes: ['Playlist'],
+   719→      SortBy: 'SortName',
+   720→      SortOrder: 'Ascending',
+   721→      Recursive: true,
+   722→      Fields: ['PrimaryImageAspectRatio', 'BasicSyncInfo'],
+   723→      Limit: limit,
+   724→    });
+   725→    return this.request<JellyfinItemsResponse>(
+   726→      `/Users/${this.config!.userId}/Items${qs}`
+   727→    );
+   728→  }
+   729→
+   730→  /** Get the items (tracks) in a playlist */
+   731→  async getPlaylistItems(playlistId: string): Promise<JellyfinItemsResponse> {
+   732→    const qs = buildQueryString({
+   733→      UserId: this.config!.userId,
+   734→      Fields: [
+   735→        'PrimaryImageAspectRatio',
+   736→        'BasicSyncInfo',
+   737→        'Genres',
+   738→        'MediaSources',
+   739→        'MediaStreams',
+   740→      ],
+   741→    });
+   742→    return this.request<JellyfinItemsResponse>(
+   743→      `/Playlists/${playlistId}/Items${qs}`
+   744→    );
+   745→  }
+   746→
+   747→  // ═══════════════════════════════════════════════════════
+   748→  // Search
+   749→  // ═══════════════════════════════════════════════════════
+   750→
+   751→  /**
+   752→   * Search across the library. Defaults to searching albums, artists, and tracks.
+   753→   */
+   754→  async search(
+   755→    query: string,
+   756→    types: string[] = ['MusicAlbum', 'MusicArtist', 'Audio', 'Playlist'],
+   757→    limit: number = 30
+   758→  ): Promise<JellyfinItemsResponse> {
+   759→    const queryParams: Record<string, unknown> = {
+   760→      UserId: this.config!.userId,
+   761→      SearchTerm: query,
+   762→      IncludeItemTypes: types,
+   763→      Recursive: true,
+   764→      Limit: limit,
+   765→      Fields: [
+   766→        'PrimaryImageAspectRatio',
+   767→        'BasicSyncInfo',
+   768→        'Genres',
+   769→        'ProductionYear',
+   770→        'CommunityRating',
+   771→        'Overview',
+   772→        'MediaSources',
+   773→        'MediaStreams',
+   774→      ],
+   775→    };
+   776→
+   777→    // Scope to music library if set
+   778→    if (this.config?.musicLibraryId) {
+   779→      queryParams.ParentId = this.config.musicLibraryId;
+   780→    }
+   781→
+   782→    const qs = buildQueryString(queryParams as Record<string, string | number | boolean | undefined | null | string[] | number[]>);
+   783→    return this.request<JellyfinItemsResponse>(
+   784→      `/Users/${this.config!.userId}/Items${qs}`
+   785→    );
+   786→  }
+   787→
+   788→  // ═══════════════════════════════════════════════════════
+   789→  // Playback
+   790→  // ═══════════════════════════════════════════════════════
+   791→
+   792→  /**
+   793→   * Get a playable audio stream URL for an item.
+   794→   * Prefers direct play for best quality; falls back to transcoded stream.
+   795→   */
+   796→  async getPlaybackStreamUrl(
+   797→    itemId: string,
+   798→    maxBitrate: number = DEFAULT_MAX_BITRATE
+   799→  ): Promise<string> {
+   800→    const baseUrl = this.getBaseUrl();
+   801→    const token = this.config!.accessToken;
+   802→    const userId = this.config!.userId;
+   803→
+   804→    try {
+   805→      // Request playback info to determine best playback method
+   806→      const playbackInfo = await this.request<JellyfinPlaybackInfo>(
+   807→        `/Items/${itemId}/PlaybackInfo`,
+   808→        {
+   809→          method: 'POST',
+   810→          body: JSON.stringify({
+   811→            UserId: userId,
+   812→            MaxStreamingBitrate: maxBitrate,
+   813→            AutoOpenLiveStreams: true,
+   814→          }),
+   815→        }
+   816→      );
+   817→
+   818→      if (playbackInfo.MediaSources && playbackInfo.MediaSources.length > 0) {
+   819→        const source = playbackInfo.MediaSources[0];
+   820→
+   821→        // Prefer direct play — best quality, no server transcoding
+   822→        if (source.SupportsDirectPlay) {
+   823→          return `${baseUrl}/Audio/${itemId}/stream?static=true&api_key=${token}&UserId=${userId}`;
+   824→        }
+   825→
+   826→        // Fallback to direct stream
+   827→        if (source.SupportsDirectStream && source.DirectStreamUrl) {
+   828→          return `${baseUrl}${source.DirectStreamUrl}`;
+   829→        }
+   830→
+   831→        // Fallback to transcoded stream (HLS)
+   832→        if (source.SupportsTranscoding && source.TranscodingUrl) {
+   833→          return `${baseUrl}${source.TranscodingUrl}`;
+   834→        }
+   835→
+   836→        // Last resort: construct a universal audio transcoding URL
+   837→        const container = source.Container || 'mp3';
+   838→        return `${baseUrl}/Audio/${itemId}/universal?api_key=${token}&UserId=${userId}&MaxStreamingBitrate=${maxBitrate}&Container=${container}&TranscodingMaxAudioChannels=2&SegmentContainer=ts&AudioCodec=aac&Protocol=hls`;
+   839→      }
+   840→    } catch {
+   841→      // If playback info fails, fall back to direct stream URL
+   842→    }
+   843→
+   844→    // Fallback: try static stream directly
+   845→    return `${baseUrl}/Audio/${itemId}/stream?static=true&api_key=${token}&UserId=${userId}`;
+   846→  }
+   847→
+   848→  // ═══════════════════════════════════════════════════════
+   849→  // Images
+   850→  // ═══════════════════════════════════════════════════════
+   851→
+   852→  /**
+   853→   * Get the cover art / image URL for an item.
+   854→   */
+   855→  getImageUrl(
+   856→    itemId: string,
+   857→    imageType: string = 'Primary',
+   858→    maxWidth?: number,
+   859→    maxHeight?: number
+   860→  ): string {
+   861→    if (!this.config) throw new JellyfinNotAuthenticatedError();
+   862→
+   863→    const baseUrl = this.getBaseUrl();
+   864→    const token = this.config.accessToken;
+   865→
+   866→    const params: Record<string, string | number> = {
+   867→      api_key: token,
+   868→    };
+   869→
+   870→    if (maxWidth) params.maxWidth = maxWidth;
+   871→    if (maxHeight) params.maxHeight = maxHeight;
+   872→
+   873→    const qs = buildQueryString(params);
+   874→    return `${baseUrl}/Items/${itemId}/Images/${imageType}${qs}`;
+   875→  }
+   876→
+   877→  // ═══════════════════════════════════════════════════════
+   878→  // Favorites
+   879→  // ═══════════════════════════════════════════════════════
+   880→
+   881→  /**
+   882→   * Toggle favorite status on an item.
+   883→   */
+   884→  async toggleFavorite(itemId: string, isFavorite: boolean): Promise<void> {
+   885→    if (isFavorite) {
+   886→      await this.request<void>(`/Users/${this.config!.userId}/FavoriteItems/${itemId}`, {
+   887→        method: 'POST',
+   888→      });
+   889→    } else {
+   890→      await this.request<void>(`/Users/${this.config!.userId}/FavoriteItems/${itemId}`, {
+   891→        method: 'DELETE',
+   892→      });
+   893→    }
+   894→  }
+   895→
+   896→  // ═══════════════════════════════════════════════════════
+   897→  // Session / Playback Reporting
+   898→  // ═══════════════════════════════════════════════════════
+   899→
+   900→  /**
+   901→   * Report that playback has started for an item.
+   902→   */
+   903→  async reportPlaybackStart(itemId: string): Promise<void> {
+   904→    const item = await this.getItem(itemId);
+   905→    await this.request<void>('/Sessions/Playing', {
+   906→      method: 'POST',
+   907→      body: JSON.stringify({
+   908→        CanSeek: true,
+   909→        ItemId: itemId,
+   910→        PlaySessionId: `dsp-${Date.now()}`,
+   911→        MediaSourceId: itemId,
+   912→        IsPaused: false,
+   913→        IsMuted: false,
+   914→        PositionTicks: 0,
+   915→        RunTimeTicks: item.RunTimeTicks ?? 0,
+   916→        VolumeLevel: 100,
+   917→      }),
+   918→    });
+   919→  }
+   920→
+   921→  /**
+   922→   * Report that playback has stopped for an item.
+   923→   */
+   924→  async reportPlaybackStopped(itemId: string, positionTicks: number): Promise<void> {
+   925→    await this.request<void>('/Sessions/Playing/Stopped', {
+   926→      method: 'POST',
+   927→      body: JSON.stringify({
+   928→        ItemId: itemId,
+   929→        PlaySessionId: `dsp-${Date.now()}`,
+   930→        MediaSourceId: itemId,
+   931→        PositionTicks: positionTicks,
+   932→      }),
+   933→    });
+   934→  }
+   935→
+   936→  // ═══════════════════════════════════════════════════════
+   937→  // Heartbeat
+   938→  // ═══════════════════════════════════════════════════════
+   939→
+   940→  /**
+   941→   * Send a heartbeat to keep the session alive and update lastHeartbeat.
+   942→   */
+   943→  async sendHeartbeat(): Promise<void> {
+   944→    if (!this.config) return;
+   945→
+   946→    try {
+   947→      await this.request<void>('/Sessions/Capabilities', {
+   948→        method: 'POST',
+   949→        body: JSON.stringify({
+   950→          PlayableMediaTypes: ['Audio'],
+   951→          SupportedCommands: [
+   952→            'Play',
+   953→            'PlayNext',
+   954→            'PlayPrevious',
+   955→            'Stop',
+   956→            'Seek',
+   957→            'Mute',
+   958→            'Unmute',
+   959→            'ToggleMute',
+   960→            'VolumeUp',
+   961→            'VolumeDown',
+   962→            'SetVolume',
+   963→            'SetRepeatMode',
+   964→            'SetShuffleMode',
+   965→          ],
+   966→          SupportsMediaControl: true,
+   967→          SupportsPersistentIdentifier: true,
+   968→        }),
+   969→      });
+   970→
+   971→      this.config.lastHeartbeat = new Date().toISOString();
+   972→      this.saveConfig();
+   973→    } catch {
+   974→      // Heartbeat failure is non-critical
+   975→    }
+   976→  }
+   977→}
+   978→
+   979→// ═══════════════════════════════════════════════════════
+   980→// Singleton Export
+   981→// ═══════════════════════════════════════════════════════
+   982→
+   983→export const jellyfinClient = new JellyfinClient();
+   984→

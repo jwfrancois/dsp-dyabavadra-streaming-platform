@@ -81,3 +81,25 @@ Stage Summary:
 - Full Jellyfin integration built and compiling cleanly (next build passes)
 - 8 new files created, 4 existing files modified
 - User can: connect to Jellyfin server, browse albums/artists/tracks/playlists, view detail pages, play music through DSP pipeline
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Fix "Network error: Failed to fetch" — CORS issue on Jellyfin Connect
+
+Work Log:
+- Diagnosed root cause: browser `fetch()` to Jellyfin server blocked by CORS (different origin)
+- The JellyfinClient was making direct browser-to-server calls, which self-hosted Jellyfin servers don't allow
+- Created `/src/app/api/jellyfin/[...path]/route.ts` — server-side API proxy that forwards all Jellyfin REST calls (GET/POST/DELETE) from Next.js backend to the Jellyfin server (server-to-server, no CORS)
+- Rewrote `JellyfinClient.request()` to route ALL requests through `/api/jellyfin/[...path]` proxy instead of direct browser fetch
+- Updated `connect()` method to pass `__baseUrl` and `__authorization` as internal metadata headers (stripped before proxy forwarding)
+- Updated `getImageUrl()` to return proxied URLs through `/api/proxy/jellyfin` so album art loads without CORS issues
+- Enhanced error handling in `store/jellyfin.ts` `connect()` action with user-friendly messages for network errors, 401 auth failures, and 404 endpoint issues
+- Build passes cleanly with new `/api/jellyfin/[...path]` route visible in route table
+
+Stage Summary:
+- Fixed: "Network error: Failed to fetch" on Jellyfin Connect caused by browser CORS restrictions
+- Files created: `src/app/api/jellyfin/[...path]/route.ts` (server-side API proxy)
+- Files modified: `src/lib/jellyfin.ts` (request method, connect method, getImageUrl method), `src/store/jellyfin.ts` (improved error messages)
+- Architecture: Browser → Next.js API proxy → Jellyfin server (no direct browser-to-Jellyfin calls)
+- Build compiles cleanly, all 22 routes generated successfully
