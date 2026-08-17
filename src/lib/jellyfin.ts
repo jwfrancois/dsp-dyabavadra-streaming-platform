@@ -956,135 +956,46 @@ export class JellyfinClient {
 
   /**
    * Get podcast shows.
-   * Tries multiple item types since Jellyfin servers organize podcasts differently:
-   * - Some use Series (like TV shows)
-   * - Some use MusicAlbum or Folder containers with Audio children
-   * - Some have Audio tracks directly at the top level
+   * Queries all possible container types (Series, MusicAlbum, Folder) at once,
+   * since Jellyfin servers organize podcasts differently. Deduplicates by ID.
    */
   async getPodcasts(params?: { limit?: number; startIndex?: number }): Promise<JellyfinItemsResponse> {
     const limit = params?.limit ?? 200;
     const startIndex = params?.startIndex ?? 0;
     const parentId = this.config?.podcastLibraryId || '';
-
-    // Build common query params (same pattern as getAlbums)
     const baseFields = ['PrimaryImageAspectRatio', 'BasicSyncInfo', 'Genres', 'Overview', 'Tags', 'DateCreated', 'ChildCount'];
 
-    // ── Step 1: Discover what's actually in the podcast library ──
-    // Non-recursive query to see top-level container types
     if (parentId) {
       try {
-        const discoverQs = buildQueryString({
+        // Query ALL container types at once — Jellyfin supports multiple IncludeItemTypes
+        // This catches Series, MusicAlbum, Folder, BoxSet, CollectionFolder, etc.
+        const qs = buildQueryString({
           UserId: this.config!.userId,
           ParentId: parentId,
-          SortBy: 'SortName',
-          SortOrder: 'Ascending',
-          Recursive: false,
-          Fields: baseFields,
-          Limit: 10, // just need to see types
-        } as Record<string, string | number | boolean | undefined | null | string[] | number[]>);
-        const discoverResult = await this.request<JellyfinItemsResponse>(
-          `/Users/${this.config!.userId}/Items${discoverQs}`
-        );
-        const types = [...new Set(discoverResult.Items.map(i => i.Type))];
-        console.log(`[Jellyfin] getPodcasts: top-level types in podcast library: [${types.join(', ')}] (${discoverResult.TotalRecordCount} total)`);
-
-        // Pick the right container type for the actual query
-        // Priority: Series > MusicAlbum > Folder > anything non-Audio
-        const containerType =
-          (types.includes('Series') && 'Series') ||
-          (types.includes('MusicAlbum') && 'MusicAlbum') ||
-          (types.includes('Folder') && 'Folder') ||
-          undefined;
-
-        if (containerType) {
-          console.log(`[Jellyfin] getPodcasts: using container type "${containerType}"`);
-          const qs = buildQueryString({
-            UserId: this.config!.userId,
-            ParentId: parentId,
-            IncludeItemTypes: [containerType],
-            SortBy: 'SortName',
-            SortOrder: 'Ascending',
-            Recursive: true,
-            Fields: baseFields,
-            Limit: limit,
-            StartIndex: startIndex,
-          } as Record<string, string | number | boolean | undefined | null | string[] | number[]>);
-          const result = await this.request<JellyfinItemsResponse>(
-            `/Users/${this.config!.userId}/Items${qs}`
-          );
-          console.log(`[Jellyfin] getPodcasts: found ${result.TotalRecordCount} ${containerType} items`);
-          return result;
-        }
-
-        // If top-level is all Audio/Episode, podcasts are flat tracks — return top-level as shows
-        const nonAudio = discoverResult.Items.filter(i => i.Type !== 'Audio' && i.Type !== 'Episode');
-        if (nonAudio.length > 0) {
-          // Return all non-audio top-level items as shows
-          const allQs = buildQueryString({
-            UserId: this.config!.userId,
-            ParentId: parentId,
-            SortBy: 'SortName',
-            SortOrder: 'Ascending',
-            Recursive: false,
-            Fields: baseFields,
-            Limit: limit,
-            StartIndex: startIndex,
-          } as Record<string, string | number | boolean | undefined | null | string[] | number[]>);
-          const allResult = await this.request<JellyfinItemsResponse>(
-            `/Users/${this.config!.userId}/Items${allQs}`
-          );
-          const shows = allResult.Items.filter(i => i.Type !== 'Audio' && i.Type !== 'Episode');
-          console.log(`[Jellyfin] getPodcasts: returning ${shows.length} non-audio top-level items`);
-          return { Items: shows, TotalRecordCount: shows.length, StartIndex: 0 };
-        }
-
-        // All top-level items are Audio — group by ParentId or Album to synthesize shows
-        console.log(`[Jellyfin] getPodcasts: all top-level are Audio, will synthesize shows from tracks`);
-        // Get Audio items recursively to group into shows
-        const audioQs = buildQueryString({
-          UserId: this.config!.userId,
-          ParentId: parentId,
-          IncludeItemTypes: ['Audio'],
+          IncludeItemTypes: ['Series', 'MusicAlbum', 'Folder', 'BoxSet', 'CollectionFolder'],
           SortBy: 'SortName',
           SortOrder: 'Ascending',
           Recursive: true,
-          Fields: [...baseFields, 'Album', 'AlbumArtists', 'Artists'],
-          Limit: 500,
+          Fields: baseFields,
+          Limit: limit,
+          StartIndex: startIndex,
         } as Record<string, string | number | boolean | undefined | null | string[] | number[]>);
-        const audioResult = await this.request<JellyfinItemsResponse>(
-          `/Users/${this.config!.userId}/Items${audioQs}`
+        const result = await this.request<JellyfinItemsResponse>(
+          `/Users/${this.config!.userId}/Items${qs}`
         );
-        // Group by ParentId (folder) or Album
-        const showMap = new Map<string, { name: string; count: number; genres: string[]; imageUrl: string; dateCreated: string }>();
-        for (const track of audioResult.Items) {
-          const key = track.ParentId || track.AlbumId || track.Album || '__unknown__';
-          if (!showMap.has(key)) {
-            showMap.set(key, {
-              name: track.Album || track.Artists?.[0] || track.AlbumArtists?.[0]?.Name || 'Unknown Podcast',
-              count: 0,
-              genres: track.Genres ?? [],
-              imageUrl: track.ImageTags?.Primary ? track.Id : '',
-              dateCreated: track.DateCreated || '',
-            });
+
+        // Deduplicate by ID (same item might match multiple types)
+        const seen = new Set<string>();
+        const unique: JellyfinItem[] = [];
+        for (const item of result.Items) {
+          if (!seen.has(item.Id)) {
+            seen.add(item.Id);
+            unique.push(item);
           }
-          showMap.get(key)!.count++;
         }
-        const synthetic: JellyfinItem[] = [];
-        for (const [id, show] of showMap) {
-          if (id === '__unknown__') continue;
-          synthetic.push({
-            Id: id,
-            Name: show.name,
-            Type: 'MusicAlbum', // use MusicAlbum so the mapper handles it
-            ChildCount: show.count,
-            Genres: show.genres,
-            ImageTags: show.imageUrl ? { Primary: 'synthetic' } : undefined,
-            DateCreated: show.dateCreated,
-          });
-        }
-        console.log(`[Jellyfin] getPodcasts: synthesized ${synthetic.length} shows from ${audioResult.TotalRecordCount} tracks`);
-        const paged = synthetic.slice(startIndex, startIndex + limit);
-        return { Items: paged, TotalRecordCount: synthetic.length, StartIndex: startIndex };
+
+        console.log(`[Jellyfin] getPodcasts: found ${result.TotalRecordCount} items, ${unique.length} after dedup`);
+        return { Items: unique, TotalRecordCount: result.TotalRecordCount, StartIndex: startIndex };
       } catch (err) {
         console.error('[Jellyfin] getPodcasts: query failed', err);
       }
