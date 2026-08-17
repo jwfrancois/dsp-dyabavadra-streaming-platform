@@ -955,39 +955,112 @@ export class JellyfinClient {
   // ═══════════════════════════════════════════════════════
 
   /**
-   * Get podcast shows. Mirrors getAlbums pattern:
-   * single query with IncludeItemTypes, Recursive, optional ParentId.
+   * Get podcast shows.
+   * Primary: query Series items in podcast library (mirrors getAlbums pattern).
+   * Fallback: if Series returns 0, query all items to discover actual types.
    */
   async getPodcasts(params?: { limit?: number; startIndex?: number }): Promise<JellyfinItemsResponse> {
-    const queryParams: Record<string, unknown> = {
-      UserId: this.config!.userId,
-      IncludeItemTypes: ['Series'],
-      SortBy: 'SortName',
-      SortOrder: 'Ascending',
-      Recursive: true,
-      Fields: [
-        'PrimaryImageAspectRatio',
-        'BasicSyncInfo',
-        'Genres',
-        'Overview',
-        'Tags',
-        'DateCreated',
-        'ChildCount',
-      ],
-    };
+    const limit = params?.limit ?? 200;
+    const startIndex = params?.startIndex ?? 0;
+    const parentId = this.config?.podcastLibraryId || '';
 
-    if (params?.limit !== undefined) queryParams.Limit = params.limit;
-    if (params?.startIndex !== undefined) queryParams.StartIndex = params.startIndex;
+    // ── Primary query: Series (same pattern as getAlbums uses MusicAlbum) ──
+    try {
+      const queryParams: Record<string, unknown> = {
+        UserId: this.config!.userId,
+        IncludeItemTypes: ['Series'],
+        SortBy: 'SortName',
+        SortOrder: 'Ascending',
+        Recursive: true,
+        Fields: ['PrimaryImageAspectRatio', 'BasicSyncInfo', 'Genres', 'Overview', 'Tags', 'DateCreated', 'ChildCount'],
+        Limit: limit,
+        StartIndex: startIndex,
+      };
+      if (parentId) queryParams.ParentId = parentId;
 
-    // Scope to podcast library if set
-    if (this.config?.podcastLibraryId) {
-      queryParams.ParentId = this.config.podcastLibraryId;
+      const qs = buildQueryString(queryParams as Record<string, string | number | boolean | undefined | null | string[] | number[]>);
+      const result = await this.request<JellyfinItemsResponse>(
+        `/Users/${this.config!.userId}/Items${qs}`
+      );
+
+      // If we got results, return them (even if 0 — means no Series in this library)
+      if (parentId || result.TotalRecordCount > 0) {
+        console.log(`[Jellyfin] getPodcasts: Series query returned ${result.TotalRecordCount} items (parentId=${parentId || '(none)'})`);
+        return result;
+      }
+    } catch (err) {
+      console.warn('[Jellyfin] getPodcasts: Series query failed', err);
     }
 
-    const qs = buildQueryString(queryParams as Record<string, string | number | boolean | undefined | null | string[] | number[]>);
-    return this.request<JellyfinItemsResponse>(
-      `/Users/${this.config!.userId}/Items${qs}`
-    );
+    // ── Fallback: no podcastLibraryId and no global Series found ──
+    // Try to discover podcast libraries by querying Views
+    console.log('[Jellyfin] getPodcasts: no results yet, trying to discover podcast library...');
+    try {
+      const views = await this.getViews();
+      const podcastView = views.Items.find(
+        (v) => v.Type === 'CollectionFolder' && v.Name.toLowerCase().includes('podcast')
+      );
+      if (podcastView) {
+        console.log(`[Jellyfin] getPodcasts: found podcast view "${podcastView.Name}" (id=${podcastView.Id})`);
+        // Update config for future calls
+        if (this.config) {
+          this.config.podcastLibraryId = podcastView.Id;
+          this.saveConfig();
+        }
+        // Retry with the discovered library
+        const queryParams: Record<string, unknown> = {
+          UserId: this.config!.userId,
+          IncludeItemTypes: ['Series'],
+          SortBy: 'SortName',
+          SortOrder: 'Ascending',
+          Recursive: true,
+          Fields: ['PrimaryImageAspectRatio', 'BasicSyncInfo', 'Genres', 'Overview', 'Tags', 'DateCreated', 'ChildCount'],
+          Limit: limit,
+          StartIndex: startIndex,
+          ParentId: podcastView.Id,
+        };
+        const qs = buildQueryString(queryParams as Record<string, string | number | boolean | undefined | null | string[] | number[]>);
+        const result = await this.request<JellyfinItemsResponse>(
+          `/Users/${this.config!.userId}/Items${qs}`
+        );
+        console.log(`[Jellyfin] getPodcasts: retry with discovered library returned ${result.TotalRecordCount} items`);
+        return result;
+      }
+    } catch (err) {
+      console.warn('[Jellyfin] getPodcasts: view discovery failed', err);
+    }
+
+    // ── Last resort: query ALL item types in any podcast-named library ──
+    if (parentId) {
+      try {
+        const queryParams: Record<string, unknown> = {
+          UserId: this.config!.userId,
+          ParentId: parentId,
+          SortBy: 'SortName',
+          SortOrder: 'Ascending',
+          Recursive: false,
+          Fields: ['PrimaryImageAspectRatio', 'BasicSyncInfo', 'Genres', 'Overview', 'Tags', 'DateCreated', 'ChildCount'],
+          Limit: limit,
+        };
+        const qs = buildQueryString(queryParams as Record<string, string | number | boolean | undefined | null | string[] | number[]>);
+        const result = await this.request<JellyfinItemsResponse>(
+          `/Users/${this.config!.userId}/Items${qs}`
+        );
+        const types = [...new Set(result.Items.map(i => i.Type))];
+        console.log(`[Jellyfin] getPodcasts: fallback query found ${result.TotalRecordCount} items with types: [${types.join(', ')}]`);
+        // Filter to only show-level containers (not individual audio episodes)
+        const shows = result.Items.filter(i => i.Type !== 'Audio' && i.Type !== 'Episode');
+        if (shows.length > 0) {
+          console.log(`[Jellyfin] getPodcasts: filtered to ${shows.length} non-audio items`);
+          return { Items: shows, TotalRecordCount: shows.length, StartIndex: 0 };
+        }
+      } catch (err) {
+        console.warn('[Jellyfin] getPodcasts: fallback query failed', err);
+      }
+    }
+
+    console.log('[Jellyfin] getPodcasts: no podcasts found');
+    return { Items: [], TotalRecordCount: 0, StartIndex: 0 };
   }
 
   /**
