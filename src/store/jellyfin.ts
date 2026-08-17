@@ -752,13 +752,43 @@ export const useJellyfinStore = create<JellyfinState>((set, get) => ({
     set({ isLoadingPodcasts: true });
 
     try {
-      const response = await jellyfinClient.getPodcasts();
-      console.log(`[Jellyfin Store] fetchPodcasts: got ${response.Items.length} items, TotalRecordCount=${response.TotalRecordCount}`);
-      if (response.Items.length > 0) {
-        console.log(`[Jellyfin Store] First few items:`, response.Items.slice(0, 5).map(i => ({ name: i.Name, type: i.Type, id: i.Id, childCount: i.ChildCount })));
+      // First fetch to get total count
+      const first = await jellyfinClient.getPodcasts({ limit: PAGE_SIZE, startIndex: 0 });
+      const allShows = [...first.Items.map(mapPodcastShow)];
+      const totalCount = first.TotalRecordCount;
+      set({ podcastShows: allShows, totalPodcastShows: totalCount, isLoadingPodcasts: false });
+
+      // If there are more pages, fetch them concurrently (same pattern as fetchAllAlbums)
+      if (allShows.length < totalCount) {
+        set({ isLoadingPodcasts: true });
+        const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+        const remainingPages: number[] = [];
+
+        for (let p = 1; p < totalPages; p++) {
+          remainingPages.push(p);
+        }
+
+        for (let i = 0; i < remainingPages.length; i += AUTO_FETCH_CONCURRENCY) {
+          const batch = remainingPages.slice(i, i + AUTO_FETCH_CONCURRENCY);
+          const results = await Promise.all(
+            batch.map(page =>
+              jellyfinClient.getPodcasts({ limit: PAGE_SIZE, startIndex: page * PAGE_SIZE })
+                .then(r => r.Items.map(mapPodcastShow))
+                .catch(() => [] as JellyfinPodcastShow[])
+            )
+          );
+
+          const current = useJellyfinStore.getState();
+          if (current.connectionStatus !== 'connected') break;
+
+          const newShows = results.flat();
+          set(prev => ({
+            podcastShows: [...prev.podcastShows, ...newShows],
+          }));
+        }
+
+        set({ isLoadingPodcasts: false });
       }
-      const mapped = response.Items.map(mapPodcastShow);
-      set({ podcastShows: mapped, totalPodcastShows: response.TotalRecordCount, isLoadingPodcasts: false });
     } catch (err) {
       const message =
         err instanceof JellyfinApiError

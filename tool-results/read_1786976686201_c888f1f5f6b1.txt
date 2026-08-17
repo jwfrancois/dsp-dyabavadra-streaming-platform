@@ -1,0 +1,1001 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback, useMemo } from 'react';
+     4→import { useUIStore } from '@/store/ui';
+     5→import { usePlayerStore } from '@/store/player';
+     6→import { useJellyfinStore, type JellyfinArtist, type JellyfinAlbum, type JellyfinTrack, type JellyfinPodcastShow, type JellyfinPodcastEpisode } from '@/store/jellyfin';
+     7→import { jellyfinClient } from '@/lib/jellyfin';
+     8→import { formatDuration, formatSampleRate, formatFileSize, type Track } from '@/lib/data';
+     9→import { Card, CardContent } from '@/components/ui/card';
+    10→import { Button } from '@/components/ui/button';
+    11→import { Badge } from '@/components/ui/badge';
+    12→import { ScrollArea } from '@/components/ui/scroll-area';
+    13→import { Separator } from '@/components/ui/separator';
+    14→import { Input } from '@/components/ui/input';
+    15→import {
+    16→  Play, Pause, ArrowLeft, Heart, Search, Server, Wifi, WifiOff,
+    17→  Loader2, CheckCircle2, XCircle, AlertTriangle, RefreshCw,
+    18→  Music, Disc3, User, ListMusic, Library, Globe, ChevronRight,
+    19→  Clock, Gauge, Shield, Eye, EyeOff, ArrowRight, Star, ExternalLink,
+    20→  Radio, Volume2, FolderOpen, Box, Plug, Unplug, Settings,
+    21→  Zap, Album, Mic2, Users, Grid3X3, List, SkipForward,
+    22→  PlayCircle, RadioStation, Signal, Podcast, Rss, Headphones, Key,
+    23→} from 'lucide-react';
+    24→
+    25→// ─── Types ───
+    26→
+    27→type JellyfinTab = 'albums' | 'artists' | 'tracks' | 'playlists' | 'podcasts' | 'recent';
+    28→type ViewMode = 'grid' | 'list';
+    29→
+    30→// ─── Cover Art Fallback ───
+    31→
+    32→function CoverArt({ url, name, size = 'md', rounded = 'lg' }: { url: string; name: string; size?: 'sm' | 'md' | 'lg' | 'xl'; rounded?: 'sm' | 'md' | 'lg' | 'xl' | 'full' }) {
+    33→  const sizeClasses = {
+    34→    sm: 'w-8 h-8',
+    35→    md: 'w-10 h-10',
+    36→    lg: 'w-14 h-14',
+    37→    xl: 'w-full aspect-square',
+    38→    full: 'w-full aspect-square',
+    39→  };
+    40→  const roundedClasses = {
+    41→    sm: 'rounded-sm',
+    42→    md: 'rounded-md',
+    43→    lg: 'rounded-lg',
+    44→    xl: 'rounded-xl',
+    45→    full: 'rounded-xl',
+    46→  };
+    47→  const [error, setError] = useState(false);
+    48→
+    49→  return (
+    50→    <div className={`${sizeClasses[size]} ${roundedClasses[rounded]} overflow-hidden bg-surface flex-shrink-0 relative`}>
+    51→      {url && !error ? (
+    52→        <img
+    53→          src={url}
+    54→          alt={name}
+    55→          className="w-full h-full object-cover"
+    56→          onError={() => setError(true)}
+    57→          draggable={false}
+    58→          loading="lazy"
+    59→        />
+    60→      ) : (
+    61→        <div className="w-full h-full bg-gradient-to-br from-purple-900/60 to-blue-900/60 flex items-center justify-center">
+    62→          <Music className="w-1/3 h-1/3 text-muted-foreground/40" />
+    63→        </div>
+    64→      )}
+    65→    </div>
+    66→  );
+    67→}
+    68→
+    69→// ─── Connection Panel ───
+    70→
+    71→function ConnectionPanel() {
+    72→  const [serverUrl, setServerUrl] = useState('');
+    73→  const [username, setUsername] = useState('');
+    74→  const [password, setPassword] = useState('');
+    75→  const [apiKey, setApiKey] = useState('');
+    76→  const [showPassword, setShowPassword] = useState(false);
+    77→  const [authMode, setAuthMode] = useState<'password' | 'apikey'>('password');
+    78→  const { connectionStatus, error, config, connect, connectWithApiKey, disconnect, clearError } = useJellyfinStore();
+    79→
+    80→  useEffect(() => {
+    81→    if (config?.serverUrl) setServerUrl(config.serverUrl);
+    82→    if (config?.username) setUsername(config.username);
+    83→  }, [config]);
+    84→
+    85→  const handleConnect = useCallback(async () => {
+    86→    clearError();
+    87→    const url = serverUrl.trim().replace(/\/+$/, '');
+    88→    if (!url) return;
+    89→    if (authMode === 'apikey') {
+    90→      if (!apiKey.trim()) return;
+    91→      await connectWithApiKey(url, apiKey.trim());
+    92→    } else {
+    93→      if (!username.trim()) return;
+    94→      await connect(url, username.trim(), password);
+    95→    }
+    96→  }, [serverUrl, username, password, apiKey, authMode, connect, connectWithApiKey, clearError]);
+    97→
+    98→  const handleDisconnect = useCallback(async () => {
+    99→    await disconnect();
+   100→  }, [disconnect]);
+   101→
+   102→  if (connectionStatus === 'connected' && config) {
+   103→    return (
+   104→      <Card className="border-border bg-card mb-6">
+   105→        <CardContent className="p-4">
+   106→          <div className="flex items-start gap-4">
+   107→            <div className="w-12 h-12 rounded-xl bg-green-500/15 flex items-center justify-center flex-shrink-0">
+   108→              <Server className="w-6 h-6 text-green-400" />
+   109→            </div>
+   110→            <div className="flex-1 min-w-0">
+   111→              <div className="flex items-center gap-2 mb-1">
+   112→                <h3 className="font-semibold text-sm">{config.serverName}</h3>
+   113→                <Badge variant="outline" className="text-[10px] border-green-500/30 text-green-400 bg-green-500/10">
+   114→                  <CheckCircle2 className="w-3 h-3 mr-1" /> Connected
+   115→                </Badge>
+   116→              </div>
+   117→              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+   118→                <span className="flex items-center gap-1">
+   119→                  <Globe className="w-3 h-3" /> {config.serverUrl}
+   120→                </span>
+   121→                <span className="flex items-center gap-1">
+   122→                  <User className="w-3 h-3" /> {config.username}
+   123→                </span>
+   124→                <span className="flex items-center gap-1">
+   125→                  <Box className="w-3 h-3" /> v{config.serverVersion}
+   126→                </span>
+   127→              </div>
+   128→            </div>
+   129→            <Button
+   130→              variant="outline"
+   131→              size="sm"
+   132→              className="text-xs gap-1.5 text-red-400 hover:text-red-300 hover:border-red-500/30 hover:bg-red-950/30 flex-shrink-0"
+   133→              onClick={handleDisconnect}
+   134→            >
+   135→              <Unplug className="w-3 h-3" /> Disconnect
+   136→            </Button>
+   137→          </div>
+   138→        </CardContent>
+   139→      </Card>
+   140→    );
+   141→  }
+   142→
+   143→  return (
+   144→    <Card className="border-border bg-card mb-6">
+   145→      <CardContent className="p-4">
+   146→        <div className="flex items-center gap-3 mb-4">
+   147→          <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center flex-shrink-0">
+   148→            <Server className="w-5 h-5 text-purple-400" />
+   149→          </div>
+   150→          <div>
+   151→            <h3 className="font-semibold text-sm">Connect to Jellyfin</h3>
+   152→            <p className="text-xs text-muted-foreground">Enter your Jellyfin server details to browse your music library</p>
+   153→          </div>
+   154→        </div>
+   155→
+   156→        <div className="space-y-3">
+   157→          <div className="flex flex-col sm:flex-row gap-3">
+   158→            <div className="flex-1">
+   159→              <label className="text-xs text-muted-foreground mb-1 block">Server URL</label>
+   160→              <Input
+   161→                placeholder="https://jellyfin.example.com"
+   162→                value={serverUrl}
+   163→                onChange={(e) => setServerUrl(e.target.value)}
+   164→                className="bg-surface/50 border-border"
+   165→                disabled={connectionStatus === 'connecting'}
+   166→              />
+   167→            </div>
+   168→          </div>
+   169→
+   170→          {/* Auth mode toggle */}
+   171→          <div className="flex items-center gap-1 p-1 rounded-lg bg-surface/50 border border-border w-fit">
+   172→            <button
+   173→              type="button"
+   174→              className={`px-3 py-1.5 text-xs rounded-md transition-all ${
+   175→                authMode === 'password'
+   176→                  ? 'bg-purple-500/20 text-purple-300 shadow-sm'
+   177→                  : 'text-muted-foreground hover:text-foreground'
+   178→              }`}
+   179→              onClick={() => setAuthMode('password')}
+   180→            >
+   181→              <User className="w-3 h-3 inline mr-1" />Username / Password
+   182→            </button>
+   183→            <button
+   184→              type="button"
+   185→              className={`px-3 py-1.5 text-xs rounded-md transition-all ${
+   186→                authMode === 'apikey'
+   187→                  ? 'bg-purple-500/20 text-purple-300 shadow-sm'
+   188→                  : 'text-muted-foreground hover:text-foreground'
+   189→              }`}
+   190→              onClick={() => setAuthMode('apikey')}
+   191→            >
+   192→              <Key className="w-3 h-3 inline mr-1" />API Key
+   193→            </button>
+   194→          </div>
+   195→
+   196→          {authMode === 'password' ? (
+   197→            <>
+   198→              <div className="flex flex-col sm:flex-row gap-3">
+   199→                <div className="flex-1">
+   200→                  <label className="text-xs text-muted-foreground mb-1 block">Username</label>
+   201→                  <Input
+   202→                    placeholder="admin"
+   203→                    value={username}
+   204→                    onChange={(e) => setUsername(e.target.value)}
+   205→                    className="bg-surface/50 border-border"
+   206→                    disabled={connectionStatus === 'connecting'}
+   207→                  />
+   208→                </div>
+   209→              </div>
+   210→              <div className="relative">
+   211→                <label className="text-xs text-muted-foreground mb-1 block">Password</label>
+   212→                <Input
+   213→                  type={showPassword ? 'text' : 'password'}
+   214→                  placeholder="••••••••"
+   215→                  value={password}
+   216→                  onChange={(e) => setPassword(e.target.value)}
+   217→                  className="bg-surface/50 border-border pr-10"
+   218→                  disabled={connectionStatus === 'connecting'}
+   219→                  onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
+   220→                />
+   221→                <button
+   222→                  className="absolute right-3 top-[38px] text-muted-foreground hover:text-foreground transition-colors"
+   223→                  onClick={() => setShowPassword(!showPassword)}
+   224→                  type="button"
+   225→                  tabIndex={-1}
+   226→                >
+   227→                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+   228→                </button>
+   229→              </div>
+   230→            </>
+   231→          ) : (
+   232→            <div>
+   233→              <label className="text-xs text-muted-foreground mb-1 block">API Key</label>
+   234→              <Input
+   235→                type="text"
+   236→                placeholder="Your Jellyfin API key"
+   237→                value={apiKey}
+   238→                onChange={(e) => setApiKey(e.target.value)}
+   239→                className="bg-surface/50 border-border font-mono text-xs"
+   240→                disabled={connectionStatus === 'connecting'}
+   241→                onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
+   242→              />
+   243→              <p className="text-[10px] text-muted-foreground mt-1">
+   244→                Find your API key in Jellyfin under Dashboard → API Keys
+   245→              </p>
+   246→            </div>
+   247→          )}
+   248→
+   249→          {error && (
+   250→            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-red-950/40 border border-red-800/30">
+   251→              <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+   252→              <p className="text-xs text-red-300">{error}</p>
+   253→            </div>
+   254→          )}
+   255→
+   256→          <Button
+   257→            className="w-full gap-2"
+   258→            onClick={handleConnect}
+   259→            disabled={connectionStatus === 'connecting' || !serverUrl.trim() || (authMode === 'password' ? !username.trim() : !apiKey.trim())}
+   260→          >
+   261→            {connectionStatus === 'connecting' ? (
+   262→              <>
+   263→                <Loader2 className="w-4 h-4 animate-spin" /> Connecting...
+   264→              </>
+   265→            ) : (
+   266→              <>
+   267→                <Plug className="w-4 h-4" /> Connect to Server
+   268→              </>
+   269→            )}
+   270→          </Button>
+   271→        </div>
+   272→
+   273→        <div className="mt-3 flex items-start gap-2 p-2.5 rounded-lg bg-blue-950/20 border border-blue-800/20">
+   274→          <Shield className="w-3.5 h-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
+   275→          <p className="text-[10px] text-muted-foreground leading-relaxed">
+   276→            Your credentials are stored locally in this browser. DSP connects directly to your Jellyfin server — no data is sent to any third party.
+   277→          </p>
+   278→        </div>
+   279→      </CardContent>
+   280→    </Card>
+   281→  );
+   282→}
+   283→
+   284→// ─── Tab Navigation ───
+   285→
+   286→function TabBar({ active, onChange }: { active: JellyfinTab; onChange: (tab: JellyfinTab) => void }) {
+   287→  const { totalArtists, totalAlbums, totalTracks, playlists, totalPodcastShows } = useJellyfinStore();
+   288→  const tabs: { key: JellyfinTab; label: string; icon: typeof Album; count?: number }[] = [
+   289→    { key: 'recent', label: 'Recent', icon: Clock },
+   290→    { key: 'albums', label: 'Albums', icon: Disc3, count: totalAlbums },
+   291→    { key: 'artists', label: 'Artists', icon: User, count: totalArtists },
+   292→    { key: 'tracks', label: 'Tracks', icon: Music, count: totalTracks },
+   293→    { key: 'podcasts', label: 'Podcasts', icon: Podcast, count: totalPodcastShows },
+   294→    { key: 'playlists', label: 'Playlists', icon: ListMusic, count: playlists.length },
+   295→  ];
+   296→
+   297→  return (
+   298→    <div className="flex gap-1 mb-6 bg-surface/30 p-1 rounded-lg">
+   299→      {tabs.map(tab => (
+   300→        <button
+   301→          key={tab.key}
+   302→          onClick={() => onChange(tab.key)}
+   303→          className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium transition-all flex-1 justify-center ${
+   304→            active === tab.key
+   305→              ? 'bg-primary text-primary-foreground shadow-sm'
+   306→              : 'text-muted-foreground hover:text-foreground hover:bg-surface/60'
+   307→          }`}
+   308→        >
+   309→          <tab.icon className="w-3.5 h-3.5" />
+   310→          <span className="hidden sm:inline">{tab.label}</span>
+   311→          {tab.count !== undefined && tab.count > 0 && (
+   312→            <span className={`${active === tab.key ? 'text-primary-foreground/70' : 'text-muted-foreground/60'}`}>
+   313→              ({tab.count > 999 ? `${(tab.count / 1000).toFixed(1)}k` : tab.count})
+   314→            </span>
+   315→          )}
+   316→        </button>
+   317→      ))}
+   318→    </div>
+   319→  );
+   320→}
+   321→
+   322→// ─── Album Grid Card ───
+   323→
+   324→function AlbumCard({ album, onPlay, onAlbumClick }: { album: JellyfinAlbum; onPlay: () => void; onAlbumClick: () => void }) {
+   325→  return (
+   326→    <Card className="bg-card border-border group hover:border-primary/30 transition-all cursor-pointer">
+   327→      <CardContent className="p-0">
+   328→        <div className="relative" onClick={onAlbumClick}>
+   329→          <CoverArt url={album.imageUrl} name={album.name} size="full" rounded="xl" />
+   330→          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+   331→            <Button size="sm" className="rounded-full w-12 h-12 shadow-lg" onClick={(e) => { e.stopPropagation(); onPlay(); }}>
+   332→              <Play className="w-5 h-5 ml-0.5" fill="currentColor" />
+   333→            </Button>
+   334→          </div>
+   335→          {album.isFavorite && (
+   336→            <div className="absolute top-2 right-2">
+   337→              <Heart className="w-4 h-4 text-red-400 fill-red-400 drop-shadow" />
+   338→            </div>
+   339→          )}
+   340→        </div>
+   341→        <div className="p-3 pt-2.5">
+   342→          <h3 className="text-sm font-medium truncate" title={album.name}>{album.name}</h3>
+   343→          <p className="text-xs text-muted-foreground truncate">{album.artistName}</p>
+   344→          <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground/70">
+   345→            {album.year > 0 && <span>{album.year}</span>}
+   346→            {album.genre && <span className="truncate max-w-[80px]">{album.genre}</span>}
+   347→          </div>
+   348→        </div>
+   349→      </CardContent>
+   350→    </Card>
+   351→  );
+   352→}
+   353→
+   354→// ─── Artist List Item ───
+   355→
+   356→function ArtistRow({ artist, onClick }: { artist: JellyfinArtist; onClick: () => void }) {
+   357→  return (
+   358→    <button
+   359→      onClick={onClick}
+   360→      className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-accent/20 transition-colors w-full text-left group"
+   361→    >
+   362→      <CoverArt url={artist.imageUrl} name={artist.name} size="lg" rounded="lg" />
+   363→      <div className="flex-1 min-w-0">
+   364→        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{artist.name}</p>
+   365→        <p className="text-xs text-muted-foreground">{artist.albumCount} album{artist.albumCount !== 1 ? 's' : ''}</p>
+   366→      </div>
+   367→      <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
+   368→    </button>
+   369→  );
+   370→}
+   371→
+   372→// ─── Track Row ───
+   373→
+   374→function TrackRow({ track, trackNumber, onPlay, isPlaying, isCurrent }: { track: JellyfinTrack; trackNumber: number; onPlay: () => void; isPlaying: boolean; isCurrent: boolean }) {
+   375→  return (
+   376→    <div
+   377→      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
+   378→        isCurrent ? 'bg-primary/10 text-primary' : 'hover:bg-accent/20'
+   379→      }`}
+   380→    >
+   381→      <span className={`w-8 text-xs text-right tabular-nums flex-shrink-0 ${isCurrent ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+   382→        {isCurrent && isPlaying ? (
+   383→          <Volume2 className="w-3.5 h-3.5 ml-auto text-primary animate-pulse" />
+   384→        ) : isCurrent ? (
+   385→          <Play className="w-3.5 h-3.5 ml-auto text-primary" fill="currentColor" />
+   386→        ) : (
+   387→          trackNumber
+   388→        )}
+   389→      </span>
+   390→      <CoverArt url={track.imageUrl} name={track.name} size="sm" rounded="sm" />
+   391→      <div className="flex-1 min-w-0">
+   392→        <p className={`text-sm truncate ${isCurrent ? 'font-medium text-primary' : ''}`}>{track.name}</p>
+   393→        <p className="text-xs text-muted-foreground truncate">
+   394→          {track.artistName} · {track.albumName}
+   395→        </p>
+   396→      </div>
+   397→      <div className="hidden sm:flex items-center gap-3 text-xs text-muted-foreground/70 flex-shrink-0">
+   398→        {track.format && <Badge variant="secondary" className="text-[9px] px-1.5 py-0 font-mono uppercase">{track.format}</Badge>}
+   399→        {track.sampleRate > 0 && <span>{(track.sampleRate / 1000).toFixed(0)}kHz</span>}
+   400→        {track.bitDepth > 0 && <span>{track.bitDepth}bit</span>}
+   401→      </div>
+   402→      <span className="text-xs text-muted-foreground/70 tabular-nums w-10 text-right flex-shrink-0">
+   403→        {track.duration > 0 ? formatDuration(track.duration) : '--:--'}
+   404→      </span>
+   405→      <button className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" onClick={onPlay}>
+   406→        {isCurrent && isPlaying ? (
+   407→          <Pause className="w-4 h-4 text-primary" />
+   408→        ) : (
+   409→          <Play className="w-4 h-4 text-primary" fill="currentColor" />
+   410→        )}
+   411→      </button>
+   412→    </div>
+   413→  );
+   414→}
+   415→
+   416→// ─── Playlist Row ───
+   417→
+   418→function PlaylistRow({ playlist, onClick }: { playlist: { id: string; name: string; imageUrl: string; itemCount: number }; onClick: () => void }) {
+   419→  return (
+   420→    <button
+   421→      onClick={onClick}
+   422→      className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-accent/20 transition-colors w-full text-left group"
+   423→    >
+   424→      <CoverArt url={playlist.imageUrl} name={playlist.name} size="lg" rounded="lg" />
+   425→      <div className="flex-1 min-w-0">
+   426→        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{playlist.name}</p>
+   427→        <p className="text-xs text-muted-foreground">{playlist.itemCount} tracks</p>
+   428→      </div>
+   429→      <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
+   430→    </button>
+   431→  );
+   432→}
+   433→
+   434→// ─── Podcast Show Card ───
+   435→
+   436→function PodcastShowCard({ show, onClick }: { show: JellyfinPodcastShow; onClick: () => void }) {
+   437→  return (
+   438→    <Card className="bg-card border-border group hover:border-primary/30 transition-all cursor-pointer">
+   439→      <CardContent className="p-0">
+   440→        <div className="relative" onClick={onClick}>
+   441→          <CoverArt url={show.imageUrl} name={show.name} size="full" rounded="xl" />
+   442→          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+   443→            <Button size="sm" className="rounded-full w-12 h-12 shadow-lg">
+   444→              <Headphones className="w-5 h-5" />
+   445→            </Button>
+   446→          </div>
+   447→        </div>
+   448→        <div className="p-3 pt-2.5">
+   449→          <h3 className="text-sm font-medium truncate" title={show.name}>{show.name}</h3>
+   450→          <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground/70">
+   451→            <span className="flex items-center gap-1">
+   452→              <Rss className="w-3 h-3" /> {show.episodeCount} episode{show.episodeCount !== 1 ? 's' : ''}
+   453→            </span>
+   454→            {show.genres.length > 0 && (
+   455→              <span className="truncate max-w-[80px]">{show.genres[0]}</span>
+   456→            )}
+   457→          </div>
+   458→        </div>
+   459→      </CardContent>
+   460→    </Card>
+   461→  );
+   462→}
+   463→
+   464→// ─── Podcast Episode Row ───
+   465→
+   466→function PodcastEpisodeRow({ episode, index, onPlay, isPlaying, isCurrent }: { episode: JellyfinPodcastEpisode; index: number; onPlay: () => void; isPlaying: boolean; isCurrent: boolean }) {
+   467→  return (
+   468→    <div
+   469→      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
+   470→        isCurrent ? 'bg-primary/10 text-primary' : 'hover:bg-accent/20'
+   471→      }`}
+   472→    >
+   473→      <span className={`w-8 text-xs text-right tabular-nums flex-shrink-0 ${isCurrent ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+   474→        {isCurrent && isPlaying ? (
+   475→          <Volume2 className="w-3.5 h-3.5 ml-auto text-primary animate-pulse" />
+   476→        ) : isCurrent ? (
+   477→          <Play className="w-3.5 h-3.5 ml-auto text-primary" fill="currentColor" />
+   478→        ) : (
+   479→          <span>{index}</span>
+   480→        )}
+   481→      </span>
+   482→      <CoverArt url={episode.imageUrl} name={episode.showName} size="sm" rounded="sm" />
+   483→      <div className="flex-1 min-w-0">
+   484→        <p className={`text-sm truncate ${isCurrent ? 'font-medium text-primary' : ''}`}>{episode.name}</p>
+   485→        <p className="text-xs text-muted-foreground truncate">{episode.showName}</p>
+   486→      </div>
+   487→      <div className="hidden sm:flex items-center gap-3 text-xs text-muted-foreground/70 flex-shrink-0">
+   488→        {episode.releaseDate && (
+   489→          <span>{new Date(episode.releaseDate).toLocaleDateString()}</span>
+   490→        )}
+   491→        <span className="tabular-nums">
+   492→          {episode.duration > 0 ? formatDuration(episode.duration) : '--:--'}
+   493→        </span>
+   494→      </div>
+   495→      <button className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" onClick={onPlay}>
+   496→        {isCurrent && isPlaying ? (
+   497→          <Pause className="w-4 h-4 text-primary" />
+   498→        ) : (
+   499→          <Play className="w-4 h-4 text-primary" fill="currentColor" />
+   500→        )}
+   501→      </button>
+   502→    </div>
+   503→  );
+   504→}
+   505→
+   506→// ─── Albums Grid ───
+   507→
+   508→function AlbumsGrid({ albums, onAlbumClick, onAlbumPlay }: { albums: JellyfinAlbum[]; onAlbumClick: (album: JellyfinAlbum) => void; onAlbumPlay: (album: JellyfinAlbum) => void }) {
+   509→  if (albums.length === 0) {
+   510→    return (
+   511→      <div className="text-center py-12">
+   512→        <Disc3 className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+   513→        <p className="text-sm text-muted-foreground">No albums found</p>
+   514→      </div>
+   515→    );
+   516→  }
+   517→
+   518→  return (
+   519→    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+   520→      {albums.map(album => (
+   521→        <AlbumCard
+   522→          key={album.id}
+   523→          album={album}
+   524→          onPlay={() => onAlbumPlay(album)}
+   525→          onAlbumClick={() => onAlbumClick(album)}
+   526→        />
+   527→      ))}
+   528→    </div>
+   529→  );
+   530→}
+   531→
+   532→// ─── Empty State ───
+   533→
+   534→function EmptyState({ icon: Icon, title, description }: { icon: typeof Library; title: string; description: string }) {
+   535→  return (
+   536→    <div className="text-center py-16">
+   537→      <Icon className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
+   538→      <h3 className="text-sm font-medium text-muted-foreground mb-1">{title}</h3>
+   539→      <p className="text-xs text-muted-foreground/70 max-w-sm mx-auto">{description}</p>
+   540→    </div>
+   541→  );
+   542→}
+   543→
+   544→// ═══════════════════════════════════════════════════════════
+   545→// MAIN JELLYFIN VIEW
+   546→// ═══════════════════════════════════════════════════════════
+   547→
+   548→export function JellyfinView() {
+   549→  const { navigate } = useUIStore();
+   550→  const { setQueue, play, currentTrack, isPlaying } = usePlayerStore();
+   551→  const store = useJellyfinStore();
+   552→
+   553→  const [activeTab, setActiveTab] = useState<JellyfinTab>('recent');
+   554→  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+   555→  const [searchQuery, setSearchQuery] = useState('');
+   556→  const [selectedPodcastShow, setSelectedPodcastShow] = useState<string | null>(null);
+   557→
+   558→  const isConnected = store.connectionStatus === 'connected';
+   559→  const { isLoadingAlbums, isLoadingArtists, isLoadingTracks, isLoadingRecent, isLoadingPodcasts, isLoadingAllAlbums, isLoadingAllArtists } = store;
+   560→
+   561→  // ── Data Fetching ──
+   562→  useEffect(() => {
+   563→    if (!isConnected) return;
+   564→    switch (activeTab) {
+   565→      case 'albums': store.fetchAllAlbums(); break;
+   566→      case 'artists': store.fetchAllArtists(); break;
+   567→      case 'tracks': store.fetchAllAlbums(); break; // tracks shown within albums
+   568→      case 'playlists': store.fetchPlaylists(); break;
+   569→      case 'podcasts': store.fetchPodcasts(); break;
+   570→      case 'recent': store.fetchRecentAlbums(); break;
+   571→    }
+   572→  }, [activeTab, isConnected]);
+   573→
+   574→  // ── Player Actions ──
+   575→  const handlePlayAlbum = useCallback(async (album: JellyfinAlbum) => {
+   576→    if (!isConnected) return;
+   577→    await store.fetchAlbumTracks(album.id);
+   578→    const tracks = useJellyfinStore.getState().currentAlbumTracks;
+   579→    if (tracks.length === 0) return;
+   580→    const dspTracks = tracks.map(t => store.convertToTrack(t));
+   581→    setQueue(dspTracks, 0);
+   582→  }, [isConnected, setQueue]);
+   583→
+   584→  const handlePlayTrack = useCallback((track: JellyfinTrack) => {
+   585→    const dspTrack = store.convertToTrack(track);
+   586→    play(dspTrack);
+   587→  }, [play]);
+   588→
+   589→  const handleAlbumClick = useCallback((album: JellyfinAlbum) => {
+   590→    navigate('jellyfin-album', { albumId: album.id });
+   591→  }, [navigate]);
+   592→
+   593→  const handleArtistClick = useCallback((artist: JellyfinArtist) => {
+   594→    navigate('jellyfin-artist', { artistId: artist.id });
+   595→  }, [navigate]);
+   596→
+   597→  const handlePlaylistClick = useCallback((playlist: { id: string }) => {
+   598→    navigate('jellyfin-playlist', { playlistId: playlist.id });
+   599→  }, [navigate]);
+   600→
+   601→  const handlePodcastShowClick = useCallback(async (showId: string) => {
+   602→    setSelectedPodcastShow(showId);
+   603→    await store.fetchPodcastEpisodes(showId);
+   604→  }, [store]);
+   605→
+   606→  const handlePodcastBack = useCallback(() => {
+   607→    setSelectedPodcastShow(null);
+   608→  }, []);
+   609→
+   610→  const handlePlayPodcastEpisode = useCallback((episode: JellyfinPodcastEpisode) => {
+   611→    // Convert podcast episode to a playable track using the Jellyfin stream URL
+   612→    const config = store.config;
+   613→    if (!config) return;
+   614→    const baseUrl = config.serverUrl.replace(/\/+$/, '');
+   615→    const streamUrl = `/api/proxy/jellyfin?url=${encodeURIComponent(`${baseUrl}/Audio/${episode.id}/stream?static=true&api_key=${config.accessToken}&UserId=${config.userId}`)}&token=${encodeURIComponent(config.accessToken)}`;
+   616→
+   617→    const dspTrack: Track = {
+   618→      id: `jf-${episode.id}`,
+   619→      title: episode.name,
+   620→      albumId: `jf-${episode.showId}`,
+   621→      albumName: episode.showName,
+   622→      artistId: '',
+   623→      artistName: '',
+   624→      trackNumber: 0,
+   625→      discNumber: 1,
+   626→      duration: episode.duration,
+   627→      format: '',
+   628→      bitDepth: 0,
+   629→      sampleRate: 0,
+   630→      channels: 0,
+   631→      bitrate: 0,
+   632→      filePath: streamUrl,
+   633→      fileSize: 0,
+   634→      composers: [],
+   635→      performers: [],
+   636→      genre: '',
+   637→      loved: episode.isFavorite,
+   638→      playCount: episode.playCount,
+   639→      source: 'local',
+   640→      isAvailable: true,
+   641→    };
+   642→    play(dspTrack);
+   643→  }, [store.config, play]);
+   644→
+   645→  const handlePlayAllPodcastEpisodes = useCallback((showId: string) => {
+   646→    const episodes = store.podcastEpisodes;
+   647→    if (episodes.length === 0) return;
+   648→    const config = store.config;
+   649→    if (!config) return;
+   650→    const baseUrl = config.serverUrl.replace(/\/+$/, '');
+   651→
+   652→    const dspTracks = episodes.map((episode, index) => {
+   653→      const streamUrl = `/api/proxy/jellyfin?url=${encodeURIComponent(`${baseUrl}/Audio/${episode.id}/stream?static=true&api_key=${config.accessToken}&UserId=${config.userId}`)}&token=${encodeURIComponent(config.accessToken)}`;
+   654→      return {
+   655→        id: `jf-${episode.id}`,
+   656→        title: episode.name,
+   657→        albumId: `jf-${episode.showId}`,
+   658→        albumName: episode.showName,
+   659→        artistId: '',
+   660→        artistName: '',
+   661→        trackNumber: index + 1,
+   662→        discNumber: 1,
+   663→        duration: episode.duration,
+   664→        format: '',
+   665→        bitDepth: 0,
+   666→        sampleRate: 0,
+   667→        channels: 0,
+   668→        bitrate: 0,
+   669→        filePath: streamUrl,
+   670→        fileSize: 0,
+   671→        composers: [],
+   672→        performers: [],
+   673→        genre: '',
+   674→        loved: episode.isFavorite,
+   675→        playCount: episode.playCount,
+   676→        source: 'local',
+   677→        isAvailable: true,
+   678→      } as Track;
+   679→    });
+   680→    setQueue(dspTracks, 0);
+   681→  }, [store.config, store.podcastEpisodes, setQueue]);
+   682→
+   683→  const handleLoadMore = useCallback(() => {
+   684→    if (activeTab === 'albums') store.loadMoreAlbums();
+   685→    else if (activeTab === 'artists') store.loadMoreArtists();
+   686→  }, [activeTab]);
+   687→
+   688→  // ── Filter ──
+   689→  const filteredAlbums = useMemo(() => {
+   690→    if (!searchQuery) return store.albums;
+   691→    const q = searchQuery.toLowerCase();
+   692→    return store.albums.filter(a =>
+   693→      a.name.toLowerCase().includes(q) ||
+   694→      a.artistName.toLowerCase().includes(q) ||
+   695→      (a.genre && a.genre.toLowerCase().includes(q))
+   696→    );
+   697→  }, [store.albums, searchQuery]);
+   698→
+   699→  const filteredArtists = useMemo(() => {
+   700→    if (!searchQuery) return store.artists;
+   701→    const q = searchQuery.toLowerCase();
+   702→    return store.artists.filter(a => a.name.toLowerCase().includes(q));
+   703→  }, [store.artists, searchQuery]);
+   704→
+   705→  // ── Current track check ──
+   706→  const isTrackPlaying = useCallback((track: JellyfinTrack) => {
+   707→    return currentTrack?.id === `jf-${track.id}`;
+   708→  }, [currentTrack]);
+   709→
+   710→  const isEpisodePlaying = useCallback((episode: JellyfinPodcastEpisode) => {
+   711→    return currentTrack?.id === `jf-${episode.id}`;
+   712→  }, [currentTrack]);
+   713→
+   714→  // ── Loading indicator ──
+   715→  const isBulkLoading = isLoadingAllAlbums || isLoadingAllArtists;
+   716→
+   717→  // ── Render Tab Content ──
+   718→  const renderContent = () => {
+   719→    const loading = isLoadingAlbums || isLoadingArtists || isLoadingTracks || isLoadingRecent || isLoadingPodcasts;
+   720→
+   721→    if (loading && store.albums.length === 0 && store.artists.length === 0 && store.recentAlbums.length === 0 && store.podcastShows.length === 0) {
+   722→      return (
+   723→        <div className="flex items-center justify-center py-20">
+   724→          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+   725→          <span className="ml-3 text-sm text-muted-foreground">Loading library...</span>
+   726→        </div>
+   727→      );
+   728→    }
+   729→
+   730→    switch (activeTab) {
+   731→      case 'recent':
+   732→        return (
+   733→          <>
+   734→            {store.recentAlbums.length === 0 ? (
+   735→              <EmptyState icon={Clock} title="No recent additions" description="Recently added albums from your Jellyfin library will appear here" />
+   736→            ) : (
+   737→              <AlbumsGrid albums={store.recentAlbums} onAlbumClick={handleAlbumClick} onAlbumPlay={handlePlayAlbum} />
+   738→            )}
+   739→          </>
+   740→        );
+   741→
+   742→      case 'albums':
+   743→        return (
+   744→          <>
+   745→            {isBulkLoading && store.albums.length > 0 && (
+   746→              <div className="flex items-center gap-2 mb-4 px-1">
+   747→                <Loader2 className="w-4 h-4 text-primary animate-spin" />
+   748→                <span className="text-xs text-muted-foreground">
+   749→                  Loading albums... {store.albums.length.toLocaleString()} of {store.totalAlbums.toLocaleString()}
+   750→                </span>
+   751→              </div>
+   752→            )}
+   753→            {filteredAlbums.length === 0 && !isBulkLoading ? (
+   754→              <EmptyState icon={Disc3} title="No albums" description="Browse your Jellyfin music library by album" />
+   755→            ) : filteredAlbums.length > 0 ? (
+   756→              <AlbumsGrid albums={filteredAlbums} onAlbumClick={handleAlbumClick} onAlbumPlay={handlePlayAlbum} />
+   757→            ) : null}
+   758→          </>
+   759→        );
+   760→
+   761→      case 'artists':
+   762→        return (
+   763→          <>
+   764→            {isBulkLoading && store.artists.length > 0 && (
+   765→              <div className="flex items-center gap-2 mb-4 px-1">
+   766→                <Loader2 className="w-4 h-4 text-primary animate-spin" />
+   767→                <span className="text-xs text-muted-foreground">
+   768→                  Loading artists... {store.artists.length.toLocaleString()} of {store.totalArtists.toLocaleString()}
+   769→                </span>
+   770→              </div>
+   771→            )}
+   772→            {filteredArtists.length === 0 && !isBulkLoading ? (
+   773→              <EmptyState icon={User} title="No artists" description="Album artists from your Jellyfin library will appear here" />
+   774→            ) : filteredArtists.length > 0 ? (
+   775→              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
+   776→                {filteredArtists.map(artist => (
+   777→                  <ArtistRow key={artist.id} artist={artist} onClick={() => handleArtistClick(artist)} />
+   778→                ))}
+   779→              </div>
+   780→            ) : null}
+   781→          </>
+   782→        );
+   783→
+   784→      case 'tracks':
+   785→        return (
+   786→          <>
+   787→            {filteredAlbums.length === 0 ? (
+   788→              <EmptyState icon={Music} title="No tracks" description="Browse your Jellyfin tracks by album" />
+   789→            ) : (
+   790→              <div className="space-y-6">
+   791→                <p className="text-xs text-muted-foreground -mt-2">Tracks are organized by album. Click an album to view its tracks.</p>
+   792→                <AlbumsGrid albums={filteredAlbums} onAlbumClick={handleAlbumClick} onAlbumPlay={handlePlayAlbum} />
+   793→              </div>
+   794→            )}
+   795→          </>
+   796→        );
+   797→
+   798→      case 'podcasts':
+   799→        if (selectedPodcastShow) {
+   800→          const show = store.podcastShows.find(s => s.id === selectedPodcastShow);
+   801→          return (
+   802→            <div>
+   803→              <button
+   804→                onClick={handlePodcastBack}
+   805→                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+   806→              >
+   807→                <ArrowLeft className="w-4 h-4" /> Back to Podcasts
+   808→              </button>
+   809→              {show && (
+   810→                <div className="flex items-center gap-3 mb-4">
+   811→                  <CoverArt url={show.imageUrl} name={show.name} size="lg" rounded="lg" />
+   812→                  <div className="flex-1 min-w-0">
+   813→                    <h2 className="text-lg font-semibold truncate">{show.name}</h2>
+   814→                    <p className="text-xs text-muted-foreground mt-0.5">{store.podcastEpisodes.length} episode{store.podcastEpisodes.length !== 1 ? 's' : ''}</p>
+   815→                    {show.genres.length > 0 && (
+   816→                      <div className="flex gap-1.5 mt-1.5">
+   817→                        {show.genres.slice(0, 3).map(g => (
+   818→                          <Badge key={g} variant="secondary" className="text-[9px] px-1.5 py-0">{g}</Badge>
+   819→                        ))}
+   820→                      </div>
+   821→                    )}
+   822→                  </div>
+   823→                  {store.podcastEpisodes.length > 0 && (
+   824→                    <Button
+   825→                      size="sm"
+   826→                      className="h-8 gap-1.5 flex-shrink-0"
+   827→                      onClick={() => handlePlayAllPodcastEpisodes(selectedPodcastShow)}
+   828→                    >
+   829→                      <Play className="w-3.5 h-3.5" fill="currentColor" /> Play All
+   830→                    </Button>
+   831→                  )}
+   832→                </div>
+   833→              )}
+   834→              {isLoadingTracks ? (
+   835→                <div className="flex items-center justify-center py-12">
+   836→                  <Loader2 className="w-6 h-6 text-primary animate-spin" />
+   837→                  <span className="ml-2 text-sm text-muted-foreground">Loading episodes...</span>
+   838→                </div>
+   839→              ) : store.podcastEpisodes.length === 0 ? (
+   840→                <EmptyState icon={Podcast} title="No episodes" description="No episodes found for this podcast" />
+   841→              ) : (
+   842→                <div className="space-y-1">
+   843→                  {store.podcastEpisodes.map((episode, index) => (
+   844→                    <PodcastEpisodeRow
+   845→                      key={episode.id}
+   846→                      episode={episode}
+   847→                      index={index + 1}
+   848→                      onPlay={() => handlePlayPodcastEpisode(episode)}
+   849→                      isPlaying={isPlaying}
+   850→                      isCurrent={isEpisodePlaying(episode)}
+   851→                    />
+   852→                  ))}
+   853→                </div>
+   854→              )}
+   855→            </div>
+   856→          );
+   857→        }
+   858→        return (
+   859→          <>
+   860→            {store.podcastShows.length === 0 && !isLoadingPodcasts ? (
+   861→              <EmptyState icon={Podcast} title="No podcasts" description="Podcasts from your Jellyfin library will appear here" />
+   862→            ) : isLoadingPodcasts ? (
+   863→              <div className="flex items-center justify-center py-12">
+   864→                <Loader2 className="w-6 h-6 text-primary animate-spin" />
+   865→                <span className="ml-2 text-sm text-muted-foreground">Loading podcasts...</span>
+   866→              </div>
+   867→            ) : (
+   868→              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+   869→                {store.podcastShows.map(show => (
+   870→                  <PodcastShowCard key={show.id} show={show} onClick={() => handlePodcastShowClick(show.id)} />
+   871→                ))}
+   872→              </div>
+   873→            )}
+   874→          </>
+   875→        );
+   876→
+   877→      case 'playlists':
+   878→        return (
+   879→          <>
+   880→            {store.playlists.length === 0 ? (
+   881→              <EmptyState icon={ListMusic} title="No playlists" description="Playlists from your Jellyfin library will appear here" />
+   882→            ) : (
+   883→              <div className="space-y-1">
+   884→                {store.playlists.map(pl => (
+   885→                  <PlaylistRow key={pl.id} playlist={pl} onClick={() => handlePlaylistClick(pl)} />
+   886→                ))}
+   887→              </div>
+   888→            )}
+   889→          </>
+   890→        );
+   891→    }
+   892→  };
+   893→
+   894→  return (
+   895→    <ScrollArea className="h-full">
+   896→      <div className="p-6 max-w-7xl mx-auto">
+   897→        {/* ── Header ── */}
+   898→        <div className="flex items-center justify-between mb-6">
+   899→          <div>
+   900→            <h1 className="text-2xl font-bold flex items-center gap-2">
+   901→              <Server className="w-6 h-6 text-purple-400" />
+   902→              Jellyfin
+   903→            </h1>
+   904→            <p className="text-sm text-muted-foreground mt-1">
+   905→              {isConnected
+   906→                ? `Browsing ${store.config?.serverName || 'Jellyfin'} library`
+   907→                : 'Connect to your Jellyfin media server'}
+   908→            </p>
+   909→          </div>
+   910→          {isConnected && (
+   911→            <div className="flex items-center gap-2">
+   912→              <Button
+   913→                variant={viewMode === 'grid' ? 'default' : 'outline'}
+   914→                size="sm"
+   915→                className="h-7 text-xs"
+   916→                onClick={() => setViewMode('grid')}
+   917→              >
+   918→                <Grid3X3 className="w-3.5 h-3.5" />
+   919→              </Button>
+   920→              <Button
+   921→                variant={viewMode === 'list' ? 'default' : 'outline'}
+   922→                size="sm"
+   923→                className="h-7 text-xs"
+   924→                onClick={() => setViewMode('list')}
+   925→              >
+   926→                <List className="w-3.5 h-3.5" />
+   927→              </Button>
+   928→            </div>
+   929→          )}
+   930→        </div>
+   931→
+   932→        {/* ── Connection Panel ── */}
+   933→        <ConnectionPanel />
+   934→
+   935→        {/* ── Library Content (only when connected) ── */}
+   936→        {isConnected && (
+   937→          <>
+   938→            {/* Search */}
+   939→            <div className="relative mb-4">
+   940→              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+   941→              <Input
+   942→                placeholder="Search albums, artists..."
+   943→                value={searchQuery}
+   944→                onChange={(e) => setSearchQuery(e.target.value)}
+   945→                className="pl-9 bg-card border-border max-w-md"
+   946→              />
+   947→            </div>
+   948→
+   949→            {/* Tabs */}
+   950→            <TabBar active={activeTab} onChange={setActiveTab} />
+   951→
+   952→            {/* Content */}
+   953→            {renderContent()}
+   954→          </>
+   955→        )}
+   956→
+   957→        {/* ── Info Card ── */}
+   958→        <Separator className="my-8 bg-border" />
+   959→        <Card className="bg-card border-border">
+   960→          <CardContent className="p-4">
+   961→            <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+   962→              <Radio className="w-4 h-4 text-purple-400" />
+   963→              About Jellyfin Integration
+   964→            </h2>
+   965→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-muted-foreground">
+   966→              <div className="flex items-start gap-2 p-2.5 rounded-lg bg-surface/50">
+   967→                <Shield className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+   968→                <div>
+   969→                  <p className="font-medium text-foreground text-xs">Open Source &amp; Private</p>
+   970→                  <p className="mt-0.5">Jellyfin is the free software media system. No tracking, no ads, no subscriptions. Your library stays on your server.</p>
+   971→                </div>
+   972→              </div>
+   973→              <div className="flex items-start gap-2 p-2.5 rounded-lg bg-surface/50">
+   974→                <Gauge className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+   975→                <div>
+   976→                  <p className="font-medium text-foreground text-xs">Hi-Res Audio Support</p>
+   977→                  <p className="mt-0.5">Stream FLAC, WAV, DSD, and other lossless formats from Jellyfin through DSP with full signal path visualization.</p>
+   978→                </div>
+   979→              </div>
+   980→              <div className="flex items-start gap-2 p-2.5 rounded-lg bg-surface/50">
+   981→                <Zap className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+   982→                <div>
+   983→                  <p className="font-medium text-foreground text-xs">Direct Play</p>
+   984→                  <p className="mt-0.5">Audio is streamed directly from your server without transcoding, preserving the original quality and format.</p>
+   985→                </div>
+   986→              </div>
+   987→              <div className="flex items-start gap-2 p-2.5 rounded-lg bg-surface/50">
+   988→                <Signal className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+   989→                <div>
+   990→                  <p className="font-medium text-foreground text-xs">DSP Processing</p>
+   991→                  <p className="mt-0.5">Jellyfin audio flows through your DSP pipeline — parametric EQ, room correction, upsampling, and all other modules.</p>
+   992→                </div>
+   993→              </div>
+   994→            </div>
+   995→          </CardContent>
+   996→        </Card>
+   997→      </div>
+   998→    </ScrollArea>
+   999→  );
+  1000→}
+  1001→
