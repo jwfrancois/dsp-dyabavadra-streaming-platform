@@ -103,3 +103,27 @@ Stage Summary:
 - Files modified: `src/lib/jellyfin.ts` (request method, connect method, getImageUrl method), `src/store/jellyfin.ts` (improved error messages)
 - Architecture: Browser → Next.js API proxy → Jellyfin server (no direct browser-to-Jellyfin calls)
 - Build compiles cleanly, all 22 routes generated successfully
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Fetch ALL albums from Jellyfin (not just 40) + Add podcast browsing support
+
+Work Log:
+- Added `fetchAllAlbums()` and `fetchAllArtists()` store actions with auto-pagination — fetches all pages concurrently (batch of 3) until total count is reached
+- Added real-time progress indicator showing "Loading albums... 120 of 450" as pages are fetched
+- Removed old "Load More" button — all albums/artists are now fetched automatically when switching to their tab
+- Added `JellyfinPodcastShow` and `JellyfinPodcastEpisode` types to store
+- Added `getPodcasts()` and `getPodcastEpisodes()` methods to JellyfinClient — queries by Genre=Podcast and uses /Shows/{id}/Episodes endpoint
+- Added `fetchPodcasts()` and `fetchPodcastEpisodes()` store actions
+- Added "Podcasts" tab to JellyfinView with podcast show grid cards (cover art, episode count, genre)
+- Added podcast episode detail view with episode list (release date, duration, play button)
+- Added podcast playback support through the existing `/api/proxy/jellyfin` audio proxy
+- Updated search to include podcast results
+- Updated TabBar to show total podcast count
+
+Stage Summary:
+- Files modified: `src/store/jellyfin.ts` (fetchAllAlbums, fetchAllArtists, podcast types/actions), `src/lib/jellyfin.ts` (getPodcasts, getPodcastEpisodes), `src/components/dsp/JellyfinView.tsx` (Podcasts tab, podcast show/episode components, fetch-all UI)
+- All albums auto-fetched with concurrent pagination (no more 40-album limit)
+- Podcast browsing and playback fully integrated
+- Build compiles cleanly

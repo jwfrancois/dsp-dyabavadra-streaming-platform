@@ -769,6 +769,63 @@ export class JellyfinClient {
   }
 
   // ═══════════════════════════════════════════════════════
+  // Podcasts
+  // ═══════════════════════════════════════════════════════
+
+  /**
+   * Get all podcast shows from the server.
+   * Jellyfin exposes podcasts via the /Shows endpoint with a "Podcast" filter.
+   */
+  async getPodcasts(limit: number = 100): Promise<JellyfinItemsResponse> {
+    const qs = buildQueryString({
+      UserId: this.config!.userId,
+      IncludeItemTypes: ['BoxSet', 'Series', 'MusicAlbum'],
+      Recursive: true,
+      SortBy: 'SortName',
+      SortOrder: 'Ascending',
+      Fields: [
+        'PrimaryImageAspectRatio',
+        'BasicSyncInfo',
+        'Genres',
+        'Overview',
+        'Tags',
+        'DateCreated',
+        'ChildCount',
+      ],
+      Limit: limit,
+      // Filter for podcasts — uses the genre/tag to identify podcasts
+      Genres: ['Podcast'],
+    });
+    return this.request<JellyfinItemsResponse>(
+      `/Users/${this.config!.userId}/Items${qs}`
+    );
+  }
+
+  /**
+   * Get episodes for a podcast show.
+   * Uses /Shows/{seriesId}/Episodes endpoint, which works for podcasts too.
+   */
+  async getPodcastEpisodes(showId: string, limit: number = 100): Promise<JellyfinItemsResponse> {
+    const qs = buildQueryString({
+      UserId: this.config!.userId,
+      Limit: limit,
+      SortBy: 'PremiereDate',
+      SortOrder: 'Descending',
+      Fields: [
+        'PrimaryImageAspectRatio',
+        'BasicSyncInfo',
+        'Overview',
+        'MediaSources',
+        'MediaStreams',
+        'DateCreated',
+      ],
+    });
+    return this.request<JellyfinItemsResponse>(
+      `/Shows/${showId}/Episodes${qs}`
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════
   // Search
   // ═══════════════════════════════════════════════════════
 

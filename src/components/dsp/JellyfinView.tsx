@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
-import { useJellyfinStore, type JellyfinArtist, type JellyfinAlbum, type JellyfinTrack } from '@/store/jellyfin';
+import { useJellyfinStore, type JellyfinArtist, type JellyfinAlbum, type JellyfinTrack, type JellyfinPodcastShow, type JellyfinPodcastEpisode } from '@/store/jellyfin';
 import { jellyfinClient } from '@/lib/jellyfin';
 import { formatDuration, formatSampleRate, formatFileSize, type Track } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,12 +19,12 @@ import {
   Clock, Gauge, Shield, Eye, EyeOff, ArrowRight, Star, ExternalLink,
   Radio, Volume2, FolderOpen, Box, Plug, Unplug, Settings,
   Zap, Album, Mic2, Users, Grid3X3, List, SkipForward,
-  PlayCircle, RadioStation, Signal,
+  PlayCircle, RadioStation, Signal, Podcast, Rss, Headphones,
 } from 'lucide-react';
 
 // ─── Types ───
 
-type JellyfinTab = 'albums' | 'artists' | 'tracks' | 'playlists' | 'recent';
+type JellyfinTab = 'albums' | 'artists' | 'tracks' | 'playlists' | 'podcasts' | 'recent';
 type ViewMode = 'grid' | 'list';
 
 // ─── Cover Art Fallback ───
@@ -227,12 +227,13 @@ function ConnectionPanel() {
 // ─── Tab Navigation ───
 
 function TabBar({ active, onChange }: { active: JellyfinTab; onChange: (tab: JellyfinTab) => void }) {
-  const { totalArtists, totalAlbums, totalTracks, playlists } = useJellyfinStore();
+  const { totalArtists, totalAlbums, totalTracks, playlists, totalPodcastShows } = useJellyfinStore();
   const tabs: { key: JellyfinTab; label: string; icon: typeof Album; count?: number }[] = [
     { key: 'recent', label: 'Recent', icon: Clock },
     { key: 'albums', label: 'Albums', icon: Disc3, count: totalAlbums },
     { key: 'artists', label: 'Artists', icon: User, count: totalArtists },
     { key: 'tracks', label: 'Tracks', icon: Music, count: totalTracks },
+    { key: 'podcasts', label: 'Podcasts', icon: Podcast, count: totalPodcastShows },
     { key: 'playlists', label: 'Playlists', icon: ListMusic, count: playlists.length },
   ];
 
@@ -373,6 +374,78 @@ function PlaylistRow({ playlist, onClick }: { playlist: { id: string; name: stri
   );
 }
 
+// ─── Podcast Show Card ───
+
+function PodcastShowCard({ show, onClick }: { show: JellyfinPodcastShow; onClick: () => void }) {
+  return (
+    <Card className="bg-card border-border group hover:border-primary/30 transition-all cursor-pointer">
+      <CardContent className="p-0">
+        <div className="relative" onClick={onClick}>
+          <CoverArt url={show.imageUrl} name={show.name} size="full" rounded="xl" />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+            <Button size="sm" className="rounded-full w-12 h-12 shadow-lg">
+              <Headphones className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+        <div className="p-3 pt-2.5">
+          <h3 className="text-sm font-medium truncate" title={show.name}>{show.name}</h3>
+          <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground/70">
+            <span className="flex items-center gap-1">
+              <Rss className="w-3 h-3" /> {show.episodeCount} episode{show.episodeCount !== 1 ? 's' : ''}
+            </span>
+            {show.genres.length > 0 && (
+              <span className="truncate max-w-[80px]">{show.genres[0]}</span>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Podcast Episode Row ───
+
+function PodcastEpisodeRow({ episode, onPlay, isPlaying, isCurrent }: { episode: JellyfinPodcastEpisode; onPlay: () => void; isPlaying: boolean; isCurrent: boolean }) {
+  return (
+    <div
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
+        isCurrent ? 'bg-primary/10 text-primary' : 'hover:bg-accent/20'
+      }`}
+    >
+      <span className={`w-8 text-xs text-right tabular-nums flex-shrink-0 ${isCurrent ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+        {isCurrent && isPlaying ? (
+          <Volume2 className="w-3.5 h-3.5 ml-auto text-primary animate-pulse" />
+        ) : isCurrent ? (
+          <Play className="w-3.5 h-3.5 ml-auto text-primary" fill="currentColor" />
+        ) : (
+          <Podcast className="w-3.5 h-3.5 ml-auto" />
+        )}
+      </span>
+      <CoverArt url={episode.imageUrl} name={episode.showName} size="sm" rounded="sm" />
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm truncate ${isCurrent ? 'font-medium text-primary' : ''}`}>{episode.name}</p>
+        <p className="text-xs text-muted-foreground truncate">{episode.showName}</p>
+      </div>
+      <div className="hidden sm:flex items-center gap-3 text-xs text-muted-foreground/70 flex-shrink-0">
+        {episode.releaseDate && (
+          <span>{new Date(episode.releaseDate).toLocaleDateString()}</span>
+        )}
+        <span className="tabular-nums">
+          {episode.duration > 0 ? formatDuration(episode.duration) : '--:--'}
+        </span>
+      </div>
+      <button className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" onClick={onPlay}>
+        {isCurrent && isPlaying ? (
+          <Pause className="w-4 h-4 text-primary" />
+        ) : (
+          <Play className="w-4 h-4 text-primary" fill="currentColor" />
+        )}
+      </button>
+    </div>
+  );
+}
+
 // ─── Albums Grid ───
 
 function AlbumsGrid({ albums, onAlbumClick, onAlbumPlay }: { albums: JellyfinAlbum[]; onAlbumClick: (album: JellyfinAlbum) => void; onAlbumPlay: (album: JellyfinAlbum) => void }) {
@@ -423,18 +496,20 @@ export function JellyfinView() {
   const [activeTab, setActiveTab] = useState<JellyfinTab>('recent');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPodcastShow, setSelectedPodcastShow] = useState<string | null>(null);
 
   const isConnected = store.connectionStatus === 'connected';
-  const { isLoadingAlbums, isLoadingArtists, isLoadingTracks, isLoadingRecent } = store;
+  const { isLoadingAlbums, isLoadingArtists, isLoadingTracks, isLoadingRecent, isLoadingPodcasts, isLoadingAllAlbums, isLoadingAllArtists } = store;
 
   // ── Data Fetching ──
   useEffect(() => {
     if (!isConnected) return;
     switch (activeTab) {
-      case 'albums': store.fetchAlbums(true); break;
-      case 'artists': store.fetchArtists(true); break;
-      case 'tracks': store.fetchAlbums(true); break; // tracks shown within albums
+      case 'albums': store.fetchAllAlbums(); break;
+      case 'artists': store.fetchAllArtists(); break;
+      case 'tracks': store.fetchAllAlbums(); break; // tracks shown within albums
       case 'playlists': store.fetchPlaylists(); break;
+      case 'podcasts': store.fetchPodcasts(); break;
       case 'recent': store.fetchRecentAlbums(); break;
     }
   }, [activeTab, isConnected]);
@@ -466,6 +541,50 @@ export function JellyfinView() {
     navigate('jellyfin-playlist', { playlistId: playlist.id });
   }, [navigate]);
 
+  const handlePodcastShowClick = useCallback(async (showId: string) => {
+    setSelectedPodcastShow(showId);
+    await store.fetchPodcastEpisodes(showId);
+  }, [store]);
+
+  const handlePodcastBack = useCallback(() => {
+    setSelectedPodcastShow(null);
+  }, []);
+
+  const handlePlayPodcastEpisode = useCallback((episode: JellyfinPodcastEpisode) => {
+    // Convert podcast episode to a playable track using the Jellyfin stream URL
+    const config = store.config;
+    if (!config) return;
+    const baseUrl = config.serverUrl.replace(/\/+$/, '');
+    const streamUrl = `/api/proxy/jellyfin?url=${encodeURIComponent(`${baseUrl}/Audio/${episode.id}/stream?static=true&api_key=${config.accessToken}&UserId=${config.userId}`)}&token=${encodeURIComponent(config.accessToken)}`;
+
+    const dspTrack: Track = {
+      id: `jf-${episode.id}`,
+      title: episode.name,
+      albumId: `jf-${episode.showId}`,
+      albumName: episode.showName,
+      artistId: '',
+      artistName: '',
+      trackNumber: 0,
+      discNumber: 1,
+      duration: episode.duration,
+      format: '',
+      bitDepth: 0,
+      sampleRate: 0,
+      channels: 0,
+      bitrate: 0,
+      filePath: streamUrl,
+      fileSize: 0,
+      composers: [],
+      performers: [],
+      genre: '',
+      loved: episode.isFavorite,
+      playCount: episode.playCount,
+      source: 'local',
+      isAvailable: true,
+    };
+    play(dspTrack);
+  }, [store.config, play]);
+
   const handleLoadMore = useCallback(() => {
     if (activeTab === 'albums') store.loadMoreAlbums();
     else if (activeTab === 'artists') store.loadMoreArtists();
@@ -493,11 +612,18 @@ export function JellyfinView() {
     return currentTrack?.id === `jf-${track.id}`;
   }, [currentTrack]);
 
+  const isEpisodePlaying = useCallback((episode: JellyfinPodcastEpisode) => {
+    return currentTrack?.id === `jf-${episode.id}`;
+  }, [currentTrack]);
+
+  // ── Loading indicator ──
+  const isBulkLoading = isLoadingAllAlbums || isLoadingAllArtists;
+
   // ── Render Tab Content ──
   const renderContent = () => {
-    const loading = isLoadingAlbums || isLoadingArtists || isLoadingTracks || isLoadingRecent;
+    const loading = isLoadingAlbums || isLoadingArtists || isLoadingTracks || isLoadingRecent || isLoadingPodcasts;
 
-    if (loading && store.albums.length === 0 && store.artists.length === 0 && store.recentAlbums.length === 0) {
+    if (loading && store.albums.length === 0 && store.artists.length === 0 && store.recentAlbums.length === 0 && store.podcastShows.length === 0) {
       return (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 text-primary animate-spin" />
@@ -521,42 +647,42 @@ export function JellyfinView() {
       case 'albums':
         return (
           <>
-            {filteredAlbums.length === 0 ? (
-              <EmptyState icon={Disc3} title="No albums" description="Browse your Jellyfin music library by album" />
-            ) : (
-              <AlbumsGrid albums={filteredAlbums} onAlbumClick={handleAlbumClick} onAlbumPlay={handlePlayAlbum} />
-            )}
-            {store.albums.length > filteredAlbums.length && (
-              <div className="text-center mt-6">
-                <Button variant="outline" size="sm" onClick={store.loadMoreAlbums} disabled={isLoadingAlbums}>
-                  {isLoadingAlbums ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  Load More Albums
-                </Button>
+            {isBulkLoading && store.albums.length > 0 && (
+              <div className="flex items-center gap-2 mb-4 px-1">
+                <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                <span className="text-xs text-muted-foreground">
+                  Loading albums... {store.albums.length.toLocaleString()} of {store.totalAlbums.toLocaleString()}
+                </span>
               </div>
             )}
+            {filteredAlbums.length === 0 && !isBulkLoading ? (
+              <EmptyState icon={Disc3} title="No albums" description="Browse your Jellyfin music library by album" />
+            ) : filteredAlbums.length > 0 ? (
+              <AlbumsGrid albums={filteredAlbums} onAlbumClick={handleAlbumClick} onAlbumPlay={handlePlayAlbum} />
+            ) : null}
           </>
         );
 
       case 'artists':
         return (
           <>
-            {filteredArtists.length === 0 ? (
+            {isBulkLoading && store.artists.length > 0 && (
+              <div className="flex items-center gap-2 mb-4 px-1">
+                <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                <span className="text-xs text-muted-foreground">
+                  Loading artists... {store.artists.length.toLocaleString()} of {store.totalArtists.toLocaleString()}
+                </span>
+              </div>
+            )}
+            {filteredArtists.length === 0 && !isBulkLoading ? (
               <EmptyState icon={User} title="No artists" description="Album artists from your Jellyfin library will appear here" />
-            ) : (
+            ) : filteredArtists.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
                 {filteredArtists.map(artist => (
                   <ArtistRow key={artist.id} artist={artist} onClick={() => handleArtistClick(artist)} />
                 ))}
               </div>
-            )}
-            {store.artists.length > filteredArtists.length && (
-              <div className="text-center mt-6">
-                <Button variant="outline" size="sm" onClick={store.loadMoreArtists} disabled={isLoadingArtists}>
-                  {isLoadingArtists ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  Load More Artists
-                </Button>
-              </div>
-            )}
+            ) : null}
           </>
         );
 
@@ -569,6 +695,63 @@ export function JellyfinView() {
               <div className="space-y-6">
                 <p className="text-xs text-muted-foreground -mt-2">Tracks are organized by album. Click an album to view its tracks.</p>
                 <AlbumsGrid albums={filteredAlbums} onAlbumClick={handleAlbumClick} onAlbumPlay={handlePlayAlbum} />
+              </div>
+            )}
+          </>
+        );
+
+      case 'podcasts':
+        if (selectedPodcastShow) {
+          const show = store.podcastShows.find(s => s.id === selectedPodcastShow);
+          return (
+            <div>
+              <button
+                onClick={handlePodcastBack}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+              >
+                <ArrowLeft className="w-4 h-4" /> Back to Podcasts
+              </button>
+              {show && (
+                <div className="flex items-center gap-3 mb-4">
+                  <CoverArt url={show.imageUrl} name={show.name} size="lg" rounded="lg" />
+                  <div>
+                    <h2 className="text-lg font-semibold">{show.name}</h2>
+                    <p className="text-xs text-muted-foreground">{store.podcastEpisodes.length} episode{store.podcastEpisodes.length !== 1 ? 's' : ''}</p>
+                  </div>
+                </div>
+              )}
+              {isLoadingTracks ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                  <span className="ml-2 text-sm text-muted-foreground">Loading episodes...</span>
+                </div>
+              ) : store.podcastEpisodes.length === 0 ? (
+                <EmptyState icon={Podcast} title="No episodes" description="No episodes found for this podcast" />
+              ) : (
+                <div className="space-y-1">
+                  {store.podcastEpisodes.map(episode => (
+                    <PodcastEpisodeRow
+                      key={episode.id}
+                      episode={episode}
+                      onPlay={() => handlePlayPodcastEpisode(episode)}
+                      isPlaying={isPlaying}
+                      isCurrent={isEpisodePlaying(episode)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        }
+        return (
+          <>
+            {store.podcastShows.length === 0 && !isLoadingPodcasts ? (
+              <EmptyState icon={Podcast} title="No podcasts" description="Podcasts from your Jellyfin library will appear here" />
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                {store.podcastShows.map(show => (
+                  <PodcastShowCard key={show.id} show={show} onClick={() => handlePodcastShowClick(show.id)} />
+                ))}
               </div>
             )}
           </>
