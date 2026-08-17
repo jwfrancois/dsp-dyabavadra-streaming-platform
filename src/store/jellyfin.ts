@@ -315,6 +315,7 @@ interface JellyfinState {
   fetchAlbums: (reset?: boolean) => Promise<void>;
   fetchAllAlbums: () => Promise<void>;
   fetchAllArtists: () => Promise<void>;
+  fetchAllPodcasts: () => Promise<void>;
   fetchRecentAlbums: () => Promise<void>;
   fetchPlaylists: () => Promise<void>;
   fetchPodcasts: () => Promise<void>;
@@ -746,19 +747,49 @@ export const useJellyfinStore = create<JellyfinState>((set, get) => ({
   // ═══════════════════════════════════════════════════════
 
   fetchPodcasts: async () => {
+    // Use fetchAllPodcasts for complete results (auto-pagination)
+    get().fetchAllPodcasts();
+  },
+
+  fetchAllPodcasts: async () => {
     const { connectionStatus } = get();
     if (connectionStatus !== 'connected') return;
 
     set({ isLoadingPodcasts: true });
 
     try {
-      const response = await jellyfinClient.getPodcasts();
-      console.log(`[Jellyfin Store] fetchPodcasts: got ${response.Items.length} items, TotalRecordCount=${response.TotalRecordCount}`);
-      if (response.Items.length > 0) {
-        console.log(`[Jellyfin Store] First few items:`, response.Items.slice(0, 5).map(i => ({ name: i.Name, type: i.Type, id: i.Id, childCount: i.ChildCount })));
+      // First call to get total count
+      const first = await jellyfinClient.getPodcasts({ limit: 200, startIndex: 0 });
+      const mapped = first.Items.map(mapPodcastShow);
+      const totalCount = first.TotalRecordCount;
+      console.log(`[Jellyfin Store] fetchAllPodcasts: first batch ${mapped.length}, total=${totalCount}`);
+      set({ podcastShows: mapped, totalPodcastShows: totalCount, isLoadingPodcasts: false });
+
+      // If the first call already returned everything (getPodcasts combines all strategies
+      // with limit=1000 internally), no need for further pagination
+      // The pagination here handles the client-side slice if totalCount > 200
+      if (mapped.length < totalCount) {
+        set({ isLoadingPodcasts: true });
+        // Fetch remaining pages
+        const remaining = Math.ceil((totalCount - mapped.length) / 200);
+        const batches: Promise<JellyfinPodcastShow[]>[] = [];
+        for (let i = 1; i <= remaining; i++) {
+          const startIdx = i * 200;
+          batches.push(
+            jellyfinClient.getPodcasts({ limit: 200, startIndex: startIdx })
+              .then(r => r.Items.map(mapPodcastShow))
+              .catch(() => [] as JellyfinPodcastShow[])
+          );
+        }
+        const results = await Promise.all(batches);
+ const current = useJellyfinStore.getState();
+        if (current.connectionStatus !== 'connected') return;
+        const newShows = results.flat();
+        set(prev => ({
+          podcastShows: [...prev.podcastShows, ...newShows],
+          isLoadingPodcasts: false,
+        }));
       }
-      const mapped = response.Items.map(mapPodcastShow);
-      set({ podcastShows: mapped, totalPodcastShows: response.TotalRecordCount, isLoadingPodcasts: false });
     } catch (err) {
       const message =
         err instanceof JellyfinApiError
@@ -766,7 +797,7 @@ export const useJellyfinStore = create<JellyfinState>((set, get) => ({
           : err instanceof Error
             ? err.message
             : 'Failed to fetch podcasts';
-      console.error('[Jellyfin Store] fetchPodcasts error:', message, err);
+      console.error('[Jellyfin Store] fetchAllPodcasts error:', message, err);
       set({ isLoadingPodcasts: false, error: message });
     }
   },
