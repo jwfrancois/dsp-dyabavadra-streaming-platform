@@ -43,6 +43,7 @@ export interface JellyfinConfig {
   connectedAt: string;      // ISO date
   lastHeartbeat: string;    // ISO date
   musicLibraryId: string;   // the media folder ID for "Music"
+  podcastLibraryId: string; // the media folder ID for "Podcasts" (may be empty)
 }
 
 /** Generic Jellyfin API item (music album, track, artist, etc.) */
@@ -394,6 +395,7 @@ export class JellyfinClient {
         connectedAt: new Date().toISOString(),
         lastHeartbeat: new Date().toISOString(),
         musicLibraryId: '',
+        podcastLibraryId: '',
       };
       const sysInfo = await this.getSystemInfo();
       serverName = sysInfo.ServerName;
@@ -402,15 +404,20 @@ export class JellyfinClient {
       // If system info fails, continue with defaults
     }
 
-    // Step 3: Auto-detect music library
+    // Step 3: Auto-detect music and podcast libraries
     let musicLibraryId = '';
+    let podcastLibraryId = '';
     try {
       const views = await this.getViews();
-      const musicFolder = views.Items.find(
-        item => item.Type === 'CollectionFolder' && item.Name.toLowerCase().includes('music')
-      );
-      if (musicFolder) {
-        musicLibraryId = musicFolder.Id;
+      for (const item of views.Items) {
+        if (item.Type !== 'CollectionFolder') continue;
+        const name = item.Name.toLowerCase();
+        if (name.includes('music') && !name.includes('podcast') && !musicLibraryId) {
+          musicLibraryId = item.Id;
+        }
+        if (name.includes('podcast') && !podcastLibraryId) {
+          podcastLibraryId = item.Id;
+        }
       }
     } catch {
       // Continue without auto-detected library
@@ -428,6 +435,7 @@ export class JellyfinClient {
       connectedAt: new Date().toISOString(),
       lastHeartbeat: new Date().toISOString(),
       musicLibraryId,
+      podcastLibraryId,
     };
 
     this.config = config;
@@ -774,15 +782,16 @@ export class JellyfinClient {
 
   /**
    * Get all podcast shows from the server.
-   * Jellyfin exposes podcasts via the /Shows endpoint with a "Podcast" filter.
+   * Jellyfin stores podcasts in a dedicated "Podcasts" library folder.
+   * We query that folder's contents for Series (podcast shows).
    */
-  async getPodcasts(limit: number = 100): Promise<JellyfinItemsResponse> {
-    const qs = buildQueryString({
+  async getPodcasts(limit: number = 200): Promise<JellyfinItemsResponse> {
+    const queryParams: Record<string, unknown> = {
       UserId: this.config!.userId,
-      IncludeItemTypes: ['BoxSet', 'Series', 'MusicAlbum'],
-      Recursive: true,
+      IncludeItemTypes: ['Series'],
       SortBy: 'SortName',
       SortOrder: 'Ascending',
+      Recursive: true,
       Fields: [
         'PrimaryImageAspectRatio',
         'BasicSyncInfo',
@@ -793,9 +802,14 @@ export class JellyfinClient {
         'ChildCount',
       ],
       Limit: limit,
-      // Filter for podcasts — uses the genre/tag to identify podcasts
-      Genres: ['Podcast'],
-    });
+    };
+
+    // Scope to the podcast library if auto-detected on connect
+    if (this.config?.podcastLibraryId) {
+      queryParams.ParentId = this.config.podcastLibraryId;
+    }
+
+    const qs = buildQueryString(queryParams as Record<string, string | number | boolean | undefined | null | string[] | number[]>);
     return this.request<JellyfinItemsResponse>(
       `/Users/${this.config!.userId}/Items${qs}`
     );
@@ -803,13 +817,13 @@ export class JellyfinClient {
 
   /**
    * Get episodes for a podcast show.
-   * Uses /Shows/{seriesId}/Episodes endpoint, which works for podcasts too.
+   * Uses /Shows/{seriesId}/Episodes endpoint.
    */
-  async getPodcastEpisodes(showId: string, limit: number = 100): Promise<JellyfinItemsResponse> {
+  async getPodcastEpisodes(showId: string, limit: number = 200): Promise<JellyfinItemsResponse> {
     const qs = buildQueryString({
       UserId: this.config!.userId,
       Limit: limit,
-      SortBy: 'PremiereDate',
+      SortBy: 'DateCreated',
       SortOrder: 'Descending',
       Fields: [
         'PrimaryImageAspectRatio',
@@ -818,6 +832,7 @@ export class JellyfinClient {
         'MediaSources',
         'MediaStreams',
         'DateCreated',
+        'PremiereDate',
       ],
     });
     return this.request<JellyfinItemsResponse>(

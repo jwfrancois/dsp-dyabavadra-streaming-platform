@@ -85,9 +85,10 @@ async function proxyRequest(
   // 3. Check if this is a skip-auth request (for login endpoint)
   const skipAuth = request.headers.get('x-jellyfin-skip-auth') === 'true';
 
-  // 4. Build the upstream URL
+  // 4. Build the upstream URL — include the original query string
   const baseUrl = serverUrl.replace(/\/+$/, '');
-  const upstreamUrl = `${baseUrl}${apiPath}`;
+  const queryString = request.nextUrl.searchParams.toString();
+  const upstreamUrl = `${baseUrl}${apiPath}${queryString ? `?${queryString}` : ''}`;
 
   // 5. Build forwarding headers
   const upstreamHeaders: Record<string, string> = {
