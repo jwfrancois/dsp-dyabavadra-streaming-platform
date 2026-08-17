@@ -552,82 +552,58 @@ export class JellyfinClient {
 
   /**
    * Connect using an API key instead of username/password.
-   * Jellyfin API keys can be passed as X-Emby-Token header OR as ?api_key= query param.
-   * We use skipAuth + injected base URL to avoid sending the token header,
-   * and pass the key ONLY as a query parameter for maximum compatibility.
+   * The API key is sent as X-Emby-Token header (the standard Jellyfin API key auth method).
    */
   async connectWithApiKey(serverUrl: string, apiKey: string): Promise<JellyfinConfig> {
     const baseUrl = normalizeServerUrl(serverUrl);
 
-    // Helper: make a request using skipAuth + injected base URL,
-    // so the API key is sent ONLY as a query parameter (no X-Emby-Token header).
-    const apiGet = async <T>(path: string): Promise<T> => {
-      return this.request<T>(path, {
-        headers: { __baseUrl: baseUrl } as Record<string, string>,
-      }, true); // skipAuth = true
-    };
-
-    // Step 1: Verify API key works by calling /System/Info
-    let sysInfo: JellyfinSystemInfo;
-    try {
-      sysInfo = await apiGet<JellyfinSystemInfo>(`/System/Info?api_key=${encodeURIComponent(apiKey)}`);
-      console.log(`[Jellyfin] connectWithApiKey: server "${sysInfo.ServerName}" v${sysInfo.Version} reachable`);
-    } catch (err) {
-      throw new JellyfinApiError(
-        `Could not reach the Jellyfin server or the API key is invalid. ${err instanceof Error ? err.message : ''}`,
-        err instanceof JellyfinApiError ? (err as JellyfinApiError).statusCode : 401,
-        '/System/Info',
-        err
-      );
-    }
-
-    // Step 2: Get user list to find the admin user associated with this API key
-    let userInfo: JellyfinItem & { ServerId: string; HasPassword: boolean; AccessToken: string; Policy?: { IsAdministrator: boolean } };
-    try {
-      const usersResp = await apiGet<{ Items: Array<JellyfinItem & { Policy?: { IsAdministrator: boolean } }> }>(
-        `/Users?api_key=${encodeURIComponent(apiKey)}`
-      );
-      if (!usersResp.Items || usersResp.Items.length === 0) {
-        throw new Error('No users found on this Jellyfin server.');
-      }
-      // API keys belong to the user who created them — prefer admin users
-      const adminUser = usersResp.Items.find(u => u.Policy?.IsAdministrator) || usersResp.Items[0];
-      userInfo = {
-        ...adminUser,
-        ServerId: sysInfo.Id || '',
-        HasPassword: false,
-        AccessToken: apiKey,
-      };
-      console.log(`[Jellyfin] connectWithApiKey: using user "${adminUser.Name}" (id=${adminUser.Id})`);
-    } catch (err) {
-      throw new JellyfinApiError(
-        `Could not list users on the Jellyfin server. ${err instanceof Error ? err.message : ''}`,
-        401,
-        '/Users',
-        err
-      );
-    }
-
-    const userId = userInfo.Id;
-    const serverId = userInfo.ServerId;
-    const serverName = sysInfo.ServerName;
-    const serverVersion = sysInfo.Version;
-
-    // Set config now so request() works for library detection
-    // From this point, request() will use X-Emby-Token header (no more query param)
+    // Temporarily set config so request() will forward the API key as X-Emby-Token
     this.config = {
       serverUrl: baseUrl,
-      username: userInfo.Name || 'API Key User',
+      username: 'API Key User',
       accessToken: apiKey,
-      userId,
-      serverId,
-      serverName,
-      serverVersion,
+      userId: '',
+      serverId: '',
+      serverName: 'Jellyfin',
+      serverVersion: 'unknown',
       connectedAt: new Date().toISOString(),
       lastHeartbeat: new Date().toISOString(),
       musicLibraryId: '',
       podcastLibraryId: '',
     };
+
+    // Get user info — API key is sent as X-Emby-Token header via the proxy
+    const userInfo = await this.request<JellyfinItem & { ServerId: string; HasPassword: boolean; AccessToken: string }>(
+      '/Users/Me'
+    );
+
+    const token = apiKey;
+    const userId = userInfo.Id;
+    const serverId = userInfo.ServerId;
+
+    // Fetch server info
+    let serverName = 'Jellyfin';
+    let serverVersion = 'unknown';
+    try {
+      this.config = {
+        serverUrl: baseUrl,
+        username: userInfo.Name || 'API Key User',
+        accessToken: token,
+        userId,
+        serverId,
+        serverName,
+        serverVersion,
+        connectedAt: new Date().toISOString(),
+        lastHeartbeat: new Date().toISOString(),
+        musicLibraryId: '',
+        podcastLibraryId: '',
+      };
+      const sysInfo = await this.getSystemInfo();
+      serverName = sysInfo.ServerName;
+      serverVersion = sysInfo.Version;
+    } catch {
+      // Continue with defaults
+    }
 
     // Auto-detect libraries
     let musicLibraryId = '';
@@ -662,11 +638,23 @@ export class JellyfinClient {
       // Continue without auto-detected library
     }
 
-    // Update config with detected library IDs
-    this.config.musicLibraryId = musicLibraryId;
-    this.config.podcastLibraryId = podcastLibraryId;
+    const config: JellyfinConfig = {
+      serverUrl: baseUrl,
+      username: userInfo.Name || 'API Key User',
+      accessToken: token,
+      userId,
+      serverId,
+      serverName,
+      serverVersion,
+      connectedAt: new Date().toISOString(),
+      lastHeartbeat: new Date().toISOString(),
+      musicLibraryId,
+      podcastLibraryId,
+    };
+
+    this.config = config;
     this.saveConfig();
-    return { ...this.config };
+    return config;
   }
 
   // ═══════════════════════════════════════════════════════
