@@ -968,15 +968,15 @@ export class JellyfinClient {
   async getPodcasts(params?: { limit?: number; startIndex?: number }): Promise<JellyfinItemsResponse> {
     const limit = params?.limit ?? 200;
     const startIndex = params?.startIndex ?? 0;
-    console.log(`[Jellyfin] getPodcasts called. podcastLibraryId=${this.config?.podcastLibraryId || '(none)'}, limit=${limit}, startIndex=${startIndex}`);
+    console.log(`[Jellyfin] getPodcasts called. podcastLibraryId=${this.config?.podcastLibraryId || '(none)'}, userId=${this.config?.userId || '(none)'}, limit=${limit}, startIndex=${startIndex}`);
 
     const seenIds = new Set<string>();
     let showItems: JellyfinItem[] = [];
 
-    // Strategy 1: Query items in the podcast library
+    // ═══ Strategy 1: Query items directly under the podcast library ═══
     if (this.config?.podcastLibraryId) {
       try {
-        // 1a: Get top-level containers (non-recursive) — these are the show-level items
+        // 1a: Get top-level children (non-recursive) — show-level containers
         const qs1 = buildQueryString({
           UserId: this.config!.userId,
           ParentId: this.config.podcastLibraryId,
@@ -992,8 +992,8 @@ export class JellyfinClient {
         const topLevel = await this.request<JellyfinItemsResponse>(
           `/Users/${this.config!.userId}/Items${qs1}`
         );
-        console.log(`[Jellyfin] getPodcasts strategy 1a (top-level): ${topLevel.Items.length} items (types: ${[...new Set(topLevel.Items.map(i => i.Type))].join(', ')})`);
-        // Only keep show-level containers (Series, BoxSet, Folder, CollectionFolder)
+        console.log(`[Jellyfin] getPodcasts strategy 1a (top-level): ${topLevel.Items.length} items, TotalRecordCount=${topLevel.TotalRecordCount}, types=[${[...new Set(topLevel.Items.map(i => i.Type))].join(', ')}]`);
+        // Only keep show-level containers
         for (const item of topLevel.Items) {
           if (item.Type !== 'Audio' && item.Type !== 'Episode' && !seenIds.has(item.Id)) {
             seenIds.add(item.Id);
@@ -1001,11 +1001,11 @@ export class JellyfinClient {
           }
         }
 
-        // 1b: Also get Series items recursively (some servers nest podcasts deeper)
+        // 1b: Get ALL items recursively in the podcast library (catches nested Series/Folders)
         const qs1b = buildQueryString({
           UserId: this.config!.userId,
           ParentId: this.config.podcastLibraryId,
-          IncludeItemTypes: ['Series'],
+          IncludeItemTypes: ['Series', 'BoxSet', 'Folder'],
           SortBy: 'SortName',
           SortOrder: 'Ascending',
           Recursive: true,
@@ -1015,55 +1015,59 @@ export class JellyfinClient {
           ],
           Limit: 1000,
         });
-        const seriesItems = await this.request<JellyfinItemsResponse>(
+        const nestedContainers = await this.request<JellyfinItemsResponse>(
           `/Users/${this.config!.userId}/Items${qs1b}`
         );
-        let newSeries = 0;
-        for (const item of seriesItems.Items) {
+        let newNested = 0;
+        for (const item of nestedContainers.Items) {
           if (!seenIds.has(item.Id)) {
             seenIds.add(item.Id);
             showItems.push(item);
-            newSeries++;
+            newNested++;
           }
         }
-        console.log(`[Jellyfin] getPodcasts strategy 1b (Series recursive): ${newSeries} new Series items`);
-      } catch {
-        // Continue to next strategies
+        console.log(`[Jellyfin] getPodcasts strategy 1b (nested containers): ${newNested} new items`);
+      } catch (err) {
+        console.error('[Jellyfin] getPodcasts strategy 1 error:', err);
       }
     }
 
-    // Strategy 2: Global search for Series (in case podcasts aren't in the detected library)
-    if (showItems.length === 0) {
-      try {
-        const qs2 = buildQueryString({
-          UserId: this.config!.userId,
-          IncludeItemTypes: ['Series'],
-          SortBy: 'SortName',
-          SortOrder: 'Ascending',
-          Recursive: true,
-          Fields: [
-            'PrimaryImageAspectRatio', 'BasicSyncInfo', 'Genres',
-            'Overview', 'Tags', 'DateCreated', 'ChildCount',
-          ],
-          Limit: 1000,
-        });
-        const globalSeries = await this.request<JellyfinItemsResponse>(
-          `/Users/${this.config!.userId}/Items${qs2}`
-        );
-        for (const item of globalSeries.Items) {
-          if (!seenIds.has(item.Id)) {
-            seenIds.add(item.Id);
-            showItems.push(item);
-          }
+    // ═══ Strategy 2: Global search for Series across the entire server ═══
+    // ALWAYS run this — don't skip even if Strategy 1 found items,
+    // because some podcast libraries might contain non-Series shows that
+    // the global search can supplement.
+    try {
+      const qs2 = buildQueryString({
+        UserId: this.config!.userId,
+        IncludeItemTypes: ['Series'],
+        SortBy: 'SortName',
+        SortOrder: 'Ascending',
+        Recursive: true,
+        Fields: [
+          'PrimaryImageAspectRatio', 'BasicSyncInfo', 'Genres',
+          'Overview', 'Tags', 'DateCreated', 'ChildCount',
+        ],
+        Limit: 1000,
+      });
+      const globalSeries = await this.request<JellyfinItemsResponse>(
+        `/Users/${this.config!.userId}/Items${qs2}`
+      );
+      let newGlobal = 0;
+      for (const item of globalSeries.Items) {
+        if (!seenIds.has(item.Id)) {
+          seenIds.add(item.Id);
+          showItems.push(item);
+          newGlobal++;
         }
-        console.log(`[Jellyfin] getPodcasts strategy 2 (global Series): ${globalSeries.Items.length} items`);
-      } catch {
-        // Continue
       }
+      console.log(`[Jellyfin] getPodcasts strategy 2 (global Series): ${globalSeries.Items.length} total, ${newGlobal} new`);
+    } catch (err) {
+      console.error('[Jellyfin] getPodcasts strategy 2 error:', err);
     }
 
-    // Strategy 3: If still empty, synthesize shows from episodes grouped by ParentId
-    if (showItems.length === 0 && this.config?.podcastLibraryId) {
+    // ═══ Strategy 3: Synthesize shows from episodes grouped by ParentId ═══
+    // Run if podcastLibraryId is known and we still have few results
+    if (this.config?.podcastLibraryId && showItems.length < 5) {
       try {
         const qs3 = buildQueryString({
           UserId: this.config!.userId,
@@ -1081,6 +1085,7 @@ export class JellyfinClient {
         const allEpisodes = await this.request<JellyfinItemsResponse>(
           `/Users/${this.config!.userId}/Items${qs3}`
         );
+        console.log(`[Jellyfin] getPodcasts strategy 3 (synthesize): ${allEpisodes.TotalRecordCount} episodes found`);
         if (allEpisodes.TotalRecordCount > 0) {
           const showMap = new Map<string, { name: string; count: number; genres: string[]; imageUrl: string; dateCreated: string }>();
           for (const ep of allEpisodes.Items) {
@@ -1101,6 +1106,7 @@ export class JellyfinClient {
               entry.name = ep.Artists?.[0] || ep.AlbumArtists?.[0]?.Name || ep.Album || entry.name;
             }
           }
+          let synthesized = 0;
           for (const [id, show] of showMap) {
             if (id === '__unknown__') continue;
             if (!seenIds.has(id)) {
@@ -1114,19 +1120,54 @@ export class JellyfinClient {
                 ImageTags: show.imageUrl ? { Primary: 'synthetic' } : undefined,
                 DateCreated: show.dateCreated,
               });
+              synthesized++;
             }
           }
-          console.log(`[Jellyfin] getPodcasts strategy 3 (synthesize): ${showItems.length} shows from ${allEpisodes.TotalRecordCount} episodes`);
+          console.log(`[Jellyfin] getPodcasts strategy 3: synthesized ${synthesized} new shows`);
         }
-      } catch {
-        // Fall through
+      } catch (err) {
+        console.error('[Jellyfin] getPodcasts strategy 3 error:', err);
+      }
+    }
+
+    // ═══ Strategy 4: If podcastLibraryId is STILL empty, try to find it dynamically ═══
+    if (!this.config?.podcastLibraryId && showItems.length === 0 && this.config) {
+      try {
+        console.log('[Jellyfin] getPodcasts: podcastLibraryId is empty, attempting dynamic discovery...');
+        const vfData = await this.request<Array<{ Name: string; CollectionType?: string; ItemId?: string; Id?: string }> | { Items?: Array<{ Name: string; CollectionType?: string; ItemId?: string; Id?: string }> }>('/Library/VirtualFolders');
+        const folders = Array.isArray(vfData) ? vfData : (vfData.Items ?? []);
+        for (const folder of folders) {
+          const ct = (folder.CollectionType || '').toLowerCase();
+          const folderId = folder.ItemId || folder.Id || '';
+          if ((ct === 'podcasts' || ct === 'podcast') && folderId) {
+            console.log(`[Jellyfin] getPodcasts: dynamically found podcast library "${folder.Name}" (id=${folderId})`);
+            this.config.podcastLibraryId = folderId;
+            this.saveConfig();
+            // Re-run getPodcasts now that we have the library ID
+            return this.getPodcasts(params);
+          }
+        }
+        // Also try Views-based detection
+        const views = await this.getViews();
+        for (const item of views.Items) {
+          if (item.Type !== 'CollectionFolder') continue;
+          const name = item.Name.toLowerCase();
+          if (name.includes('podcast')) {
+            console.log(`[Jellyfin] getPodcasts: dynamically found podcast view "${item.Name}" (id=${item.Id})`);
+            this.config.podcastLibraryId = item.Id;
+            this.saveConfig();
+            return this.getPodcasts(params);
+          }
+        }
+      } catch (err) {
+        console.error('[Jellyfin] getPodcasts strategy 4 error:', err);
       }
     }
 
     // Sort by name
     showItems.sort((a, b) => (a.SortName || a.Name).localeCompare(b.SortName || b.Name));
 
-    console.log(`[Jellyfin] getPodcasts: total ${showItems.length} unique shows`);
+    console.log(`[Jellyfin] getPodcasts: FINAL total ${showItems.length} unique shows`);
 
     // Apply pagination
     const total = showItems.length;
