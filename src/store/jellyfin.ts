@@ -747,6 +747,20 @@ export const useJellyfinStore = create<JellyfinState>((set, get) => ({
   // ═══════════════════════════════════════════════════════
 
   fetchPodcasts: async () => {
+    // If podcastLibraryId is empty, try to refresh it before fetching
+    const config = get().config;
+    if (config && !config.podcastLibraryId) {
+      try {
+        await jellyfinClient.refreshLibraryIds();
+        const updatedConfig = jellyfinClient.getConfig();
+        if (updatedConfig && updatedConfig.podcastLibraryId) {
+          set({ config: updatedConfig });
+          console.log('[Jellyfin Store] fetchPodcasts: refreshed podcastLibraryId =', updatedConfig.podcastLibraryId);
+        }
+      } catch {
+        // Non-critical, continue with fetch
+      }
+    }
     // Delegate to fetchAllPodcasts for complete results (auto-pagination)
     await get().fetchAllPodcasts();
   },
