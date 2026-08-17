@@ -1,0 +1,759 @@
+   329→            <p className="text-white/60 text-sm mt-0.5 truncate">{station.description}</p>
+   330→            <div className="flex flex-wrap items-center gap-2 mt-2">
+   331→              <span className="text-xs text-white/40 flex items-center gap-1">
+   332→                <SignalStrength bitrate={station.bitrate} />
+   333→                <span className="ml-1">{station.codec} {station.bitrate}kbps</span>
+   334→              </span>
+   335→              {flag && (
+   336→                <span className="text-xs text-white/40">{flag} {station.country}</span>
+   337→              )}
+   338→              {station.source && (
+   339→                <Badge variant="outline" className="text-[10px] border-white/20 text-white/60 bg-white/5 px-2 py-0">
+   340→                  {station.source}
+   341→                </Badge>
+   342→              )}
+   343→            </div>
+   344→          </div>
+   345→        </div>
+   346→
+   347→        <div className="flex items-center gap-3 flex-shrink-0">
+   348→          <Badge className="bg-white/10 text-white border-white/20 text-xs">
+   349→            {station.genre}
+   350→          </Badge>
+   351→          <Button
+   352→            onClick={onStop}
+   353→            className="bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm gap-2 px-5 h-11 rounded-full transition-all hover:scale-105"
+   354→          >
+   355→            <Square className="w-4 h-4 fill-current" />
+   356→            Stop
+   357→          </Button>
+   358→        </div>
+   359→      </div>
+   360→
+   361→      {/* Animated shimmer bar at bottom */}
+   362→      <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10 overflow-hidden">
+   363→        <div
+   364→          className="h-full bg-gradient-to-r from-transparent via-white/40 to-transparent"
+   365→          style={{
+   366→            animation: 'shimmer 2.5s ease-in-out infinite',
+   367→            width: '50%',
+   368→          }}
+   369→        />
+   370→      </div>
+   371→      <style jsx>{`
+   372→        @keyframes shimmer {
+   373→          0% { transform: translateX(-100%); }
+   374→          100% { transform: translateX(200%); }
+   375→        }
+   376→      `}</style>
+   377→    </div>
+   378→  );
+   379→}
+   380→
+   381→// ═══════════════════════════════════════════════════════
+   382→// SOMAFM SHOWCASE CARD — enhanced
+   383→// ═══════════════════════════════════════════════════════
+   384→
+   385→function SomaFMShowcaseCard({
+   386→  station,
+   387→  isPlaying,
+   388→  onPlay,
+   389→  onToggleFavorite,
+   390→}: {
+   391→  station: RadioStation;
+   392→  isPlaying: boolean;
+   393→  onPlay: () => void;
+   394→  onToggleFavorite: () => void;
+   395→}) {
+   396→  const conf = getGenreConf(station.genre);
+   397→
+   398→  return (
+   399→    <Card
+   400→      className={cn(
+   401→        'group relative overflow-hidden transition-all duration-300 cursor-pointer',
+   402→        'hover:shadow-xl hover:-translate-y-0.5',
+   403→        isPlaying && 'ring-1 ring-primary/50 shadow-xl shadow-primary/10'
+   404→      )}
+   405→      onClick={onPlay}
+   406→    >
+   407→      <div className={cn('absolute inset-0 bg-gradient-to-br opacity-[0.12]', conf.gradient)} />
+   408→      <CardContent className="p-4 relative">
+   409→        <div className="flex items-start gap-3">
+   410→          <div className={cn(
+   411→            'w-12 h-12 rounded-xl bg-gradient-to-br flex-shrink-0 flex items-center justify-center relative',
+   412→            conf.gradient, 'shadow-lg', conf.glow
+   413→          )}>
+   414→            {isPlaying ? (
+   415→              <AnimatedEqualizer barCount={6} height="h-6" gap="gap-[2px]" barWidth="w-[2px]" color="bg-white" active />
+   416→            ) : (
+   417→              <Waves className="w-5 h-5 text-white/80" />
+   418→            )}
+   419→            {isPlaying && (
+   420→              <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-red-500 animate-pulse shadow-sm shadow-red-500/50" />
+   421→            )}
+   422→          </div>
+   423→
+   424→          <div className="flex-1 min-w-0">
+   425→            <div className="flex items-center gap-1.5">
+   426→              <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
+   427→                {station.name}
+   428→              </h3>
+   429→              {isPlaying && (
+   430→                <AnimatedEqualizer barCount={4} height="h-3" gap="gap-[1.5px]" barWidth="w-[1.5px]" className="flex-shrink-0" active />
+   431→              )}
+   432→            </div>
+   433→            <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5 leading-relaxed">
+   434→              {station.description}
+   435→            </p>
+   436→            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+   437→              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+   438→                {station.genre}
+   439→              </Badge>
+   440→              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+   441→                <SignalStrength bitrate={station.bitrate} />
+   442→                {station.bitrate}kbps
+   443→              </span>
+   444→              {station.tags.slice(0, 3).map(tag => (
+   445→                <span key={tag} className="text-[10px] text-muted-foreground/60">#{tag}</span>
+   446→              ))}
+   447→            </div>
+   448→          </div>
+   449→
+   450→          <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+   451→            <Button
+   452→              variant="ghost"
+   453→              size="icon"
+   454→              className="h-8 w-8"
+   455→              onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+   456→            >
+   457→              <Heart
+   458→                className={cn(
+   459→                  'w-4 h-4 transition-colors',
+   460→                  station.isFavorite
+   461→                    ? 'fill-rose-500 text-rose-500'
+   462→                    : 'text-muted-foreground hover:text-rose-400'
+   463→                )}
+   464→              />
+   465→            </Button>
+   466→            <Button
+   467→              variant={isPlaying ? 'destructive' : 'default'}
+   468→              size="icon"
+   469→              className="h-8 w-8 rounded-full shadow-sm"
+   470→              onClick={(e) => { e.stopPropagation(); onPlay(); }}
+   471→            >
+   472→              {isPlaying ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3 ml-0.5" />}
+   473→            </Button>
+   474→          </div>
+   475→        </div>
+   476→      </CardContent>
+   477→    </Card>
+   478→  );
+   479→}
+   480→
+   481→// ═══════════════════════════════════════════════════════
+   482→// STATION LIST ITEM — enhanced
+   483→// ═══════════════════════════════════════════════════════
+   484→
+   485→function StationListItem({
+   486→  station,
+   487→  isPlaying,
+   488→  index,
+   489→  onPlay,
+   490→  onToggleFavorite,
+   491→}: {
+   492→  station: RadioStation;
+   493→  isPlaying: boolean;
+   494→  index: number;
+   495→  onPlay: () => void;
+   496→  onToggleFavorite: () => void;
+   497→}) {
+   498→  const conf = getGenreConf(station.genre);
+   499→  const flag = countryCodeToFlag(station.countryCode);
+   500→
+   501→  return (
+   502→    <div
+   503→      className={cn(
+   504→        'group flex items-center gap-3 p-3 rounded-xl transition-all duration-200 cursor-pointer',
+   505→        'hover:bg-accent/50 hover:shadow-sm',
+   506→        isPlaying && 'bg-primary/[0.06] shadow-sm shadow-primary/5 ring-1 ring-primary/15'
+   507→      )}
+   508→      onClick={onPlay}
+   509→    >
+   510→      <div className={cn(
+   511→        'w-10 h-10 rounded-xl bg-gradient-to-br flex-shrink-0 flex items-center justify-center relative transition-transform group-hover:scale-105',
+   512→        conf.gradient, isPlaying && 'shadow-lg', conf.glow
+   513→      )}>
+   514→        {isPlaying ? (
+   515→          <AnimatedEqualizer barCount={6} height="h-5" gap="gap-[2px]" barWidth="w-[2px]" color="bg-white" active />
+   516→        ) : (
+   517→          <Radio className="w-4 h-4 text-white/80" />
+   518→        )}
+   519→        {isPlaying && (
+   520→          <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+   521→        )}
+   522→      </div>
+   523→
+   524→      <div className="flex-1 min-w-0">
+   525→        <div className="flex items-center gap-2">
+   526→          <h3 className="font-medium text-sm truncate group-hover:text-primary transition-colors">
+   527→            {station.name}
+   528→          </h3>
+   529→          {isPlaying && (
+   530→            <Badge variant="destructive" className="text-[9px] px-1.5 py-0 h-4 animate-pulse font-bold">
+   531→              LIVE
+   532→            </Badge>
+   533→          )}
+   534→        </div>
+   535→        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+   536→          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+   537→            {station.genre}
+   538→          </Badge>
+   539→          {flag && (
+   540→            <span className="text-[11px]">{flag}</span>
+   541→          )}
+   542→          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+   543→            <SignalStrength bitrate={station.bitrate} />
+   544→            {station.bitrate}kbps
+   545→          </span>
+   546→          <Badge
+   547→            variant="outline"
+   548→            className={cn(
+   549→              'text-[9px] px-1.5 py-0',
+   550→              station.source === 'iHeartRadio' && 'border-rose-500/40 text-rose-400',
+   551→              station.source === 'Local FM' && 'border-sky-500/40 text-sky-400',
+   552→              station.source === 'SomaFM' && 'border-orange-500/40 text-orange-400',
+   553→              station.source === 'Public Radio' && 'border-emerald-500/40 text-emerald-400',
+   554→            )}
+   555→          >
+   556→            {station.source}
+   557→          </Badge>
+   558→        </div>
+   559→      </div>
+   560→
+   561→      <div className="flex items-center gap-1 flex-shrink-0">
+   562→        <Button
+   563→          variant="ghost"
+   564→          size="icon"
+   565→          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+   566→          onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+   567→        >
+   568→          <Heart
+   569→            className={cn(
+   570→              'w-4 h-4 transition-colors',
+   571→              station.isFavorite
+   572→                ? 'fill-rose-500 text-rose-500'
+   573→                : 'text-muted-foreground hover:text-rose-400'
+   574→            )}
+   575→          />
+   576→        </Button>
+   577→        <Button
+   578→          variant={isPlaying ? 'destructive' : 'default'}
+   579→          size="icon"
+   580→          className={cn(
+   581→            'h-8 w-8 rounded-full transition-all',
+   582→            isPlaying ? 'shadow-sm shadow-red-500/20' : 'opacity-0 group-hover:opacity-100'
+   583→          )}
+   584→          onClick={(e) => { e.stopPropagation(); onPlay(); }}
+   585→        >
+   586→          {isPlaying ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3 ml-0.5" />}
+   587→        </Button>
+   588→      </div>
+   589→    </div>
+   590→  );
+   591→}
+   592→
+   593→// ═══════════════════════════════════════════════════════
+   594→// QUICK PICKS — horizontal featured station row
+   595→// ═══════════════════════════════════════════════════════
+   596→
+   597→function QuickPicksRow({
+   598→  stations,
+   599→  currentRadioStationId,
+   600→  isPlaying,
+   601→  playbackMode,
+   602→  onPlay,
+   603→}: {
+   604→  stations: RadioStation[];
+   605→  currentRadioStationId: string | null;
+   606→  isPlaying: boolean;
+   607→  playbackMode: string;
+   608→  onPlay: (station: RadioStation) => void;
+   609→}) {
+   610→  return (
+   611→    <div className="relative">
+   612→      <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-none -mx-1 px-1">
+   613→        {stations.map(station => {
+   614→          const conf = getGenreConf(station.genre);
+   615→          const active = playbackMode === 'radio' && currentRadioStationId === station.id && isPlaying;
+   616→          return (
+   617→            <button
+   618→              key={station.id}
+   619→              onClick={() => onPlay(station)}
+   620→              className={cn(
+   621→                'flex-shrink-0 w-[170px] rounded-xl overflow-hidden transition-all duration-300 cursor-pointer text-left',
+   622→                'hover:scale-[1.04] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary/40',
+   623→                active && 'ring-2 ring-primary scale-[1.04] shadow-lg shadow-primary/10'
+   624→              )}
+   625→            >
+   626→              <div className={cn('relative h-[95px] bg-gradient-to-br', conf.gradient)}>
+   627→                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+   628→                <div className="absolute inset-0 opacity-[0.06] bg-[url(\'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNmZmYiIG9wYWNpdHk9IjAuMSIvPjwvc3ZnPg==\')]" />
+   629→
+   630→                <div className="absolute top-3 left-3">
+   631→                  {active ? (
+   632→                    <AnimatedEqualizer barCount={4} height="h-4" gap="gap-[1.5px]" barWidth="w-[2px]" color="bg-white" active />
+   633→                  ) : (
+   634→                    <div className="w-7 h-7 rounded-lg bg-black/20 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+   635→                      <Play className="w-3 h-3 text-white ml-0.5" />
+   636→                    </div>
+   637→                  )}
+   638→                </div>
+   639→
+   640→                {active && (
+   641→                  <div className="absolute top-3 right-3">
+   642→                    <Badge className="bg-red-500/90 text-white border-0 text-[9px] h-4 px-1.5 animate-pulse">
+   643→                      LIVE
+   644→                    </Badge>
+   645→                  </div>
+   646→                )}
+   647→
+   648→                <div className="absolute bottom-0 left-0 right-0 p-3">
+   649→                  <p className="text-white text-xs font-semibold truncate">{station.name}</p>
+   650→                  <p className="text-white/50 text-[10px] truncate">{station.genre}</p>
+   651→                </div>
+   652→              </div>
+   653→            </button>
+   654→          );
+   655→        })}
+   656→      </div>
+   657→      <div className="absolute top-0 right-0 bottom-3 w-16 bg-gradient-to-l from-background to-transparent pointer-events-none" />
+   658→    </div>
+   659→  );
+   660→}
+   661→
+   662→// ═══════════════════════════════════════════════════════
+   663→// MAIN RADIO VIEW
+   664→// ═══════════════════════════════════════════════════════
+   665→
+   666→const PAGE_SIZE = 50;
+   667→
+   668→export function RadioView() {
+   669→  const { currentRadioStationId, isPlaying, playbackMode, playRadioStation, stopRadio } = usePlayerStore();
+   670→  const { searchQuery: globalSearch } = useUIStore();
+   671→
+   672→  // Local state
+   673→  const [localSearch, setLocalSearch] = useState('');
+   674→  const [genreFilter, setGenreFilter] = useState('all');
+   675→  const [countryFilter, setCountryFilter] = useState('all');
+   676→  const [sourceFilter, setSourceFilter] = useState('all');
+   677→  const [sortOption, setSortOption] = useState<SortOption>('az');
+   678→  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+   679→  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+   680→  const [favoritesVersion, setFavoritesVersion] = useState(0);
+   681→
+   682→  // Debounced search
+   683→  const debouncedSearch = useDebouncedValue(localSearch, 300);
+   684→  const activeSearch = globalSearch || debouncedSearch;
+   685→
+   686→  // Static data
+   687→  const allGenres = useMemo(() => getRadioGenres(), []);
+   688→  const allCountries = useMemo(() => getRadioCountries(), []);
+   689→  const allSources = useMemo(() => getRadioSources(), []);
+   690→  const totalStationCount = internetRadioStations.length;
+   691→
+   692→  // Genre counts
+   693→  const genreCounts = useMemo(() => {
+   694→    const counts: Record<string, number> = {};
+   695→    for (const s of internetRadioStations) {
+   696→      counts[s.genre] = (counts[s.genre] || 0) + 1;
+   697→    }
+   698→    return counts;
+   699→  }, []);
+   700→
+   701→  // SomaFM stations
+   702→  const somaFMStations = useMemo(
+   703→    () => internetRadioStations.filter(s => s.source === 'SomaFM' && parseInt(s.id.replace('radio-', '')) <= 24),
+   704→    []
+   705→  );
+   706→
+   707→  // Featured stations — handpicked diverse selection
+   708→  const featuredStations = useMemo(() => {
+   709→    const picks = [
+   710→      'radio-1',  // Groove Salad
+   711→      'radio-2',  // Drone Zone
+   712→      'radio-5',  // Secret Agent
+   713→      'radio-10', // DEF CON
+   714→      'radio-14', // Indie Pop Rocks
+   715→      'radio-33', // KEXP
+   716→      'radio-34', // KCRW
+   717→      'radio-35', // WFMU
+   718→      'radio-25', // BBC World Service
+   719→      'radio-27', // Swiss Classic
+   720→    ];
+   721→    return picks.map(id => internetRadioStations.find(s => s.id === id)).filter(Boolean) as RadioStation[];
+   722→  }, []);
+   723→
+   724→  // Filtered & sorted stations
+   725→  const filteredStations = useMemo(() => {
+   726→    let result: RadioStation[];
+   727→
+   728→    if (activeSearch.trim()) {
+   729→      result = searchRadioStations(activeSearch.trim());
+   730→    } else {
+   731→      result = [...internetRadioStations];
+   732→    }
+   733→
+   734→    result = result.filter(s => !(s.source === 'SomaFM' && parseInt(s.id.replace('radio-', '')) <= 24));
+   735→
+   736→    if (genreFilter !== 'all') result = result.filter(s => s.genre === genreFilter);
+   737→    if (countryFilter !== 'all') result = result.filter(s => s.countryCode === countryFilter);
+   738→    if (sourceFilter !== 'all') result = result.filter(s => s.source === sourceFilter);
+   739→    if (showFavoritesOnly) {
+   740→      const favStations = getFavoriteRadioStations();
+   741→      const favIds = new Set(favStations.map(s => s.id));
+   742→      result = result.filter(s => favIds.has(s.id));
+   743→    }
+   744→
+   745→    result = sortStations(result, sortOption);
+   746→    return result;
+   747→  }, [activeSearch, genreFilter, countryFilter, sourceFilter, sortOption, showFavoritesOnly, favoritesVersion]);
+   748→
+   749→  const visibleStations = useMemo(
+   750→    () => filteredStations.slice(0, visibleCount),
+   751→    [filteredStations, visibleCount]
+   752→  );
+   753→
+   754→  const hasMore = visibleCount < filteredStations.length;
+   755→
+   756→  // Handlers
+   757→  const handlePlayStation = useCallback((station: RadioStation) => {
+   758→    if (playbackMode === 'radio' && currentRadioStationId === station.id && isPlaying) {
+   759→      stopRadio();
+   760→    } else {
+   761→      playRadioStation(station.id, station.name, station.streamUrl, station.genre);
+   762→    }
+   763→  }, [playbackMode, currentRadioStationId, isPlaying, playRadioStation, stopRadio]);
+   764→
+   765→  const handleToggleFavorite = useCallback((stationId: string) => {
+   766→    toggleRadioFavorite(stationId);
+   767→    setFavoritesVersion(v => v + 1);
+   768→  }, []);
+   769→
+   770→  const handleGenreChipClick = useCallback((genre: string) => {
+   771→    setGenreFilter(prev => prev === genre ? 'all' : genre);
+   772→    setVisibleCount(PAGE_SIZE);
+   773→  }, []);
+   774→
+   775→  const handleLoadMore = useCallback(() => setVisibleCount(prev => prev + PAGE_SIZE), []);
+   776→  const handleSearchChange = useCallback((value: string) => { setLocalSearch(value); setVisibleCount(PAGE_SIZE); }, []);
+   777→  const handleSortChange = useCallback((val: string) => { setSortOption(val as SortOption); setVisibleCount(PAGE_SIZE); }, []);
+   778→  const handleGenreFilterChange = useCallback((val: string) => { setGenreFilter(val); setVisibleCount(PAGE_SIZE); }, []);
+   779→  const handleCountryFilterChange = useCallback((val: string) => { setCountryFilter(val); setVisibleCount(PAGE_SIZE); }, []);
+   780→  const handleSourceFilterChange = useCallback((val: string) => { setSourceFilter(val); setVisibleCount(PAGE_SIZE); }, []);
+   781→
+   782→  // Currently playing station
+   783→  const currentlyPlayingStation = useMemo(() => {
+   784→    if (playbackMode !== 'radio' || !currentRadioStationId) return null;
+   785→    return internetRadioStations.find(s => s.id === currentRadioStationId) || null;
+   786→  }, [playbackMode, currentRadioStationId]);
+   787→
+   788→  const isDefaultView = !showFavoritesOnly && !activeSearch.trim() && genreFilter === 'all' && countryFilter === 'all' && sourceFilter === 'all';
+   789→
+   790→  return (
+   791→    <ScrollArea className="h-full">
+   792→      <div className="max-w-5xl mx-auto p-6 space-y-6">
+   793→
+   794→        {/* ═══ HERO HEADER ═══ */}
+   795→        <div className="relative">
+   796→          <div className="flex items-center gap-4">
+   797→            <div className="relative flex-shrink-0">
+   798→              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-900 via-orange-900 to-amber-900 flex items-center justify-center shadow-lg shadow-rose-900/20">
+   799→                <Antenna className="w-6 h-6 text-rose-200" />
+   800→              </div>
+   801→              <div className="absolute -inset-2 rounded-2xl border border-rose-500/10 animate-pulse" style={{ animationDuration: '3s' }} />
+   802→            </div>
+   803→            <div className="flex-1 min-w-0">
+   804→              <div className="flex items-center gap-2.5">
+   805→                <h1 className="text-2xl font-bold tracking-tight">Internet Radio</h1>
+   806→                <Badge variant="secondary" className="font-normal text-xs">
+   807→                  {totalStationCount} stations
+   808→                </Badge>
+   809→                <Badge variant="outline" className="font-normal text-xs gap-1">
+   810→                  <Signal className="w-3 h-3" />
+   811→                  Live
+   812→                </Badge>
+   813→              </div>
+   814→              <p className="text-sm text-muted-foreground mt-0.5">
+   815→                SomaFM, public radio, iHeartRadio, local FM & community stations worldwide
+   816→              </p>
+   817→            </div>
+   818→          </div>
+   819→        </div>
+   820→
+   821→        {/* ═══ NOW PLAYING HERO ═══ */}
+   822→        {currentlyPlayingStation && isPlaying && (
+   823→          <NowPlayingHero
+   824→            station={currentlyPlayingStation}
+   825→            onStop={stopRadio}
+   826→          />
+   827→        )}
+   828→
+   829→        {/* ═══ SEARCH BAR ═══ */}
+   830→        <div className="relative group">
+   831→          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+   832→          <Input
+   833→            placeholder="Search stations by name, genre, country, or tags..."
+   834→            value={localSearch}
+   835→            onChange={(e) => handleSearchChange(e.target.value)}
+   836→            className="pl-12 h-12 text-base bg-card border-border focus-visible:ring-primary/30 transition-all"
+   837→          />
+   838→          {localSearch && (
+   839→            <button
+   840→              onClick={() => handleSearchChange('')}
+   841→              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+   842→            >
+   843→              <X className="w-4 h-4" />
+   844→            </button>
+   845→          )}
+   846→        </div>
+   847→
+   848→        {/* ═══ GENRE CAROUSEL ═══ */}
+   849→        {isDefaultView && (
+   850→          <div className="space-y-3">
+   851→            <div className="flex items-center gap-2">
+   852→              <Palette className="w-4 h-4 text-muted-foreground" />
+   853→              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Browse by Genre</h2>
+   854→            </div>
+   855→            <div className="relative">
+   856→              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none -mx-1 px-1">
+   857→                <GenreCard
+   858→                  genre="All"
+   859→                  count={totalStationCount}
+   860→                  isActive={genreFilter === 'all'}
+   861→                  onClick={() => handleGenreChipClick('all')}
+   862→                />
+   863→                {allGenres.slice(0, 24).map((genre) => (
+   864→                  <GenreCard
+   865→                    key={genre}
+   866→                    genre={genre}
+   867→                    count={genreCounts[genre] || 0}
+   868→                    isActive={genreFilter === genre}
+   869→                    onClick={() => handleGenreChipClick(genre)}
+   870→                  />
+   871→                ))}
+   872→              </div>
+   873→              <div className="absolute top-0 right-0 bottom-2 w-16 bg-gradient-to-l from-background to-transparent pointer-events-none" />
+   874→            </div>
+   875→          </div>
+   876→        )}
+   877→
+   878→        {/* ═══ FEATURED STATIONS ═══ */}
+   879→        {isDefaultView && (
+   880→          <div className="space-y-3">
+   881→            <div className="flex items-center justify-between">
+   882→              <div className="flex items-center gap-2">
+   883→                <TrendingUp className="w-4 h-4 text-amber-400" />
+   884→                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Featured Stations</h2>
+   885→              </div>
+   886→              <span className="text-xs text-muted-foreground">Handpicked for you</span>
+   887→            </div>
+   888→            <QuickPicksRow
+   889→              stations={featuredStations}
+   890→              currentRadioStationId={currentRadioStationId}
+   891→              isPlaying={isPlaying}
+   892→              playbackMode={playbackMode}
+   893→              onPlay={handlePlayStation}
+   894→            />
+   895→          </div>
+   896→        )}
+   897→
+   898→        {/* ═══ FILTER BAR ═══ */}
+   899→        {(activeSearch.trim() || !isDefaultView) && (
+   900→          <div className="flex flex-wrap items-center gap-2">
+   901→            <Select value={genreFilter} onValueChange={handleGenreFilterChange}>
+   902→              <SelectTrigger className="w-[150px] h-8 text-xs">
+   903→                <SelectValue placeholder="All Genres" />
+   904→              </SelectTrigger>
+   905→              <SelectContent>
+   906→                <SelectItem value="all">All Genres</SelectItem>
+   907→                {allGenres.map((g) => (
+   908→                  <SelectItem key={g} value={g}>{g}</SelectItem>
+   909→                ))}
+   910→              </SelectContent>
+   911→            </Select>
+   912→
+   913→            <Select value={countryFilter} onValueChange={handleCountryFilterChange}>
+   914→              <SelectTrigger className="w-[150px] h-8 text-xs">
+   915→                <SelectValue placeholder="All Countries" />
+   916→              </SelectTrigger>
+   917→              <SelectContent>
+   918→                <SelectItem value="all">All Countries</SelectItem>
+   919→                {allCountries.map((c) => (
+   920→                  <SelectItem key={c.code} value={c.code}>
+   921→                    <span className="flex items-center gap-1.5">
+   922→                      <span>{countryCodeToFlag(c.code)}</span>
+   923→                      <span>{c.name}</span>
+   924→                    </span>
+   925→                  </SelectItem>
+   926→                ))}
+   927→              </SelectContent>
+   928→            </Select>
+   929→
+   930→            <Select value={sourceFilter} onValueChange={handleSourceFilterChange}>
+   931→              <SelectTrigger className="w-[140px] h-8 text-xs">
+   932→                <SelectValue placeholder="All Sources" />
+   933→              </SelectTrigger>
+   934→              <SelectContent>
+   935→                <SelectItem value="all">All Sources</SelectItem>
+   936→                {allSources.map((src) => (
+   937→                  <SelectItem key={src} value={src}>{src}</SelectItem>
+   938→                ))}
+   939→              </SelectContent>
+   940→            </Select>
+   941→
+   942→            <Select value={sortOption} onValueChange={handleSortChange}>
+   943→              <SelectTrigger className="w-[130px] h-8 text-xs">
+   944→                <SelectValue />
+   945→              </SelectTrigger>
+   946→              <SelectContent>
+   947→                <SelectItem value="az"><span className="flex items-center gap-1"><ArrowDownAZ className="w-3 h-3" />A-Z</span></SelectItem>
+   948→                <SelectItem value="za"><span className="flex items-center gap-1"><ArrowUpAZ className="w-3 h-3" />Z-A</span></SelectItem>
+   949→                <SelectItem value="country"><span className="flex items-center gap-1"><Globe className="w-3 h-3" />Country</span></SelectItem>
+   950→                <SelectItem value="genre"><span className="flex items-center gap-1"><Filter className="w-3 h-3" />Genre</span></SelectItem>
+   951→              </SelectContent>
+   952→            </Select>
+   953→
+   954→            <Button
+   955→              variant={showFavoritesOnly ? 'default' : 'outline'}
+   956→              size="sm"
+   957→              className="h-8 gap-1.5 text-xs"
+   958→              onClick={() => { setShowFavoritesOnly(prev => !prev); setVisibleCount(PAGE_SIZE); }}
+   959→            >
+   960→              <Heart className={cn('w-3.5 h-3.5', showFavoritesOnly && 'fill-current')} />
+   961→              Favorites
+   962→            </Button>
+   963→
+   964→            {(activeSearch.trim() || genreFilter !== 'all' || countryFilter !== 'all' || showFavoritesOnly) && (
+   965→              <Button
+   966→                variant="ghost"
+   967→                size="sm"
+   968→                className="h-8 text-xs"
+   969→                onClick={() => {
+   970→                  setLocalSearch('');
+   971→                  setGenreFilter('all');
+   972→                  setCountryFilter('all');
+   973→                  setSourceFilter('all');
+   974→                  setShowFavoritesOnly(false);
+   975→                  setSortOption('az');
+   976→                  setVisibleCount(PAGE_SIZE);
+   977→                }}
+   978→              >
+   979→                Clear all
+   980→              </Button>
+   981→            )}
+   982→          </div>
+   983→        )}
+   984→
+   985→        {/* ═══ SOMAFM SECTION ═══ */}
+   986→        {isDefaultView && (
+   987→          <div className="space-y-4">
+   988→            <div className="flex items-center justify-between">
+   989→              <div className="flex items-center gap-2">
+   990→                <div className="w-6 h-6 rounded-md bg-gradient-to-br from-orange-700 to-rose-700 flex items-center justify-center">
+   991→                  <Waves className="w-3 h-3 text-orange-200" />
+   992→                </div>
+   993→                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">SomaFM — Listener Supported</h2>
+   994→                <Badge variant="outline" className="text-[10px] font-normal border-orange-500/30 text-orange-400">
+   995→                  {somaFMStations.length} channels
+   996→                </Badge>
+   997→              </div>
+   998→              <a
+   999→                href="https://somafm.com"
+  1000→                target="_blank"
+  1001→                rel="noopener noreferrer"
+  1002→                className="text-xs text-muted-foreground hover:text-orange-400 flex items-center gap-1 transition-colors"
+  1003→              >
+  1004→                somafm.com <ExternalLink className="w-3 h-3" />
+  1005→              </a>
+  1006→            </div>
+  1007→            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+  1008→              {somaFMStations.map((station) => (
+  1009→                <SomaFMShowcaseCard
+  1010→                  key={station.id}
+  1011→                  station={station}
+  1012→                  isPlaying={playbackMode === 'radio' && currentRadioStationId === station.id && isPlaying}
+  1013→                  onPlay={() => handlePlayStation(station)}
+  1014→                  onToggleFavorite={() => handleToggleFavorite(station.id)}
+  1015→                />
+  1016→              ))}
+  1017→            </div>
+  1018→            <Separator />
+  1019→          </div>
+  1020→        )}
+  1021→
+  1022→        {/* ═══ RESULTS COUNT ═══ */}
+  1023→        <div className="flex items-center justify-between">
+  1024→          <p className="text-sm text-muted-foreground">
+  1025→            Showing{' '}
+  1026→            <span className="text-foreground font-medium">{Math.min(visibleCount, filteredStations.length)}</span>
+  1027→            {' '}of{' '}
+  1028→            <span className="text-foreground font-medium">{filteredStations.length}</span>
+  1029→            {' '}stations
+  1030→          </p>
+  1031→        </div>
+  1032→
+  1033→        {/* ═══ STATION LIST ═══ */}
+  1034→        {filteredStations.length === 0 ? (
+  1035→          <div className="text-center py-20">
+  1036→            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-muted/50 flex items-center justify-center">
+  1037→              <Antenna className="w-7 h-7 text-muted-foreground/40" />
+  1038→            </div>
+  1039→            <h3 className="text-lg font-medium mb-1">No stations found</h3>
+  1040→            <p className="text-sm text-muted-foreground mb-4">Try adjusting your search or filters</p>
+  1041→            <Button variant="outline" onClick={() => {
+  1042→              setLocalSearch('');
+  1043→              setGenreFilter('all');
+  1044→              setCountryFilter('all');
+  1045→              setSourceFilter('all');
+  1046→              setShowFavoritesOnly(false);
+  1047→              setSortOption('az');
+  1048→              setVisibleCount(PAGE_SIZE);
+  1049→            }}>
+  1050→              Clear all filters
+  1051→            </Button>
+  1052→          </div>
+  1053→        ) : (
+  1054→          <div className="space-y-1">
+  1055→            {visibleStations.map((station, idx) => (
+  1056→              <StationListItem
+  1057→                key={station.id}
+  1058→                station={station}
+  1059→                isPlaying={playbackMode === 'radio' && currentRadioStationId === station.id && isPlaying}
+  1060→                index={idx}
+  1061→                onPlay={() => handlePlayStation(station)}
+  1062→                onToggleFavorite={() => handleToggleFavorite(station.id)}
+  1063→              />
+  1064→            ))}
+  1065→
+  1066→            {hasMore && (
+  1067→              <div className="flex justify-center pt-4 pb-2">
+  1068→                <Button
+  1069→                  variant="outline"
+  1070→                  onClick={handleLoadMore}
+  1071→                  className="gap-2 rounded-full px-6"
+  1072→                >
+  1073→                  <ChevronDown className="w-4 h-4" />
+  1074→                  Load More
+  1075→                  <span className="text-muted-foreground text-xs">
+  1076→                    ({filteredStations.length - visibleCount} remaining)
+  1077→                  </span>
+  1078→                </Button>
+  1079→              </div>
+  1080→            )}
+  1081→          </div>
+  1082→        )}
+  1083→      </div>
+  1084→    </ScrollArea>
+  1085→  );
+  1086→}
+  1087→

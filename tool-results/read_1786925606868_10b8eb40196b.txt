@@ -1,0 +1,982 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+     4→import { useUIStore } from '@/store/ui';
+     5→import { usePodcastStore } from '@/store/podcast';
+     6→import { usePlayerStore } from '@/store/player';
+     7→import {
+     8→  formatEpisodeDuration, formatDate,
+     9→} from '@/lib/podcast-data';
+    10→import type { PodcastEpisode, PodcastShow } from '@/lib/podcast-data';
+    11→import { getCoverGradient } from '@/lib/data';
+    12→import { audioSetPlaybackSpeed } from './AudioEngineProvider';
+    13→import { Card, CardContent } from '@/components/ui/card';
+    14→import { Button } from '@/components/ui/button';
+    15→import { Badge } from '@/components/ui/badge';
+    16→import { Input } from '@/components/ui/input';
+    17→import { ScrollArea } from '@/components/ui/scroll-area';
+    18→import { Separator } from '@/components/ui/separator';
+    19→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    20→import {
+    21→  Podcast, Play, Pause, Search, Plus, Check, Download,
+    22→  Clock, Radio, Rss, Heart, Trash2, TrendingUp, Star,
+    23→  Circle, Moon, Scissors, X, Loader2, ExternalLink,
+    24→} from 'lucide-react';
+    25→
+    26→function handlePlayEpisode(episode: PodcastEpisode) {
+    27→  // Delegate to the podcast store which handles all audio setup
+    28→  usePodcastStore.getState().playEpisode(episode);
+    29→}
+    30→
+    31→function SpeedBadge() {
+    32→  const { playbackSpeed, cyclePlaybackSpeed } = usePodcastStore();
+    33→
+    34→  const handleClick = () => {
+    35→    cyclePlaybackSpeed();
+    36→    setTimeout(() => {
+    37→      const newSpeed = usePodcastStore.getState().playbackSpeed;
+    38→      audioSetPlaybackSpeed(newSpeed);
+    39→    }, 0);
+    40→  };
+    41→
+    42→  return (
+    43→    <Button
+    44→      variant={playbackSpeed === 1.0 ? 'secondary' : 'default'}
+    45→      size="sm"
+    46→      className="h-7 text-xs font-mono min-w-[48px] justify-center"
+    47→      onClick={handleClick}
+    48→    >
+    49→      {playbackSpeed}x
+    50→    </Button>
+    51→  );
+    52→}
+    53→
+    54→function UnsubscribeConfirm({
+    55→  show,
+    56→  onConfirm,
+    57→  onCancel,
+    58→}: {
+    59→  show: PodcastShow;
+    60→  onConfirm: () => void;
+    61→  onCancel: () => void;
+    62→}) {
+    63→  return (
+    64→    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    65→      <Card className="bg-card border-border w-80">
+    66→        <CardContent className="p-5 space-y-4">
+    67→          <div className={`w-14 h-14 rounded-lg bg-gradient-to-br ${getCoverGradient(show.id)} mx-auto`} />
+    68→          <div className="text-center">
+    69→            <p className="text-sm font-semibold">{'Unsubscribe from '}{show.title}{'?'}</p>
+    70→            <p className="text-xs text-muted-foreground mt-1">
+    71→              This will remove the podcast from your subscriptions.
+    72→            </p>
+    73→          </div>
+    74→          <div className="flex gap-2">
+    75→            <Button variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
+    76→            <Button variant="destructive" className="flex-1" onClick={onConfirm}>Unsubscribe</Button>
+    77→          </div>
+    78→        </CardContent>
+    79→      </Card>
+    80→    </div>
+    81→  );
+    82→}
+    83→
+    84→export function PodcastsView() {
+    85→  const { navigate } = useUIStore();
+    86→  const {
+    87→    episodeStates, subscribedShowIds, toggleSubscribe,
+    88→    markAllPlayed,
+    89→    playbackSpeed, cyclePlaybackSpeed, skipSilence, toggleSkipSilence,
+    90→    sleepTimerMinutes, setSleepTimer, toggleEpisodeDownload,
+    91→    toggleEpisodeFavorite, currentEpisode, isPodcastMode,
+    92→  } = usePodcastStore();
+    93→  const { isPlaying, playbackMode } = usePlayerStore();
+    94→
+    95→  const [activeTab, setActiveTab] = useState('subscriptions');
+    96→  const [discoverSearch, setDiscoverSearch] = useState('');
+    97→  const [discoverGenre, setDiscoverGenre] = useState('all');
+    98→  const [allEpisodesFilter, setAllEpisodesFilter] = useState('all');
+    99→  const [showSleepTimer, setShowSleepTimer] = useState(false);
+   100→  const [unsubscribeTarget, setUnsubscribeTarget] = useState<PodcastShow | null>(null);
+   101→  const [expandedShowId, setExpandedShowId] = useState<string | null>(null);
+   102→
+   103→  // iTunes search state
+   104→  const [iTunesResults, setITunesResults] = useState<Array<{
+   105→    id: string; itunesId: number; title: string; author: string;
+   106→    artworkUrl: string; genre: string; feedUrl: string;
+   107→    episodeCount: number; description: string;
+   108→  }>>([]);
+   109→  const [iTunesLoading, setITunesLoading] = useState(false);
+   110→  const [iTunesError, setITunesError] = useState<string | null>(null);
+   111→  const [iTunesSearched, setITunesSearched] = useState(false);
+   112→  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+   113→
+   114→  // iTunes search with debounce
+   115→  const doITunesSearch = useCallback(async (query: string) => {
+   116→    if (!query.trim()) {
+   117→      setITunesResults([]);
+   118→      setITunesSearched(false);
+   119→      setITunesError(null);
+   120→      return;
+   121→    }
+   122→    setITunesLoading(true);
+   123→    setITunesError(null);
+   124→    setITunesSearched(true);
+   125→    try {
+   126→      const res = await fetch(`/api/podcasts/search?q=${encodeURIComponent(query.trim())}&limit=25`);
+   127→      if (!res.ok) throw new Error(`Search failed (${res.status})`);
+   128→      const data = await res.json();
+   129→      setITunesResults((data.results || []).map((r: Record<string, unknown>, idx: number) => ({
+   130→        id: String(r.id || `result-${idx}`),
+   131→        itunesId: Number(r.itunesId || 0),
+   132→        title: String(r.title || 'Unknown'),
+   133→        author: String(r.author || 'Unknown Author'),
+   134→        artworkUrl: String(r.artworkUrl || r.artworkUrlLarge || ''),
+   135→        genre: String(r.genre || 'Podcast'),
+   136→        feedUrl: String(r.feedUrl || ''),
+   137→        episodeCount: Number(r.episodeCount || 0),
+   138→        description: String(r.description || ''),
+   139→      })));
+   140→    } catch (err) {
+   141→      setITunesError(err instanceof Error ? err.message : 'Search failed');
+   142→      setITunesResults([]);
+   143→    } finally {
+   144→      setITunesLoading(false);
+   145→    }
+   146→  }, []);
+   147→
+   148→  // Debounced search on input change
+   149→  useEffect(() => {
+   150→    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+   151→    searchDebounceRef.current = setTimeout(() => {
+   152→      doITunesSearch(discoverSearch);
+   153→    }, 400);
+   154→    return () => {
+   155→      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+   156→    };
+   157→  }, [discoverSearch, doITunesSearch]);
+   158→
+   159→  const discoveredShows = usePodcastStore(s => s.discoveredShows);
+   160→  const discoveredEpisodes = usePodcastStore(s => s.discoveredEpisodes);
+   161→
+   162→  // Build subscription list from discovered (iTunes) shows only
+   163→  const subscribedShows = useMemo(() => {
+   164→    return subscribedShowIds
+   165→      .map(id => discoveredShows[id])
+   166→      .filter(Boolean);
+   167→  }, [subscribedShowIds, discoveredShows]);
+   168→
+   169→  const newEpisodes = usePodcastStore(s => {
+   170→    let count = 0;
+   171→    const st = s.episodeStates;
+   172→    for (const showId of s.subscribedShowIds) {
+   173→      const eps = s.discoveredEpisodes[showId] || [];
+   174→      for (const ep of eps) {
+   175→        const epState = st[ep.id];
+   176→        if (epState && !epState.isPlayed && !epState.completed) count++;
+   177→      }
+   178→    }
+   179→    return count;
+   180→  });
+   181→
+   182→  const allSubscribedEpisodes = useMemo(() => {
+   183→    // Include discovered episodes for subscribed shows only
+   184→    const discovered: PodcastEpisode[] = [];
+   185→    for (const showId of subscribedShowIds) {
+   186→      const eps = discoveredEpisodes[showId] || [];
+   187→      discovered.push(...eps);
+   188→    }
+   189→    return discovered
+   190→      .sort((a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime());
+   191→  }, [subscribedShowIds, discoveredEpisodes]);
+   192→
+   193→  const filteredAllEpisodes = useMemo(() => {
+   194→    return allSubscribedEpisodes.filter(ep => {
+   195→      const st = episodeStates[ep.id];
+   196→      if (!st) return allEpisodesFilter === 'all';
+   197→      switch (allEpisodesFilter) {
+   198→        case 'unplayed': return !st.isPlayed && !st.completed;
+   199→        case 'in-progress': return !st.completed && st.resumePosition > 0;
+   200→        case 'favorites': return st.favorite;
+   201→        case 'downloaded': return st.isDownloaded;
+   202→        default: return true;
+   203→      }
+   204→    });
+   205→  }, [allSubscribedEpisodes, episodeStates, allEpisodesFilter]);
+   206→
+   207→  const downloadedEpisodes = useMemo(() => {
+   208→    const allEps: PodcastEpisode[] = [];
+   209→    for (const showId of subscribedShowIds) {
+   210→      const eps = discoveredEpisodes[showId] || [];
+   211→      allEps.push(...eps);
+   212→    }
+   213→    return allEps.filter(ep => episodeStates[ep.id]?.isDownloaded);
+   214→  }, [subscribedShowIds, discoveredEpisodes, episodeStates]);
+   215→
+   216→  const allGenres = useMemo(() => {
+   217→    const genres = new Set<string>();
+   218→    for (const show of Object.values(discoveredShows)) {
+   219→      if (show.genre) genres.add(show.genre);
+   220→    }
+   221→    for (const r of iTunesResults) {
+   222→      if (r.genre) genres.add(r.genre);
+   223→    }
+   224→    return ['all', ...Array.from(genres)];
+   225→  }, [discoveredShows, iTunesResults]);
+   226→
+   227→  const discoverShows: PodcastShow[] = []; // Mock shows removed; use iTunes search results instead
+   228→
+   229→  const newAndNoteworthy: PodcastShow[] = []; // Mock shows removed
+   230→
+   231→  const trending: PodcastShow[] = []; // Mock shows removed
+   232→
+   233→  const isCurrentlyPlaying = (episodeId: string) => {
+   234→    return isPodcastMode && currentEpisode?.id === episodeId && isPlaying;
+   235→  };
+   236→
+   237→  const isCurrentEpisode = (episodeId: string) => {
+   238→    return isPodcastMode && currentEpisode?.id === episodeId;
+   239→  };
+   240→
+   241→  const handleShowContextMenu = (e: React.MouseEvent | React.TouchEvent, show: PodcastShow) => {
+   242→    if (subscribedShowIds.includes(show.id)) {
+   243→      e.preventDefault();
+   244→      e.stopPropagation();
+   245→      setUnsubscribeTarget(show);
+   246→    }
+   247→  };
+   248→
+   249→  const confirmUnsubscribe = () => {
+   250→    if (unsubscribeTarget) {
+   251→      toggleSubscribe(unsubscribeTarget.id);
+   252→      setUnsubscribeTarget(null);
+   253→    }
+   254→  };
+   255→
+   256→  const renderEpisodeRow = (ep: PodcastEpisode, size: string, showActions: boolean) => {
+   257→    const show = discoveredShows[ep.showId] || null;
+   258→    const state = episodeStates[ep.id];
+   259→    const active = isCurrentEpisode(ep.id);
+   260→    const playing = isCurrentlyPlaying(ep.id);
+   261→    const unplayed = state && !state.isPlayed && !state.completed;
+   262→    const played = state?.completed;
+   263→    const progress = state && !state.completed && state.resumePosition > 0
+   264→      ? (state.resumePosition / ep.duration) * 100
+   265→      : 0;
+   266→    const artSize = size === 'sm' ? 'w-10 h-10' : 'w-12 h-12';
+   267→
+   268→    return (
+   269→      <div
+   270→        key={ep.id}
+   271→        className={[
+   272→          'flex items-center gap-3 p-3 rounded-lg transition-colors group cursor-pointer',
+   273→          active ? 'bg-primary/10 border border-primary/30' : 'hover:bg-accent/30',
+   274→          played ? 'opacity-60' : '',
+   275→        ].join(' ')}
+   276→        onClick={() => handlePlayEpisode(ep)}
+   277→      >
+   278→        <div className={`relative flex-shrink-0 ${artSize} rounded bg-gradient-to-br ${getCoverGradient(ep.showId)}`}>
+   279→          {unplayed && (
+   280→            <span className="absolute -top-1 -left-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-background" />
+   281→          )}
+   282→          {(playing || (active && !isPlaying)) && (
+   283→            <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded">
+   284→              {playing ? (
+   285→                <Pause className="w-4 h-4 text-white" />
+   286→              ) : (
+   287→                <Play className="w-4 h-4 text-white ml-0.5" />
+   288→              )}
+   289→            </div>
+   290→          )}
+   291→          {progress > 0 && (
+   292→            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/20 rounded-b">
+   293→              <div className="h-full bg-primary rounded-b" style={{ width: `${progress}%` }} />
+   294→            </div>
+   295→          )}
+   296→        </div>
+   297→
+   298→        <div className="flex-1 min-w-0">
+   299→          <p className={`text-sm font-medium truncate ${active ? 'text-primary' : ''}`}>{ep.title}</p>
+   300→          <p className="text-xs text-muted-foreground truncate">
+   301→            {show?.title}{' \u00b7 '}{formatDate(ep.publishDate)}
+   302→          </p>
+   303→        </div>
+   304→
+   305→        <span className="text-xs text-muted-foreground hidden sm:inline flex-shrink-0">
+   306→          {formatEpisodeDuration(ep.duration)}
+   307→        </span>
+   308→
+   309→        {progress > 0 && (
+   310→          <span className="text-[10px] text-muted-foreground flex-shrink-0">
+   311→            {Math.round(progress)}%
+   312→          </span>
+   313→        )}
+   314→
+   315→        {active && playbackMode === 'podcast' && <SpeedBadge />}
+   316→
+   317→        {showActions && (
+   318→          <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+   319→            <Button
+   320→              variant="ghost"
+   321→              size="icon"
+   322→              className={`h-7 w-7 ${state?.favorite ? 'text-red-400' : ''}`}
+   323→              onClick={(e) => { e.stopPropagation(); toggleEpisodeFavorite(ep.id); }}
+   324→            >
+   325→              <Heart className={`w-3.5 h-3.5 ${state?.favorite ? 'fill-current' : ''}`} />
+   326→            </Button>
+   327→            <Button
+   328→              variant="ghost"
+   329→              size="icon"
+   330→              className={`h-7 w-7 ${state?.isDownloaded ? 'text-primary' : ''}`}
+   331→              onClick={(e) => { e.stopPropagation(); toggleEpisodeDownload(ep.id); }}
+   332→            >
+   333→              <Download className="w-3.5 h-3.5" />
+   334→            </Button>
+   335→          </div>
+   336→        )}
+   337→      </div>
+   338→    );
+   339→  };
+   340→
+   341→  const renderShowCard = (show: PodcastShow) => {
+   342→    const isSub = subscribedShowIds.includes(show.id);
+   343→    const isDiscovered = !!discoveredShows[show.id];
+   344→    // Get episodes from discovered RSS feeds
+   345→    const episodes = isDiscovered
+   346→      ? (discoveredEpisodes[show.id] || []).sort((a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime())
+   347→      : [];
+   348→    const unplayed = episodes.filter(ep => {
+   349→      const st = episodeStates[ep.id];
+   350→      return st && !st.isPlayed && !st.completed;
+   351→    });
+   352→    const latestEp = episodes[0];
+   353→    const latestState = latestEp ? episodeStates[latestEp.id] : null;
+   354→    const hasArtworkUrl = show.artworkUrl && show.artworkUrl.startsWith('http');
+   355→
+   356→    return (
+   357→      <Card
+   358→        key={show.id}
+   359→        className="bg-card border-border hover:border-muted-foreground/20 cursor-pointer transition-all group"
+   360→        onClick={() => {
+   361→          // Ensure discovered show is set before navigating
+   362→          if (isDiscovered) {
+   363→            usePodcastStore.getState().setDiscoveredShow(show);
+   364→          }
+   365→          navigate('podcast-detail', { showId: show.id });
+   366→        }}
+   367→        onContextMenu={(e) => handleShowContextMenu(e, show)}
+   368→      >
+   369→        <CardContent className="p-4">
+   370→          <div className="flex gap-4">
+   371→            <div className={`w-20 h-20 rounded-lg ${hasArtworkUrl ? '' : `bg-gradient-to-br ${getCoverGradient(show.id)}`} flex-shrink-0 relative overflow-hidden`}>
+   372→              {hasArtworkUrl ? (
+   373→                <img src={show.artworkUrl} alt={show.title} className="w-full h-full object-cover" />
+   374→              ) : (
+   375→                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.1),transparent_70%)]" />
+   376→              )}
+   377→              {unplayed.length > 0 && (
+   378→                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-signal-red text-[10px] font-bold text-white flex items-center justify-center z-10">
+   379→                  {unplayed.length > 9 ? '9+' : unplayed.length}
+   380→                </span>
+   381→              )}
+   382→            </div>
+   383→
+   384→            <div className="flex-1 min-w-0">
+   385→              <h3 className="text-sm font-semibold truncate">{show.title}</h3>
+   386→              <p className="text-xs text-muted-foreground">{show.author}</p>
+   387→              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{show.description}</p>
+   388→              <div className="flex items-center gap-3 mt-2">
+   389→                <Badge variant="outline" className="text-[10px]">{show.genre}</Badge>
+   390→                <span className="text-[11px] text-muted-foreground">{isDiscovered ? episodes.length : show.episodeCount} episodes</span>
+   391→                {latestEp && (
+   392→                  <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+   393→                    <Rss className="w-3 h-3" />
+   394→                    {formatDate(latestEp.publishDate)}
+   395→                  </span>
+   396→                )}
+   397→              </div>
+   398→            </div>
+   399→
+   400→            <div className="flex flex-col items-end gap-2 flex-shrink-0">
+   401→              <Button
+   402→                variant={isSub ? 'secondary' : 'default'}
+   403→                size="sm"
+   404→                className="h-8 gap-1.5"
+   405→                onClick={(e) => {
+   406→                  e.stopPropagation();
+   407→                  if (isSub) { setUnsubscribeTarget(show); } else { toggleSubscribe(show.id); }
+   408→                }}
+   409→              >
+   410→                {isSub ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+   411→                {isSub ? 'Subscribed' : 'Subscribe'}
+   412→              </Button>
+   413→
+   414→              {latestEp && latestState && !latestState.completed && (
+   415→                <Button
+   416→                  variant="ghost"
+   417→                  size="sm"
+   418→                  className="h-8 gap-1.5 text-xs"
+   419→                  onClick={(e) => { e.stopPropagation(); handlePlayEpisode(latestEp); }}
+   420→                >
+   421→                  <Play className="w-3.5 h-3.5" />
+   422→                  {latestState.resumePosition > 0 ? 'Resume' : 'Play Latest'}
+   423→                </Button>
+   424→              )}
+   425→
+   426→              {latestEp && latestState && latestState.resumePosition > 0 && !latestState.completed && (
+   427→                <div className="text-[10px] text-muted-foreground">
+   428→                  {Math.round((latestState.resumePosition / latestEp.duration) * 100)}% listened
+   429→                </div>
+   430→              )}
+   431→            </div>
+   432→          </div>
+   433→        </CardContent>
+   434→      </Card>
+   435→    );
+   436→  };
+   437→
+   438→  const renderDiscoverShowCard = (show: PodcastShow) => {
+   439→    const isSub = subscribedShowIds.includes(show.id);
+   440→    const isExpanded = expandedShowId === show.id;
+   441→    const episodes = discoveredEpisodes[show.id] || [];
+   442→    return (
+   443→      <Card
+   444→        key={show.id}
+   445→        className="bg-card border-border hover:border-muted-foreground/20 transition-all"
+   446→      >
+   447→        <CardContent className="p-3">
+   448→          <div className="flex gap-3 cursor-pointer" onClick={() => setExpandedShowId(isExpanded ? null : show.id)}>
+   449→            <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${getCoverGradient(show.id)} flex-shrink-0`} />
+   450→            <div className="flex-1 min-w-0">
+   451→              <p className="text-sm font-medium truncate">{show.title}</p>
+   452→              <p className="text-xs text-muted-foreground truncate">{show.author}</p>
+   453→              <div className="flex items-center gap-2 mt-1">
+   454→                <Badge variant="outline" className="text-[10px]">{show.genre}</Badge>
+   455→                <span className="text-[10px] text-muted-foreground">{show.episodeCount} eps</span>
+   456→                <span className="text-[10px] text-muted-foreground">{episodes.length} available</span>
+   457→              </div>
+   458→              <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{show.description}</p>
+   459→            </div>
+   460→            <div className="flex flex-col items-end gap-2 flex-shrink-0">
+   461→              <Button
+   462→                variant={isSub ? 'secondary' : 'default'}
+   463→                size="sm"
+   464→                className="h-8 gap-1.5"
+   465→                onClick={(e) => { e.stopPropagation(); toggleSubscribe(show.id); }}
+   466→              >
+   467→                {isSub ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+   468→                {isSub ? 'Subscribed' : 'Subscribe'}
+   469→              </Button>
+   470→              <Button
+   471→                variant="ghost"
+   472→                size="sm"
+   473→                className="h-7 gap-1 text-xs"
+   474→                onClick={(e) => { e.stopPropagation(); if (episodes.length > 0) handlePlayEpisode(episodes[0]); }}
+   475→              >
+   476→                <Play className="w-3 h-3" />
+   477→                Play Latest
+   478→              </Button>
+   479→              <Button
+   480→                variant="ghost"
+   481→                size="sm"
+   482→                className="h-7 text-xs text-muted-foreground"
+   483→                onClick={(e) => { e.stopPropagation(); setExpandedShowId(isExpanded ? null : show.id); }}
+   484→              >
+   485→                {isExpanded ? 'Hide' : `${episodes.length} episodes`}
+   486→              </Button>
+   487→            </div>
+   488→          </div>
+   489→
+   490→          {isExpanded && episodes.length > 0 && (
+   491→            <div className="mt-3 ml-[76px] space-y-1 border-l-2 border-primary/20 pl-3">
+   492→              <p className="text-xs font-semibold text-muted-foreground mb-2">Episodes</p>
+   493→              {episodes.map(ep => renderEpisodeRow(ep, 'sm', false))}
+   494→            </div>
+   495→          )}
+   496→        </CardContent>
+   497→      </Card>
+   498→    );
+   499→  };
+   500→
+   501→  return (
+   502→    <>
+   503→      {unsubscribeTarget && (
+   504→        <UnsubscribeConfirm
+   505→          show={unsubscribeTarget}
+   506→          onConfirm={confirmUnsubscribe}
+   507→          onCancel={() => setUnsubscribeTarget(null)}
+   508→        />
+   509→      )}
+   510→
+   511→      <ScrollArea className="h-full">
+   512→        <div className="p-6 max-w-5xl mx-auto">
+   513→          <div className="flex items-center justify-between mb-6">
+   514→            <h1 className="text-2xl font-bold flex items-center gap-2">
+   515→              <Podcast className="w-6 h-6 text-primary" /> Podcasts
+   516→            </h1>
+   517→            <div className="flex items-center gap-2">
+   518→              {newEpisodes.length > 0 && (
+   519→                <Badge variant="outline" className="text-xs text-signal-red border-signal-red/30">
+   520→                  <Circle className="w-2 h-2 mr-1 fill-signal-red text-signal-red" />
+   521→                  {newEpisodes.length} new
+   522→                </Badge>
+   523→              )}
+   524→              <Badge variant="secondary" className="text-xs">{subscribedShows.length} subscribed</Badge>
+   525→            </div>
+   526→          </div>
+   527→
+   528→          <Card className="bg-card border-border mb-6">
+   529→            <CardContent className="p-3">
+   530→              <div className="flex items-center gap-4 flex-wrap">
+   531→                <div className="flex items-center gap-2">
+   532→                  <span className="text-[11px] text-muted-foreground">Speed:</span>
+   533→                  <SpeedBadge />
+   534→                </div>
+   535→                <div className="flex items-center gap-2">
+   536→                  <Button
+   537→                    variant={skipSilence ? 'secondary' : 'ghost'}
+   538→                    size="sm"
+   539→                    className="h-7 gap-1.5 text-xs"
+   540→                    onClick={toggleSkipSilence}
+   541→                  >
+   542→                    <Scissors className="w-3.5 h-3.5" />
+   543→                    Skip Silence
+   544→                  </Button>
+   545→                </div>
+   546→                <div className="flex items-center gap-2">
+   547→                  <Button
+   548→                    variant={sleepTimerMinutes !== null ? 'secondary' : 'ghost'}
+   549→                    size="sm"
+   550→                    className="h-7 gap-1.5 text-xs"
+   551→                    onClick={() => {
+   552→                      if (sleepTimerMinutes !== null) { setSleepTimer(null); } else { setShowSleepTimer(!showSleepTimer); }
+   553→                    }}
+   554→                  >
+   555→                    <Moon className="w-3.5 h-3.5" />
+   556→                    {sleepTimerMinutes !== null ? `Sleep: ${sleepTimerMinutes}m` : 'Sleep Timer'}
+   557→                  </Button>
+   558→                </div>
+   559→                {showSleepTimer && (
+   560→                  <div className="flex items-center gap-2">
+   561→                    {[15, 30, 45, 60, 90].map(min => (
+   562→                      <Button
+   563→                        key={min}
+   564→                        variant={sleepTimerMinutes === min ? 'default' : 'outline'}
+   565→                        size="sm"
+   566→                        className="h-7 text-xs px-2"
+   567→                        onClick={() => { setSleepTimer(min); setShowSleepTimer(false); }}
+   568→                      >
+   569→                        {min}m
+   570→                      </Button>
+   571→                    ))}
+   572→                  </div>
+   573→                )}
+   574→              </div>
+   575→            </CardContent>
+   576→          </Card>
+   577→
+   578→          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+   579→            <TabsList className="bg-surface">
+   580→              <TabsTrigger value="subscriptions" className="text-xs gap-1.5">
+   581→                <Podcast className="w-3.5 h-3.5" /> My Subscriptions
+   582→              </TabsTrigger>
+   583→              <TabsTrigger value="discover" className="text-xs gap-1.5">
+   584→                <Search className="w-3.5 h-3.5" /> Discover
+   585→              </TabsTrigger>
+   586→              <TabsTrigger value="all-episodes" className="text-xs gap-1.5">
+   587→                <Radio className="w-3.5 h-3.5" /> All Episodes
+   588→                {newEpisodes.length > 0 && (
+   589→                  <Badge variant="secondary" className="h-4 min-w-[16px] px-1 text-[10px]">{newEpisodes.length}</Badge>
+   590→                )}
+   591→              </TabsTrigger>
+   592→              <TabsTrigger value="downloads" className="text-xs gap-1.5">
+   593→                <Download className="w-3.5 h-3.5" /> Downloads
+   594→                {downloadedEpisodes.length > 0 && (
+   595→                  <Badge variant="secondary" className="h-4 min-w-[16px] px-1 text-[10px]">{downloadedEpisodes.length}</Badge>
+   596→                )}
+   597→              </TabsTrigger>
+   598→            </TabsList>
+   599→
+   600→            <TabsContent value="subscriptions" className="space-y-6">
+   601→              {subscribedShows.length === 0 ? (
+   602→                <div className="text-center py-12">
+   603→                  <Podcast className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+   604→                  <p className="text-lg text-muted-foreground">No subscriptions yet</p>
+   605→                  <p className="text-sm text-muted-foreground mt-1">
+   606→                    Search and subscribe to podcasts to get started.
+   607→                  </p>
+   608→                  <Button variant="outline" className="mt-4" onClick={() => setActiveTab('discover')}>
+   609→                    <Search className="w-4 h-4 mr-2" /> Discover Podcasts
+   610→                  </Button>
+   611→                </div>
+   612→              ) : (
+   613→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   614→                  {subscribedShows.map(show => renderShowCard(show))}
+   615→                </div>
+   616→              )}
+   617→            </TabsContent>
+   618→
+   619→            <TabsContent value="discover" className="space-y-6">
+   620→              <div className="relative">
+   621→                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+   622→                <Input
+   623→                  placeholder="Search iTunes podcast directory..."
+   624→                  value={discoverSearch}
+   625→                  onChange={(e) => setDiscoverSearch(e.target.value)}
+   626→                  className="pl-12 h-11 text-sm bg-card border-border rounded-xl"
+   627→                />
+   628→                {discoverSearch && (
+   629→                  <button
+   630→                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+   631→                    onClick={() => setDiscoverSearch('')}
+   632→                  >
+   633→                    <X className="w-4 h-4" />
+   634→                  </button>
+   635→                )}
+   636→                {iTunesLoading && (
+   637→                  <Loader2 className="absolute right-12 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+   638→                )}
+   639→              </div>
+   640→
+   641→              {/* iTunes Search Results */}
+   642→              {iTunesSearched && (
+   643→                <div>
+   644→                  <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+   645→                    <ExternalLink className="w-4 h-4" /> iTunes Results
+   646→                    {iTunesResults.length > 0 && (
+   647→                      <Badge variant="outline" className="text-[10px]">{iTunesResults.length} found</Badge>
+   648→                    )}
+   649→                  </h2>
+   650→
+   651→                  {iTunesError && (
+   652→                    <div className="text-center py-6">
+   653→                      <p className="text-sm text-destructive">{iTunesError}</p>
+   654→                      <p className="text-xs text-muted-foreground mt-1">Try a different search term</p>
+   655→                    </div>
+   656→                  )}
+   657→
+   658→                  {!iTunesLoading && !iTunesError && iTunesResults.length === 0 && (
+   659→                    <div className="text-center py-6">
+   660→                      <Search className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
+   661→                      <p className="text-sm text-muted-foreground">No podcasts found for "{discoverSearch}"</p>
+   662→                    </div>
+   663→                  )}
+   664→
+   665→                  {iTunesResults.length > 0 && (
+   666→                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+   667→                      {iTunesResults.map((result) => (
+   668→                        <Card
+   669→                          key={result.id}
+   670→                          className="bg-card border-border hover:border-muted-foreground/20 transition-all"
+   671→                        >
+   672→                          <CardContent className="p-3">
+   673→                            <div className="flex gap-3">
+   674→                              {result.artworkUrl ? (
+   675→                                <img
+   676→                                  src={result.artworkUrl}
+   677→                                  alt={result.title}
+   678→                                  className="w-16 h-16 rounded-lg flex-shrink-0 object-cover"
+   679→                                />
+   680→                              ) : (
+   681→                                <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-purple-600 to-pink-500 flex-shrink-0 flex items-center justify-center">
+   682→                                  <Podcast className="w-6 h-6 text-white" />
+   683→                                </div>
+   684→                              )}
+   685→                              <div className="flex-1 min-w-0">
+   686→                                <p className="text-sm font-medium truncate">{result.title}</p>
+   687→                                <p className="text-xs text-muted-foreground truncate">{result.author}</p>
+   688→                                <div className="flex items-center gap-2 mt-1">
+   689→                                  <Badge variant="outline" className="text-[10px]">{result.genre}</Badge>
+   690→                                  <span className="text-[10px] text-muted-foreground">{result.episodeCount} eps</span>
+   691→                                </div>
+   692→                              </div>
+   693→                            </div>
+   694→                            {result.description && (
+   695→                              <p className="text-[11px] text-muted-foreground mt-2 line-clamp-2">{result.description}</p>
+   696→                            )}
+   697→                            <div className="flex items-center gap-2 mt-2">
+   698→                              {result.feedUrl && (() => {
+   699→                                const showId = `itunes-${result.itunesId}`;
+   700→                                const isSub = subscribedShowIds.includes(showId);
+   701→                                return (
+   702→                                  <Button
+   703→                                    variant={isSub ? 'secondary' : 'default'}
+   704→                                    size="sm"
+   705→                                    className="h-7 gap-1 text-xs flex-1"
+   706→                                    onClick={() => {
+   707→                                      // Always store the show data so it appears in subscriptions
+   708→                                      usePodcastStore.getState().setDiscoveredShow({
+   709→                                        id: showId,
+   710→                                        title: result.title,
+   711→                                        author: result.author,
+   712→                                        description: result.description,
+   713→                                        artworkUrl: result.artworkUrl,
+   714→                                        feedUrl: result.feedUrl,
+   715→                                        genre: result.genre,
+   716→                                        category: result.genre,
+   717→                                        language: 'en',
+   718→                                        rating: 'clean',
+   719→                                        episodeCount: result.episodeCount,
+   720→                                        subscribed: !isSub,
+   721→                                        autoDownload: false,
+   722→                                        newEpisodeCount: 0,
+   723→                                        lastChecked: new Date().toISOString(),
+   724→                                        averageDuration: 0,
+   725→                                      });
+   726→                                      toggleSubscribe(showId);
+   727→                                    }}
+   728→                                  >
+   729→                                    {isSub ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+   730→                                    {isSub ? 'Subscribed' : 'Subscribe'}
+   731→                                  </Button>
+   732→                                );
+   733→                              })()}
+   734→                              {result.feedUrl && (
+   735→                                <Button
+   736→                                  variant="ghost"
+   737→                                  size="sm"
+   738→                                  className="h-7 gap-1 text-xs"
+   739→                                  onClick={() => {
+   740→                                    const showId = `itunes-${result.itunesId}`;
+   741→                                    usePodcastStore.getState().setDiscoveredShow({
+   742→                                      id: showId,
+   743→                                      title: result.title,
+   744→                                      author: result.author,
+   745→                                      description: result.description,
+   746→                                      artworkUrl: result.artworkUrl,
+   747→                                      feedUrl: result.feedUrl,
+   748→                                      genre: result.genre,
+   749→                                      category: result.genre,
+   750→                                      language: 'en',
+   751→                                      rating: 'clean',
+   752→                                      episodeCount: result.episodeCount,
+   753→                                      subscribed: subscribedShowIds.includes(showId),
+   754→                                      autoDownload: false,
+   755→                                      newEpisodeCount: 0,
+   756→                                      lastChecked: new Date().toISOString(),
+   757→                                      averageDuration: 0,
+   758→                                    });
+   759→                                    navigate('podcast-detail', { showId });
+   760→                                  }}
+   761→                                >
+   762→                                  <Play className="w-3 h-3" /> Episodes
+   763→                                </Button>
+   764→                              )}
+   765→                            </div>
+   766→                          </CardContent>
+   767→                        </Card>
+   768→                      ))}
+   769→                    </div>
+   770→                  )}
+   771→                </div>
+   772→              )}
+   773→
+   774→              {/* Browse local catalog when not searching */}
+   775→              {!iTunesSearched && (
+   776→                <>
+   777→                  <div className="flex items-center gap-2 flex-wrap">
+   778→                    {allGenres.map(genre => (
+   779→                      <Button
+   780→                        key={genre}
+   781→                        variant={discoverGenre === genre ? 'default' : 'outline'}
+   782→                        size="sm"
+   783→                        className="h-7 text-xs"
+   784→                        onClick={() => setDiscoverGenre(genre)}
+   785→                      >
+   786→                        {genre === 'all' ? 'All Genres' : genre}
+   787→                      </Button>
+   788→                    ))}
+   789→                  </div>
+   790→
+   791→                  {discoverGenre === 'all' && (
+   792→                    <div>
+   793→                      <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+   794→                        <Star className="w-4 h-4" /> New &amp; Noteworthy
+   795→                      </h2>
+   796→                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+   797→                        {newAndNoteworthy.map(show => {
+   798→                          const isSub = subscribedShowIds.includes(show.id);
+   799→                          const episodes = discoveredEpisodes[show.id] || [];
+   800→                          const unplayed = episodes.filter(ep => {
+   801→                            const st = episodeStates[ep.id];
+   802→                            return st && !st.isPlayed && !st.completed;
+   803→                          });
+   804→                          return (
+   805→                            <Card
+   806→                              key={show.id}
+   807→                              className="bg-card border-border hover:border-muted-foreground/20 cursor-pointer transition-all"
+   808→                              onClick={() => navigate('podcast-detail', { showId: show.id })}
+   809→                            >
+   810→                              <CardContent className="p-3">
+   811→                                <div className={"w-full aspect-square rounded-lg bg-gradient-to-br " + getCoverGradient(show.id) + " mb-3 relative"}>
+   812→                                  {unplayed.length > 0 && (
+   813→                                    <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-signal-red text-[10px] font-bold text-white flex items-center justify-center">
+   814→                                      {unplayed.length}
+   815→                                    </span>
+   816→                                  )}
+   817→                                </div>
+   818→                                <p className="text-sm font-medium truncate">{show.title}</p>
+   819→                                <p className="text-xs text-muted-foreground truncate">{show.author}</p>
+   820→                                <div className="flex items-center justify-between mt-2">
+   821→                                  <Badge variant="outline" className="text-[10px]">{show.genre}</Badge>
+   822→                                  <Button
+   823→                                    variant={isSub ? 'secondary' : 'default'}
+   824→                                    size="sm"
+   825→                                    className="h-7 gap-1 text-xs"
+   826→                                    onClick={(e) => { e.stopPropagation(); toggleSubscribe(show.id); }}
+   827→                                  >
+   828→                                    {isSub ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+   829→                                  </Button>
+   830→                                </div>
+   831→                              </CardContent>
+   832→                            </Card>
+   833→                          );
+   834→                        })}
+   835→                      </div>
+   836→                    </div>
+   837→                  )}
+   838→
+   839→                  {discoverGenre === 'all' && (
+   840→                    <div>
+   841→                      <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+   842→                        <TrendingUp className="w-4 h-4" /> Trending
+   843→                      </h2>
+   844→                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   845→                        {trending.map(show => renderDiscoverShowCard(show))}
+   846→                      </div>
+   847→                    </div>
+   848→                  )}
+   849→
+   850→                  <Separator />
+   851→
+   852→                  <div>
+   853→                    <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+   854→                      <Rss className="w-4 h-4" /> All Podcasts
+   855→                      <Badge variant="outline" className="text-[10px]">{discoverShows.length}</Badge>
+   856→                    </h2>
+   857→                    {discoverShows.length === 0 ? (
+   858→                      <div className="text-center py-8">
+   859→                        <Search className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
+   860→                        <p className="text-sm text-muted-foreground">No podcasts match your filter</p>
+   861→                      </div>
+   862→                    ) : (
+   863→                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   864→                        {discoverShows.map(show => renderDiscoverShowCard(show))}
+   865→                      </div>
+   866→                    )}
+   867→                  </div>
+   868→                </>
+   869→              )}
+   870→            </TabsContent>
+   871→
+   872→            <TabsContent value="all-episodes" className="space-y-4">
+   873→              <div className="flex items-center gap-2 flex-wrap">
+   874→                {[
+   875→                  { key: 'all', label: 'All', icon: Radio },
+   876→                  { key: 'unplayed', label: 'Unplayed', icon: Circle },
+   877→                  { key: 'in-progress', label: 'In Progress', icon: Clock },
+   878→                  { key: 'favorites', label: 'Favorites', icon: Heart },
+   879→                  { key: 'downloaded', label: 'Downloaded', icon: Download },
+   880→                ].map(({ key, label, icon: Icon }) => (
+   881→                  <Button
+   882→                    key={key}
+   883→                    variant={allEpisodesFilter === key ? 'default' : 'outline'}
+   884→                    size="sm"
+   885→                    className="h-7 gap-1.5 text-xs"
+   886→                    onClick={() => setAllEpisodesFilter(key)}
+   887→                  >
+   888→                    <Icon className="w-3 h-3" />
+   889→                    {label}
+   890→                  </Button>
+   891→                ))}
+   892→              </div>
+   893→
+   894→              {filteredAllEpisodes.length === 0 ? (
+   895→                <div className="text-center py-12">
+   896→                  <Radio className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+   897→                  <p className="text-lg text-muted-foreground">
+   898→                    {allEpisodesFilter === 'all' ? 'No episodes yet' : 'No ' + allEpisodesFilter + ' episodes'}
+   899→                  </p>
+   900→                  <p className="text-sm text-muted-foreground mt-1">
+   901→                    {allEpisodesFilter === 'all'
+   902→                      ? 'Subscribe to podcasts to see their episodes here.'
+   903→                      : 'Try a different filter or subscribe to more podcasts.'}
+   904→                  </p>
+   905→                </div>
+   906→              ) : (
+   907→                <div className="max-h-[600px] overflow-y-auto space-y-1 pr-1">
+   908→                  {filteredAllEpisodes.map(ep => renderEpisodeRow(ep, 'sm', true))}
+   909→                </div>
+   910→              )}
+   911→            </TabsContent>
+   912→
+   913→            <TabsContent value="downloads" className="space-y-4">
+   914→              {downloadedEpisodes.length === 0 ? (
+   915→                <div className="text-center py-12">
+   916→                  <Download className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+   917→                  <p className="text-lg text-muted-foreground">No downloads</p>
+   918→                  <p className="text-sm text-muted-foreground mt-1">
+   919→                    Download episodes to listen offline.
+   920→                  </p>
+   921→                </div>
+   922→              ) : (
+   923→                <div className="max-h-[600px] overflow-y-auto space-y-1 pr-1">
+   924→                  {downloadedEpisodes
+   925→                    .sort((a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime())
+   926→                    .map(ep => {
+   927→                      const show = discoveredShows[ep.showId] || null;
+   928→                      const state = episodeStates[ep.id];
+   929→                      const active = isCurrentEpisode(ep.id);
+   930→                      const playing = isCurrentlyPlaying(ep.id);
+   931→                      const fileSize = ep.fileSize ? `${(ep.fileSize / (1024 * 1024)).toFixed(1)} MB` : '';
+   932→
+   933→                      return (
+   934→                        <div
+   935→                          key={ep.id}
+   936→                          className={[
+   937→                            'flex items-center gap-3 p-3 rounded-lg transition-colors group cursor-pointer',
+   938→                            active ? 'bg-primary/10 border border-primary/30' : 'hover:bg-accent/30',
+   939→                          ].join(' ')}
+   940→                          onClick={() => handlePlayEpisode(ep)}
+   941→                        >
+   942→                          <div className={"w-12 h-12 rounded bg-gradient-to-br " + getCoverGradient(ep.showId) + " flex-shrink-0 relative"}>
+   943→                            {playing && (
+   944→                              <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded">
+   945→                                <Pause className="w-4 h-4 text-white" />
+   946→                              </div>
+   947→                            )}
+   948→                          </div>
+   949→
+   950→                          <div className="flex-1 min-w-0">
+   951→                            <p className={`text-sm font-medium truncate ${active ? 'text-primary' : ''}`}>{ep.title}</p>
+   952→                            <p className="text-xs text-muted-foreground truncate">{show?.title}</p>
+   953→                          </div>
+   954→
+   955→                          <div className="text-right flex-shrink-0">
+   956→                            <span className="text-xs text-muted-foreground">{formatEpisodeDuration(ep.duration)}</span>
+   957→                            {fileSize && (
+   958→                              <span className="text-[10px] text-muted-foreground block">{fileSize}</span>
+   959→                            )}
+   960→                          </div>
+   961→
+   962→                          <Button
+   963→                            variant="ghost"
+   964→                            size="icon"
+   965→                            className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+   966→                            onClick={(e) => { e.stopPropagation(); toggleEpisodeDownload(ep.id); }}
+   967→                          >
+   968→                            <Trash2 className="w-3.5 h-3.5" />
+   969→                          </Button>
+   970→                        </div>
+   971→                      );
+   972→                    })}
+   973→                </div>
+   974→              )}
+   975→            </TabsContent>
+   976→          </Tabs>
+   977→        </div>
+   978→      </ScrollArea>
+   979→    </>
+   980→  );
+   981→}
+   982→

@@ -1,0 +1,1087 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+     4→     4→import { internetRadioStations, searchRadioStations, getRadioGenres, getRadioCountries, getRadioSources, getFavoriteRadioStations, toggleRadioFavorite } from '@/lib/radio-stations';
+     5→     5→import type { RadioStation } from '@/lib/radio-stations';
+     6→     6→import { usePlayerStore } from '@/store/player';
+     7→     7→import { useUIStore } from '@/store/ui';
+     8→     8→import { cn } from '@/lib/utils';
+     9→     9→import { Card, CardContent } from '@/components/ui/card';
+    10→    10→import { Button } from '@/components/ui/button';
+    11→    11→import { Badge } from '@/components/ui/badge';
+    12→    12→import { ScrollArea } from '@/components/ui/scroll-area';
+    13→    13→import { Separator } from '@/components/ui/separator';
+    14→    14→import { Input } from '@/components/ui/input';
+    15→    15→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+    16→    16→import {
+    17→    17→  Play, Square, Heart, Search, Radio, Globe, Signal,
+    18→    18→  ChevronDown, ArrowDownAZ, ArrowUpAZ,
+    19→    19→  Filter, Waves, Star, TrendingUp,
+    20→    20→  Zap, Music2, Headphones, Antenna, Disc3,
+    21→    21→  Fingerprint, RadioTower, Tv, Palette, Sparkles,
+    22→    22→  X, ExternalLink
+    23→    23→} from 'lucide-react';
+    24→    24→
+    25→    25→// ═══════════════════════════════════════════════════════
+    26→    26→// ANIMATED EQUALIZER BARS
+    27→    27→// ═══════════════════════════════════════════════════════
+    28→    28→
+    29→    29→function AnimatedEqualizer({
+    30→    30→  barCount = 8,
+    31→    31→  className,
+    32→    32→  color = 'bg-primary',
+    33→    33→  height = 'h-6',
+    34→    34→  gap = 'gap-[3px]',
+    35→    35→  barWidth = 'w-[3px]',
+    36→    36→  active = true,
+    37→    37→}: {
+    38→    38→  barCount?: number;
+    39→    39→  className?: string;
+    40→    40→  color?: string;
+    41→    41→  height?: string;
+    42→    42→  gap?: string;
+    43→    43→  barWidth?: string;
+    44→    44→  active?: boolean;
+    45→    45→}) {
+    46→    46→  if (!active) {
+    47→    47→    return (
+    48→    48→      <div className={cn('flex items-end', gap, height, className)}>
+    49→    49→        {Array.from({ length: barCount }).map((_, i) => (
+    50→    50→          <div
+    51→    51→            key={i}
+    52→    52→            className={cn(barWidth, color, 'rounded-full opacity-30')}
+    53→    53→            style={{ height: `${4 + ((i % 3) * 3)}px` }}
+    54→    54→          />
+    55→    55→        ))}
+    56→    56→      </div>
+    57→    57→    );
+    58→    58→  }
+    59→    59→
+    60→    60→  return (
+    61→    61→    <div className={cn('flex items-end', gap, height, className)}>
+    62→    62→      {Array.from({ length: barCount }).map((_, i) => (
+    63→    63→        <div
+    64→    64→          key={i}
+    65→    65→          className={cn(barWidth, color, 'rounded-full')}
+    66→    66→          style={{
+    67→    67→            animation: `radioEq ${0.8 + Math.random() * 0.8}s ease-in-out ${i * 0.07}s infinite alternate`,
+    68→    68→          }}
+    69→    69→        />
+    70→    70→      ))}
+    71→    71→      <style jsx>{`
+    72→    72→        @keyframes radioEq {
+    73→    73→          0% { height: 3px; opacity: 0.3; }
+    74→    74→          100% { height: 100%; opacity: 1; }
+    75→    75→        }
+    76→    76→      `}</style>
+    77→    77→    </div>
+    78→    78→  );
+    79→    79→}
+    80→    80→
+    81→    81→// ═══════════════════════════════════════════════════════
+    82→    82→// GENRE CONFIG — gradient + icon + glow per genre
+    83→    83→// ═══════════════════════════════════════════════════════
+    84→    84→
+    85→    85→const genreConfig: Record<string, { gradient: string; icon: typeof Radio; glow: string }> = {
+    86→    86→  'Ambient':      { gradient: 'from-teal-600 to-cyan-700',    icon: Waves,         glow: 'shadow-teal-500/20' },
+    87→    87→  'Lounge':       { gradient: 'from-purple-600 to-fuchsia-700', icon: Music2,     glow: 'shadow-purple-500/20' },
+    88→    88→  'Electronic':   { gradient: 'from-violet-600 to-purple-700',  icon: Zap,        glow: 'shadow-violet-500/20' },
+    89→    89→  'Indie':        { gradient: 'from-orange-600 to-amber-700',   icon: Star,        glow: 'shadow-orange-500/20' },
+    90→    90→  'Chillout':     { gradient: 'from-sky-600 to-blue-700',       icon: Headphones,  glow: 'shadow-sky-500/20' },
+    91→    91→  'Country':      { gradient: 'from-yellow-700 to-orange-800',  icon: Radio,       glow: 'shadow-yellow-500/20' },
+    92→    92→  'Dubstep':      { gradient: 'from-red-700 to-rose-800',       icon: Zap,         glow: 'shadow-red-500/20' },
+    93→    93→  'Metal':        { gradient: 'from-zinc-700 to-slate-800',     icon: Fingerprint, glow: 'shadow-zinc-500/20' },
+    94→    94→  'Classical':    { gradient: 'from-amber-600 to-yellow-700',   icon: Disc3,       glow: 'shadow-amber-500/20' },
+    95→    95→  'Folk':         { gradient: 'from-emerald-600 to-green-700',  icon: Sparkles,    glow: 'shadow-emerald-500/20' },
+    96→    96→  '80s':          { gradient: 'from-pink-600 to-rose-700',       icon: Tv,          glow: 'shadow-pink-500/20' },
+    97→    97→  'Alternative':  { gradient: 'from-indigo-600 to-blue-700',     icon: RadioTower,  glow: 'shadow-indigo-500/20' },
+    98→    98→  '70s':          { gradient: 'from-orange-500 to-red-600',      icon: Disc3,       glow: 'shadow-orange-500/20' },
+    99→    99→  'Reggae':       { gradient: 'from-lime-600 to-green-700',    icon: Radio,       glow: 'shadow-lime-500/20' },
+   100→   100→  'World':        { gradient: 'from-teal-500 to-emerald-600',   icon: Globe,       glow: 'shadow-teal-500/20' },
+   101→   101→  'Holiday':      { gradient: 'from-red-600 to-green-700',      icon: Star,        glow: 'shadow-red-500/20' },
+   102→   102→  'Eclectic':     { gradient: 'from-fuchsia-600 to-pink-700',   icon: Palette,     glow: 'shadow-fuchsia-500/20' },
+   103→   103→  'Celtic':       { gradient: 'from-green-600 to-teal-700',     icon: Music2,       glow: 'shadow-green-500/20' },
+   104→   104→  'Trance':       { gradient: 'from-blue-600 to-indigo-700',    icon: Zap,          glow: 'shadow-blue-500/20' },
+   105→   105→  'Lo-Fi':        { gradient: 'from-stone-500 to-zinc-600',      icon: Headphones,   glow: 'shadow-stone-500/20' },
+   106→   106→  'Pop':          { gradient: 'from-pink-500 to-fuchsia-600',  icon: Star,         glow: 'shadow-pink-500/20' },
+   107→   107→  'Rock':         { gradient: 'from-red-600 to-orange-700',      icon: Radio,        glow: 'shadow-red-500/20' },
+   108→   108→  'Jazz':         { gradient: 'from-amber-700 to-orange-800',    icon: Music2,       glow: 'shadow-amber-500/20' },
+   109→   109→  'Blues':        { gradient: 'from-blue-800 to-indigo-900',     icon: Music2,       glow: 'shadow-blue-800/20' },
+   110→   110→  'Hip Hop':      { gradient: 'from-yellow-500 to-amber-600',    icon: Zap,          glow: 'shadow-yellow-500/20' },
+   111→   111→  'R&B':          { gradient: 'from-purple-700 to-fuchsia-800', icon: Headphones,   glow: 'shadow-purple-700/20' },
+   112→   112→  'Latin':        { gradient: 'from-orange-600 to-red-700',      icon: Sparkles,     glow: 'shadow-orange-600/20' },
+   113→   113→  'Reggaeton':    { gradient: 'from-yellow-600 to-orange-700',   icon: Zap,           glow: 'shadow-yellow-600/20' },
+   114→   114→  'News':         { gradient: 'from-slate-600 to-zinc-700',      icon: RadioTower,   glow: 'shadow-slate-500/20' },
+   115→   115→  'Talk':         { gradient: 'from-slate-600 to-zinc-700',      icon: RadioTower,   glow: 'shadow-slate-500/20' },
+   116→   116→  'News/Talk':    { gradient: 'from-slate-600 to-zinc-700',      icon: RadioTower,   glow: 'shadow-slate-500/20' },
+   117→   117→  'Adult Contemporary': { gradient: 'from-sky-500 to-cyan-600', icon: Music2,      glow: 'shadow-sky-500/20' },
+   118→   118→  'Dance':        { gradient: 'from-fuchsia-500 to-pink-600',   icon: Zap,           glow: 'shadow-fuchsia-500/20' },
+   119→   119→  'House':        { gradient: 'from-violet-500 to-purple-600',   icon: Headphones,   glow: 'shadow-violet-500/20' },
+   120→   120→  'Techno':       { gradient: 'from-gray-600 to-zinc-700',       icon: Zap,           glow: 'shadow-gray-500/20' },
+   121→   121→  'Dub':          { gradient: 'from-green-700 to-emerald-800',   icon: Radio,         glow: 'shadow-green-700/20' },
+   122→   122→  '90s':          { gradient: 'from-violet-500 to-purple-600',   icon: Tv,            glow: 'shadow-violet-500/20' },
+   123→   123→  '2000s':        { gradient: 'from-cyan-600 to-blue-700',      icon: Disc3,         glow: 'shadow-cyan-500/20' },
+   124→   124→};
+   125→   125→
+   126→   126→function getGenreConf(genre: string) {
+   127→   127→  return genreConfig[genre] || { gradient: 'from-zinc-600 to-zinc-700', icon: Radio, glow: 'shadow-zinc-500/20' };
+   128→   128→}
+   129→   129→
+   130→   130→// ═══════════════════════════════════════════════════════
+   131→   131→// COUNTRY FLAG EMOJIS
+   132→   132→// ═══════════════════════════════════════════════════════
+   133→   133→
+   134→   134→function countryCodeToFlag(code: string): string {
+   135→   135→  if (!code || code.length !== 2) return '';
+   136→   136→  const c = code.toUpperCase();
+   137→   137→  const base = 0x1F1E6 - 65;
+   138→   138→  const char1 = String.fromCodePoint(base + c.charCodeAt(0));
+   139→   139→  const char2 = String.fromCodePoint(base + c.charCodeAt(1));
+   140→   140→  return char1 + char2;
+   141→   141→}
+   142→   142→
+   143→   143→// ═══════════════════════════════════════════════════════
+   144→   144→// SORT OPTIONS
+   145→   145→// ═══════════════════════════════════════════════════════
+   146→   146→
+   147→   147→type SortOption = 'az' | 'za' | 'country' | 'genre';
+   148→   148→
+   149→   149→function sortStations(stations: RadioStation[], sort: SortOption): RadioStation[] {
+   150→   150→  const sorted = [...stations];
+   151→   151→  switch (sort) {
+   152→   152→    case 'az':
+   153→   153→      return sorted.sort((a, b) => a.name.localeCompare(b.name));
+   154→   154→    case 'za':
+   155→   155→      return sorted.sort((a, b) => b.name.localeCompare(a.name));
+   156→   156→    case 'country':
+   157→   157→      return sorted.sort((a, b) => a.country.localeCompare(b.country) || a.name.localeCompare(b.name));
+   158→   158→    case 'genre':
+   159→   159→      return sorted.sort((a, b) => a.genre.localeCompare(b.genre) || a.name.localeCompare(b.name));
+   160→   160→    default:
+   161→   161→      return sorted;
+   162→   162→  }
+   163→   163→}
+   164→   164→
+   165→   165→// ═══════════════════════════════════════════════════════
+   166→   166→// DEBOUNCED HOOK
+   167→   167→// ═══════════════════════════════════════════════════════
+   168→   168→
+   169→   169→function useDebouncedValue<T>(value: T, delay: number): T {
+   170→   170→  const [debounced, setDebounced] = useState(value);
+   171→   171→  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+   172→   172→
+   173→   173→  useEffect(() => {
+   174→   174→    if (timerRef.current) clearTimeout(timerRef.current);
+   175→   175→    timerRef.current = setTimeout(() => setDebounced(value), delay);
+   176→   176→    return () => {
+   177→   177→      if (timerRef.current) clearTimeout(timerRef.current);
+   178→   178→    };
+   179→   179→  }, [value, delay]);
+   180→   180→
+   181→   181→  return debounced;
+   182→   182→}
+   183→   183→
+   184→   184→// ═══════════════════════════════════════════════════════
+   185→   185→// GENRE CARD — visual genre tile for carousel
+   186→   186→// ═══════════════════════════════════════════════════════
+   187→   187→
+   188→   188→function GenreCard({
+   189→   189→  genre,
+   190→   190→  count,
+   191→   191→  isActive,
+   192→   192→  onClick,
+   193→   193→}: {
+   194→   194→  genre: string;
+   195→   195→  count: number;
+   196→   196→  isActive: boolean;
+   197→   197→  onClick: () => void;
+   198→   198→}) {
+   199→   199→  const isAll = genre === 'All';
+   200→   200→  const gradient = isAll ? 'from-primary to-primary/70' : getGenreConf(genre).gradient;
+   201→   201→  const Icon = isAll ? Grid2x2 : getGenreConf(genre).icon;
+   202→   202→
+   203→   203→  return (
+   204→   204→    <button
+   205→   205→      onClick={onClick}
+   206→   206→      className={cn(
+   207→   207→        'group relative flex-shrink-0 w-[130px] h-[88px] rounded-xl overflow-hidden transition-all duration-300',
+   208→   208→        'hover:scale-[1.05] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary/40',
+   209→   209→        isActive && 'ring-2 ring-primary scale-[1.05] shadow-lg'
+   210→   210→      )}
+   211→   211→    >
+   212→   212→      <div className={cn('absolute inset-0 bg-gradient-to-br', gradient)} />
+   213→   213→      <div className="absolute inset-0 opacity-[0.06] bg-[url(\'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNmZmYiIG9wYWNpdHk9IjAuMSIvPjwvc3ZnPg==\')]" />
+   214→   214→      <div className="relative h-full flex flex-col justify-between p-3">
+   215→   215→        <div className="flex items-center justify-between">
+   216→   216→          <Icon className="w-5 h-5 text-white/70 group-hover:text-white/90 transition-colors" />
+   217→   217→          {isActive && (
+   218→   218→            <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+   219→   219→          )}
+   220→   220→        </div>
+   221→   221→        <div className="text-left">
+   222→   222→          <p className="text-white text-xs font-semibold leading-tight">{genre}</p>
+   223→   223→          <p className="text-white/50 text-[10px] mt-0.5">{count} stations</p>
+   224→   224→        </div>
+   225→   225→      </div>
+   226→   226→      <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+   227→   227→    </button>
+   228→   228→  );
+   229→   229→}
+   230→   230→
+   231→   231→// Small icon not used yet — use a simple Radio icon for "All"
+   232→   232→function Grid2x2(props: React.SVGProps<SVGSVGElement> & { className?: string }) {
+   233→   233→  return (
+   234→   234→    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+   235→   235→      <rect width="7" height="7" x="3" y="3" rx="1" />
+   236→   236→      <rect width="7" height="7" x="14" y="3" rx="1" />
+   237→   237→      <rect width="7" height="7" x="14" y="14" rx="1" />
+   238→   238→      <rect width="7" height="7" x="3" y="14" rx="1" />
+   239→   239→    </svg>
+   240→   240→  );
+   241→   241→}
+   242→   242→
+   243→   243→// ═══════════════════════════════════════════════════════
+   244→   244→// SIGNAL STRENGTH INDICATOR
+   245→   245→// ═══════════════════════════════════════════════════════
+   246→   246→
+   247→   247→function SignalStrength({ bitrate }: { bitrate: number }) {
+   248→   248→  const bars = bitrate >= 320 ? 4 : bitrate >= 192 ? 3 : bitrate >= 128 ? 2 : 1;
+   249→   249→  return (
+   250→   250→    <div className="flex items-end gap-[1px] h-3">
+   251→   251→      {[1, 2, 3, 4].map((b) => (
+   252→   252→        <div
+   253→   253→          key={b}
+   254→   254→          className={cn(
+   255→   255→            'w-[2px] rounded-full transition-colors',
+   256→   256→            b <= bars ? 'bg-emerald-400' : 'bg-muted-foreground/20'
+   257→   257→          )}
+   258→   258→          style={{ height: `${b * 25}%` }}
+   259→   259→        />
+   260→   260→      ))}
+   261→   261→    </div>
+   262→   262→  );
+   263→   263→}
+   264→   264→
+   265→   265→// ═══════════════════════════════════════════════════════
+   266→   266→// NOW PLAYING HERO — immersive live station card
+   267→   267→// ═══════════════════════════════════════════════════════
+   268→   268→
+   269→   269→function NowPlayingHero({
+   270→   270→  station,
+   271→   271→  onStop,
+   272→   272→}: {
+   273→   273→  station: RadioStation;
+   274→   274→  onStop: () => void;
+   275→   275→}) {
+   276→   276→  const conf = getGenreConf(station.genre);
+   277→   277→  const flag = countryCodeToFlag(station.countryCode);
+   278→   278→  const [elapsed, setElapsed] = useState(0);
+   279→   279→
+   280→   280→  useEffect(() => {
+   281→   281→    const timer = setInterval(() => setElapsed(s => s + 1), 1000);
+   282→   282→    return () => clearInterval(timer);
+   283→   283→  }, []);
+   284→   284→
+   285→   285→  const formatElapsed = (s: number) => {
+   286→   286→    const h = Math.floor(s / 3600);
+   287→   287→    const m = Math.floor((s % 3600) / 60);
+   288→   288→    const sec = s % 60;
+   289→   289→    if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+   290→   290→    return `${m}:${String(sec).padStart(2, '0')}`;
+   291→   291→  };
+   292→   292→
+   293→   293→  return (
+   294→   294→    <div className={cn(
+   295→   295→      'relative overflow-hidden rounded-2xl transition-all duration-500',
+   296→   296→      'bg-gradient-to-br', conf.gradient
+   297→   297→    )}>
+   298→   298→      {/* Animated glow */}
+   299→   299→      <div className="absolute -inset-4 bg-gradient-to-br opacity-30 blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+   300→   300→      {/* Noise texture */}
+   301→   301→      <div className="absolute inset-0 opacity-[0.07] bg-[url(\'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjZmZmIiBvcGFjaXR5PSIwLjIiLz48L3N2Zz4=\')]" />
+   302→   302→
+   303→   303→      {/* Content */}
+   304→   304→      <div className="relative px-6 py-5 sm:px-8 sm:py-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+   305→   305→        <div className="flex items-center gap-4 flex-1 min-w-0">
+   306→   306→          {/* Animated equalizer */}
+   307→   307→          <div className="relative flex-shrink-0">
+   308→   308→            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-black/20 backdrop-blur-sm flex items-center justify-center">
+   309→   309→              <AnimatedEqualizer
+   310→   310→                barCount={12}
+   311→   311→                height="h-8 sm:h-10"
+   312→   312→                gap="gap-[2px]"
+   313→   313→                barWidth="w-[2.5px]"
+   314→   314→                color="bg-white"
+   315→   315→                active={true}
+   316→   316→              />
+   317→   317→            </div>
+   318→   318→            <div className="absolute -inset-1 rounded-2xl border border-white/20 animate-ping" style={{ animationDuration: '3s' }} />
+   319→   319→          </div>
+   320→   320→
+   321→   321→          <div className="min-w-0">
+   322→   322→            <div className="flex items-center gap-2 mb-1">
+   323→   323→              <Badge className="bg-red-500/90 text-white border-0 text-[10px] font-bold uppercase tracking-wider animate-pulse h-5 px-2">
+   324→   324→                On Air
+   325→   325→              </Badge>
+   326→   326→              <span className="text-white/50 text-xs">Listening for {formatElapsed(elapsed)}</span>
+   327→   327→            </div>
+   328→   328→            <h2 className="text-xl sm:text-2xl font-bold text-white truncate">{station.name}</h2>
+   329→   329→            <p className="text-white/60 text-sm mt-0.5 truncate">{station.description}</p>
+   330→   330→            <div className="flex flex-wrap items-center gap-2 mt-2">
+   331→   331→              <span className="text-xs text-white/40 flex items-center gap-1">
+   332→   332→                <SignalStrength bitrate={station.bitrate} />
+   333→   333→                <span className="ml-1">{station.codec} {station.bitrate}kbps</span>
+   334→   334→              </span>
+   335→   335→              {flag && (
+   336→   336→                <span className="text-xs text-white/40">{flag} {station.country}</span>
+   337→   337→              )}
+   338→   338→              {station.source && (
+   339→   339→                <Badge variant="outline" className="text-[10px] border-white/20 text-white/60 bg-white/5 px-2 py-0">
+   340→   340→                  {station.source}
+   341→   341→                </Badge>
+   342→   342→              )}
+   343→   343→            </div>
+   344→   344→          </div>
+   345→   345→        </div>
+   346→   346→
+   347→   347→        <div className="flex items-center gap-3 flex-shrink-0">
+   348→   348→          <Badge className="bg-white/10 text-white border-white/20 text-xs">
+   349→   349→            {station.genre}
+   350→   350→          </Badge>
+   351→   351→          <Button
+   352→   352→            onClick={onStop}
+   353→   353→            className="bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm gap-2 px-5 h-11 rounded-full transition-all hover:scale-105"
+   354→   354→          >
+   355→   355→            <Square className="w-4 h-4 fill-current" />
+   356→   356→            Stop
+   357→   357→          </Button>
+   358→   358→        </div>
+   359→   359→      </div>
+   360→   360→
+   361→   361→      {/* Animated shimmer bar at bottom */}
+   362→   362→      <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10 overflow-hidden">
+   363→   363→        <div
+   364→   364→          className="h-full bg-gradient-to-r from-transparent via-white/40 to-transparent"
+   365→   365→          style={{
+   366→   366→            animation: 'shimmer 2.5s ease-in-out infinite',
+   367→   367→            width: '50%',
+   368→   368→          }}
+   369→   369→        />
+   370→   370→      </div>
+   371→   371→      <style jsx>{`
+   372→   372→        @keyframes shimmer {
+   373→   373→          0% { transform: translateX(-100%); }
+   374→   374→          100% { transform: translateX(200%); }
+   375→   375→        }
+   376→   376→      `}</style>
+   377→   377→    </div>
+   378→   378→  );
+   379→   379→}
+   380→   380→
+   381→   381→// ═══════════════════════════════════════════════════════
+   382→   382→// SOMAFM SHOWCASE CARD — enhanced
+   383→   383→// ═══════════════════════════════════════════════════════
+   384→   384→
+   385→   385→function SomaFMShowcaseCard({
+   386→   386→  station,
+   387→   387→  isPlaying,
+   388→   388→  onPlay,
+   389→   389→  onToggleFavorite,
+   390→   390→}: {
+   391→   391→  station: RadioStation;
+   392→   392→  isPlaying: boolean;
+   393→   393→  onPlay: () => void;
+   394→   394→  onToggleFavorite: () => void;
+   395→   395→}) {
+   396→   396→  const conf = getGenreConf(station.genre);
+   397→   397→
+   398→   398→  return (
+   399→   399→    <Card
+   400→   400→      className={cn(
+   401→   401→        'group relative overflow-hidden transition-all duration-300 cursor-pointer',
+   402→   402→        'hover:shadow-xl hover:-translate-y-0.5',
+   403→   403→        isPlaying && 'ring-1 ring-primary/50 shadow-xl shadow-primary/10'
+   404→   404→      )}
+   405→   405→      onClick={onPlay}
+   406→   406→    >
+   407→   407→      <div className={cn('absolute inset-0 bg-gradient-to-br opacity-[0.12]', conf.gradient)} />
+   408→   408→      <CardContent className="p-4 relative">
+   409→   409→        <div className="flex items-start gap-3">
+   410→   410→          <div className={cn(
+   411→   411→            'w-12 h-12 rounded-xl bg-gradient-to-br flex-shrink-0 flex items-center justify-center relative',
+   412→   412→            conf.gradient, 'shadow-lg', conf.glow
+   413→   413→          )}>
+   414→   414→            {isPlaying ? (
+   415→   415→              <AnimatedEqualizer barCount={6} height="h-6" gap="gap-[2px]" barWidth="w-[2px]" color="bg-white" active />
+   416→   416→            ) : (
+   417→   417→              <Waves className="w-5 h-5 text-white/80" />
+   418→   418→            )}
+   419→   419→            {isPlaying && (
+   420→   420→              <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-red-500 animate-pulse shadow-sm shadow-red-500/50" />
+   421→   421→            )}
+   422→   422→          </div>
+   423→   423→
+   424→   424→          <div className="flex-1 min-w-0">
+   425→   425→            <div className="flex items-center gap-1.5">
+   426→   426→              <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
+   427→   427→                {station.name}
+   428→   428→              </h3>
+   429→   429→              {isPlaying && (
+   430→   430→                <AnimatedEqualizer barCount={4} height="h-3" gap="gap-[1.5px]" barWidth="w-[1.5px]" className="flex-shrink-0" active />
+   431→   431→              )}
+   432→   432→            </div>
+   433→   433→            <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5 leading-relaxed">
+   434→   434→              {station.description}
+   435→   435→            </p>
+   436→   436→            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+   437→   437→              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+   438→   438→                {station.genre}
+   439→   439→              </Badge>
+   440→   440→              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+   441→   441→                <SignalStrength bitrate={station.bitrate} />
+   442→   442→                {station.bitrate}kbps
+   443→   443→              </span>
+   444→   444→              {station.tags.slice(0, 3).map(tag => (
+   445→   445→                <span key={tag} className="text-[10px] text-muted-foreground/60">#{tag}</span>
+   446→   446→              ))}
+   447→   447→            </div>
+   448→   448→          </div>
+   449→   449→
+   450→   450→          <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+   451→   451→            <Button
+   452→   452→              variant="ghost"
+   453→   453→              size="icon"
+   454→   454→              className="h-8 w-8"
+   455→   455→              onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+   456→   456→            >
+   457→   457→              <Heart
+   458→   458→                className={cn(
+   459→   459→                  'w-4 h-4 transition-colors',
+   460→   460→                  station.isFavorite
+   461→   461→                    ? 'fill-rose-500 text-rose-500'
+   462→   462→                    : 'text-muted-foreground hover:text-rose-400'
+   463→   463→                )}
+   464→   464→              />
+   465→   465→            </Button>
+   466→   466→            <Button
+   467→   467→              variant={isPlaying ? 'destructive' : 'default'}
+   468→   468→              size="icon"
+   469→   469→              className="h-8 w-8 rounded-full shadow-sm"
+   470→   470→              onClick={(e) => { e.stopPropagation(); onPlay(); }}
+   471→   471→            >
+   472→   472→              {isPlaying ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3 ml-0.5" />}
+   473→   473→            </Button>
+   474→   474→          </div>
+   475→   475→        </div>
+   476→   476→      </CardContent>
+   477→   477→    </Card>
+   478→   478→  );
+   479→   479→}
+   480→   480→
+   481→   481→// ═══════════════════════════════════════════════════════
+   482→   482→// STATION LIST ITEM — enhanced
+   483→   483→// ═══════════════════════════════════════════════════════
+   484→   484→
+   485→   485→function StationListItem({
+   486→   486→  station,
+   487→   487→  isPlaying,
+   488→   488→  index,
+   489→   489→  onPlay,
+   490→   490→  onToggleFavorite,
+   491→   491→}: {
+   492→   492→  station: RadioStation;
+   493→   493→  isPlaying: boolean;
+   494→   494→  index: number;
+   495→   495→  onPlay: () => void;
+   496→   496→  onToggleFavorite: () => void;
+   497→   497→}) {
+   498→   498→  const conf = getGenreConf(station.genre);
+   499→   499→  const flag = countryCodeToFlag(station.countryCode);
+   500→   500→
+   501→   501→  return (
+   502→   502→    <div
+   503→   503→      className={cn(
+   504→   504→        'group flex items-center gap-3 p-3 rounded-xl transition-all duration-200 cursor-pointer',
+   505→   505→        'hover:bg-accent/50 hover:shadow-sm',
+   506→   506→        isPlaying && 'bg-primary/[0.06] shadow-sm shadow-primary/5 ring-1 ring-primary/15'
+   507→   507→      )}
+   508→   508→      onClick={onPlay}
+   509→   509→    >
+   510→   510→      <div className={cn(
+   511→   511→        'w-10 h-10 rounded-xl bg-gradient-to-br flex-shrink-0 flex items-center justify-center relative transition-transform group-hover:scale-105',
+   512→   512→        conf.gradient, isPlaying && 'shadow-lg', conf.glow
+   513→   513→      )}>
+   514→   514→        {isPlaying ? (
+   515→   515→          <AnimatedEqualizer barCount={6} height="h-5" gap="gap-[2px]" barWidth="w-[2px]" color="bg-white" active />
+   516→   516→        ) : (
+   517→   517→          <Radio className="w-4 h-4 text-white/80" />
+   518→   518→        )}
+   519→   519→        {isPlaying && (
+   520→   520→          <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+   521→   521→        )}
+   522→   522→      </div>
+   523→   523→
+   524→   524→      <div className="flex-1 min-w-0">
+   525→   525→        <div className="flex items-center gap-2">
+   526→   526→          <h3 className="font-medium text-sm truncate group-hover:text-primary transition-colors">
+   527→   527→            {station.name}
+   528→   528→          </h3>
+   529→   529→          {isPlaying && (
+   530→   530→            <Badge variant="destructive" className="text-[9px] px-1.5 py-0 h-4 animate-pulse font-bold">
+   531→   531→              LIVE
+   532→   532→            </Badge>
+   533→   533→          )}
+   534→   534→        </div>
+   535→   535→        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+   536→   536→          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+   537→   537→            {station.genre}
+   538→   538→          </Badge>
+   539→   539→          {flag && (
+   540→   540→            <span className="text-[11px]">{flag}</span>
+   541→   541→          )}
+   542→   542→          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+   543→   543→            <SignalStrength bitrate={station.bitrate} />
+   544→   544→            {station.bitrate}kbps
+   545→   545→          </span>
+   546→   546→          <Badge
+   547→   547→            variant="outline"
+   548→   548→            className={cn(
+   549→   549→              'text-[9px] px-1.5 py-0',
+   550→   550→              station.source === 'iHeartRadio' && 'border-rose-500/40 text-rose-400',
+   551→   551→              station.source === 'Local FM' && 'border-sky-500/40 text-sky-400',
+   552→   552→              station.source === 'SomaFM' && 'border-orange-500/40 text-orange-400',
+   553→   553→              station.source === 'Public Radio' && 'border-emerald-500/40 text-emerald-400',
+   554→   554→            )}
+   555→   555→          >
+   556→   556→            {station.source}
+   557→   557→          </Badge>
+   558→   558→        </div>
+   559→   559→      </div>
+   560→   560→
+   561→   561→      <div className="flex items-center gap-1 flex-shrink-0">
+   562→   562→        <Button
+   563→   563→          variant="ghost"
+   564→   564→          size="icon"
+   565→   565→          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+   566→   566→          onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+   567→   567→        >
+   568→   568→          <Heart
+   569→   569→            className={cn(
+   570→   570→              'w-4 h-4 transition-colors',
+   571→   571→              station.isFavorite
+   572→   572→                ? 'fill-rose-500 text-rose-500'
+   573→   573→                : 'text-muted-foreground hover:text-rose-400'
+   574→   574→            )}
+   575→   575→          />
+   576→   576→        </Button>
+   577→   577→        <Button
+   578→   578→          variant={isPlaying ? 'destructive' : 'default'}
+   579→   579→          size="icon"
+   580→   580→          className={cn(
+   581→   581→            'h-8 w-8 rounded-full transition-all',
+   582→   582→            isPlaying ? 'shadow-sm shadow-red-500/20' : 'opacity-0 group-hover:opacity-100'
+   583→   583→          )}
+   584→   584→          onClick={(e) => { e.stopPropagation(); onPlay(); }}
+   585→   585→        >
+   586→   586→          {isPlaying ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3 ml-0.5" />}
+   587→   587→        </Button>
+   588→   588→      </div>
+   589→   589→    </div>
+   590→   590→  );
+   591→   591→}
+   592→   592→
+   593→   593→// ═══════════════════════════════════════════════════════
+   594→   594→// QUICK PICKS — horizontal featured station row
+   595→   595→// ═══════════════════════════════════════════════════════
+   596→   596→
+   597→   597→function QuickPicksRow({
+   598→   598→  stations,
+   599→   599→  currentRadioStationId,
+   600→   600→  isPlaying,
+   601→   601→  playbackMode,
+   602→   602→  onPlay,
+   603→   603→}: {
+   604→   604→  stations: RadioStation[];
+   605→   605→  currentRadioStationId: string | null;
+   606→   606→  isPlaying: boolean;
+   607→   607→  playbackMode: string;
+   608→   608→  onPlay: (station: RadioStation) => void;
+   609→   609→}) {
+   610→   610→  return (
+   611→   611→    <div className="relative">
+   612→   612→      <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-none -mx-1 px-1">
+   613→   613→        {stations.map(station => {
+   614→   614→          const conf = getGenreConf(station.genre);
+   615→   615→          const active = playbackMode === 'radio' && currentRadioStationId === station.id && isPlaying;
+   616→   616→          return (
+   617→   617→            <button
+   618→   618→              key={station.id}
+   619→   619→              onClick={() => onPlay(station)}
+   620→   620→              className={cn(
+   621→   621→                'flex-shrink-0 w-[170px] rounded-xl overflow-hidden transition-all duration-300 cursor-pointer text-left',
+   622→   622→                'hover:scale-[1.04] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary/40',
+   623→   623→                active && 'ring-2 ring-primary scale-[1.04] shadow-lg shadow-primary/10'
+   624→   624→              )}
+   625→   625→            >
+   626→   626→              <div className={cn('relative h-[95px] bg-gradient-to-br', conf.gradient)}>
+   627→   627→                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+   628→   628→                <div className="absolute inset-0 opacity-[0.06] bg-[url(\'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNmZmYiIG9wYWNpdHk9IjAuMSIvPjwvc3ZnPg==\')]" />
+   629→   629→
+   630→   630→                <div className="absolute top-3 left-3">
+   631→   631→                  {active ? (
+   632→   632→                    <AnimatedEqualizer barCount={4} height="h-4" gap="gap-[1.5px]" barWidth="w-[2px]" color="bg-white" active />
+   633→   633→                  ) : (
+   634→   634→                    <div className="w-7 h-7 rounded-lg bg-black/20 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+   635→   635→                      <Play className="w-3 h-3 text-white ml-0.5" />
+   636→   636→                    </div>
+   637→   637→                  )}
+   638→   638→                </div>
+   639→   639→
+   640→   640→                {active && (
+   641→   641→                  <div className="absolute top-3 right-3">
+   642→   642→                    <Badge className="bg-red-500/90 text-white border-0 text-[9px] h-4 px-1.5 animate-pulse">
+   643→   643→                      LIVE
+   644→   644→                    </Badge>
+   645→   645→                  </div>
+   646→   646→                )}
+   647→   647→
+   648→   648→                <div className="absolute bottom-0 left-0 right-0 p-3">
+   649→   649→                  <p className="text-white text-xs font-semibold truncate">{station.name}</p>
+   650→   650→                  <p className="text-white/50 text-[10px] truncate">{station.genre}</p>
+   651→   651→                </div>
+   652→   652→              </div>
+   653→   653→            </button>
+   654→   654→          );
+   655→   655→        })}
+   656→   656→      </div>
+   657→   657→      <div className="absolute top-0 right-0 bottom-3 w-16 bg-gradient-to-l from-background to-transparent pointer-events-none" />
+   658→   658→    </div>
+   659→   659→  );
+   660→   660→}
+   661→   661→
+   662→   662→// ═══════════════════════════════════════════════════════
+   663→   663→// MAIN RADIO VIEW
+   664→   664→// ═══════════════════════════════════════════════════════
+   665→   665→
+   666→   666→const PAGE_SIZE = 50;
+   667→   667→
+   668→   668→export function RadioView() {
+   669→   669→  const { currentRadioStationId, isPlaying, playbackMode, playRadioStation, stopRadio } = usePlayerStore();
+   670→   670→  const { searchQuery: globalSearch } = useUIStore();
+   671→   671→
+   672→   672→  // Local state
+   673→   673→  const [localSearch, setLocalSearch] = useState('');
+   674→   674→  const [genreFilter, setGenreFilter] = useState('all');
+   675→   675→  const [countryFilter, setCountryFilter] = useState('all');
+   676→   676→  const [sourceFilter, setSourceFilter] = useState('all');
+   677→   677→  const [sortOption, setSortOption] = useState<SortOption>('az');
+   678→   678→  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+   679→   679→  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+   680→   680→  const [favoritesVersion, setFavoritesVersion] = useState(0);
+   681→   681→
+   682→   682→  // Debounced search
+   683→   683→  const debouncedSearch = useDebouncedValue(localSearch, 300);
+   684→   684→  const activeSearch = globalSearch || debouncedSearch;
+   685→   685→
+   686→   686→  // Static data
+   687→   687→  const allGenres = useMemo(() => getRadioGenres(), []);
+   688→   688→  const allCountries = useMemo(() => getRadioCountries(), []);
+   689→   689→  const allSources = useMemo(() => getRadioSources(), []);
+   690→   690→  const totalStationCount = internetRadioStations.length;
+   691→   691→
+   692→   692→  // Genre counts
+   693→   693→  const genreCounts = useMemo(() => {
+   694→   694→    const counts: Record<string, number> = {};
+   695→   695→    for (const s of internetRadioStations) {
+   696→   696→      counts[s.genre] = (counts[s.genre] || 0) + 1;
+   697→   697→    }
+   698→   698→    return counts;
+   699→   699→  }, []);
+   700→   700→
+   701→   701→  // SomaFM stations
+   702→   702→  const somaFMStations = useMemo(
+   703→   703→    () => internetRadioStations.filter(s => s.source === 'SomaFM' && parseInt(s.id.replace('radio-', '')) <= 24),
+   704→   704→    []
+   705→   705→  );
+   706→   706→
+   707→   707→  // Featured stations — handpicked diverse selection
+   708→   708→  const featuredStations = useMemo(() => {
+   709→   709→    const picks = [
+   710→   710→      'radio-1',  // Groove Salad
+   711→   711→      'radio-2',  // Drone Zone
+   712→   712→      'radio-5',  // Secret Agent
+   713→   713→      'radio-10', // DEF CON
+   714→   714→      'radio-14', // Indie Pop Rocks
+   715→   715→      'radio-33', // KEXP
+   716→   716→      'radio-34', // KCRW
+   717→   717→      'radio-35', // WFMU
+   718→   718→      'radio-25', // BBC World Service
+   719→   719→      'radio-27', // Swiss Classic
+   720→   720→    ];
+   721→   721→    return picks.map(id => internetRadioStations.find(s => s.id === id)).filter(Boolean) as RadioStation[];
+   722→   722→  }, []);
+   723→   723→
+   724→   724→  // Filtered & sorted stations
+   725→   725→  const filteredStations = useMemo(() => {
+   726→   726→    let result: RadioStation[];
+   727→   727→
+   728→   728→    if (activeSearch.trim()) {
+   729→   729→      result = searchRadioStations(activeSearch.trim());
+   730→   730→    } else {
+   731→   731→      result = [...internetRadioStations];
+   732→   732→    }
+   733→   733→
+   734→   734→    result = result.filter(s => !(s.source === 'SomaFM' && parseInt(s.id.replace('radio-', '')) <= 24));
+   735→   735→
+   736→   736→    if (genreFilter !== 'all') result = result.filter(s => s.genre === genreFilter);
+   737→   737→    if (countryFilter !== 'all') result = result.filter(s => s.countryCode === countryFilter);
+   738→   738→    if (sourceFilter !== 'all') result = result.filter(s => s.source === sourceFilter);
+   739→   739→    if (showFavoritesOnly) {
+   740→   740→      const favStations = getFavoriteRadioStations();
+   741→   741→      const favIds = new Set(favStations.map(s => s.id));
+   742→   742→      result = result.filter(s => favIds.has(s.id));
+   743→   743→    }
+   744→   744→
+   745→   745→    result = sortStations(result, sortOption);
+   746→   746→    return result;
+   747→   747→  }, [activeSearch, genreFilter, countryFilter, sourceFilter, sortOption, showFavoritesOnly, favoritesVersion]);
+   748→   748→
+   749→   749→  const visibleStations = useMemo(
+   750→   750→    () => filteredStations.slice(0, visibleCount),
+   751→   751→    [filteredStations, visibleCount]
+   752→   752→  );
+   753→   753→
+   754→   754→  const hasMore = visibleCount < filteredStations.length;
+   755→   755→
+   756→   756→  // Handlers
+   757→   757→  const handlePlayStation = useCallback((station: RadioStation) => {
+   758→   758→    if (playbackMode === 'radio' && currentRadioStationId === station.id && isPlaying) {
+   759→   759→      stopRadio();
+   760→   760→    } else {
+   761→   761→      playRadioStation(station.id, station.name, station.streamUrl, station.genre);
+   762→   762→    }
+   763→   763→  }, [playbackMode, currentRadioStationId, isPlaying, playRadioStation, stopRadio]);
+   764→   764→
+   765→   765→  const handleToggleFavorite = useCallback((stationId: string) => {
+   766→   766→    toggleRadioFavorite(stationId);
+   767→   767→    setFavoritesVersion(v => v + 1);
+   768→   768→  }, []);
+   769→   769→
+   770→   770→  const handleGenreChipClick = useCallback((genre: string) => {
+   771→   771→    setGenreFilter(prev => prev === genre ? 'all' : genre);
+   772→   772→    setVisibleCount(PAGE_SIZE);
+   773→   773→  }, []);
+   774→   774→
+   775→   775→  const handleLoadMore = useCallback(() => setVisibleCount(prev => prev + PAGE_SIZE), []);
+   776→   776→  const handleSearchChange = useCallback((value: string) => { setLocalSearch(value); setVisibleCount(PAGE_SIZE); }, []);
+   777→   777→  const handleSortChange = useCallback((val: string) => { setSortOption(val as SortOption); setVisibleCount(PAGE_SIZE); }, []);
+   778→   778→  const handleGenreFilterChange = useCallback((val: string) => { setGenreFilter(val); setVisibleCount(PAGE_SIZE); }, []);
+   779→   779→  const handleCountryFilterChange = useCallback((val: string) => { setCountryFilter(val); setVisibleCount(PAGE_SIZE); }, []);
+   780→   780→  const handleSourceFilterChange = useCallback((val: string) => { setSourceFilter(val); setVisibleCount(PAGE_SIZE); }, []);
+   781→   781→
+   782→   782→  // Currently playing station
+   783→   783→  const currentlyPlayingStation = useMemo(() => {
+   784→   784→    if (playbackMode !== 'radio' || !currentRadioStationId) return null;
+   785→   785→    return internetRadioStations.find(s => s.id === currentRadioStationId) || null;
+   786→   786→  }, [playbackMode, currentRadioStationId]);
+   787→   787→
+   788→   788→  const isDefaultView = !showFavoritesOnly && !activeSearch.trim() && genreFilter === 'all' && countryFilter === 'all' && sourceFilter === 'all';
+   789→   789→
+   790→   790→  return (
+   791→   791→    <ScrollArea className="h-full">
+   792→   792→      <div className="max-w-5xl mx-auto p-6 space-y-6">
+   793→   793→
+   794→   794→        {/* ═══ HERO HEADER ═══ */}
+   795→   795→        <div className="relative">
+   796→   796→          <div className="flex items-center gap-4">
+   797→   797→            <div className="relative flex-shrink-0">
+   798→   798→              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-900 via-orange-900 to-amber-900 flex items-center justify-center shadow-lg shadow-rose-900/20">
+   799→   799→                <Antenna className="w-6 h-6 text-rose-200" />
+   800→   800→              </div>
+   801→   801→              <div className="absolute -inset-2 rounded-2xl border border-rose-500/10 animate-pulse" style={{ animationDuration: '3s' }} />
+   802→   802→            </div>
+   803→   803→            <div className="flex-1 min-w-0">
+   804→   804→              <div className="flex items-center gap-2.5">
+   805→   805→                <h1 className="text-2xl font-bold tracking-tight">Internet Radio</h1>
+   806→   806→                <Badge variant="secondary" className="font-normal text-xs">
+   807→   807→                  {totalStationCount} stations
+   808→   808→                </Badge>
+   809→   809→                <Badge variant="outline" className="font-normal text-xs gap-1">
+   810→   810→                  <Signal className="w-3 h-3" />
+   811→   811→                  Live
+   812→   812→                </Badge>
+   813→   813→              </div>
+   814→   814→              <p className="text-sm text-muted-foreground mt-0.5">
+   815→   815→                SomaFM, public radio, iHeartRadio, local FM & community stations worldwide
+   816→   816→              </p>
+   817→   817→            </div>
+   818→   818→          </div>
+   819→   819→        </div>
+   820→   820→
+   821→   821→        {/* ═══ NOW PLAYING HERO ═══ */}
+   822→   822→        {currentlyPlayingStation && isPlaying && (
+   823→   823→          <NowPlayingHero
+   824→   824→            station={currentlyPlayingStation}
+   825→   825→            onStop={stopRadio}
+   826→   826→          />
+   827→   827→        )}
+   828→   828→
+   829→   829→        {/* ═══ SEARCH BAR ═══ */}
+   830→   830→        <div className="relative group">
+   831→   831→          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+   832→   832→          <Input
+   833→   833→            placeholder="Search stations by name, genre, country, or tags..."
+   834→   834→            value={localSearch}
+   835→   835→            onChange={(e) => handleSearchChange(e.target.value)}
+   836→   836→            className="pl-12 h-12 text-base bg-card border-border focus-visible:ring-primary/30 transition-all"
+   837→   837→          />
+   838→   838→          {localSearch && (
+   839→   839→            <button
+   840→   840→              onClick={() => handleSearchChange('')}
+   841→   841→              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+   842→   842→            >
+   843→   843→              <X className="w-4 h-4" />
+   844→   844→            </button>
+   845→   845→          )}
+   846→   846→        </div>
+   847→   847→
+   848→   848→        {/* ═══ GENRE CAROUSEL ═══ */}
+   849→   849→        {isDefaultView && (
+   850→   850→          <div className="space-y-3">
+   851→   851→            <div className="flex items-center gap-2">
+   852→   852→              <Palette className="w-4 h-4 text-muted-foreground" />
+   853→   853→              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Browse by Genre</h2>
+   854→   854→            </div>
+   855→   855→            <div className="relative">
+   856→   856→              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none -mx-1 px-1">
+   857→   857→                <GenreCard
+   858→   858→                  genre="All"
+   859→   859→                  count={totalStationCount}
+   860→   860→                  isActive={genreFilter === 'all'}
+   861→   861→                  onClick={() => handleGenreChipClick('all')}
+   862→   862→                />
+   863→   863→                {allGenres.slice(0, 24).map((genre) => (
+   864→   864→                  <GenreCard
+   865→   865→                    key={genre}
+   866→   866→                    genre={genre}
+   867→   867→                    count={genreCounts[genre] || 0}
+   868→   868→                    isActive={genreFilter === genre}
+   869→   869→                    onClick={() => handleGenreChipClick(genre)}
+   870→   870→                  />
+   871→   871→                ))}
+   872→   872→              </div>
+   873→   873→              <div className="absolute top-0 right-0 bottom-2 w-16 bg-gradient-to-l from-background to-transparent pointer-events-none" />
+   874→   874→            </div>
+   875→   875→          </div>
+   876→   876→        )}
+   877→   877→
+   878→   878→        {/* ═══ FEATURED STATIONS ═══ */}
+   879→   879→        {isDefaultView && (
+   880→   880→          <div className="space-y-3">
+   881→   881→            <div className="flex items-center justify-between">
+   882→   882→              <div className="flex items-center gap-2">
+   883→   883→                <TrendingUp className="w-4 h-4 text-amber-400" />
+   884→   884→                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Featured Stations</h2>
+   885→   885→              </div>
+   886→   886→              <span className="text-xs text-muted-foreground">Handpicked for you</span>
+   887→   887→            </div>
+   888→   888→            <QuickPicksRow
+   889→   889→              stations={featuredStations}
+   890→   890→              currentRadioStationId={currentRadioStationId}
+   891→   891→              isPlaying={isPlaying}
+   892→   892→              playbackMode={playbackMode}
+   893→   893→              onPlay={handlePlayStation}
+   894→   894→            />
+   895→   895→          </div>
+   896→   896→        )}
+   897→   897→
+   898→   898→        {/* ═══ FILTER BAR ═══ */}
+   899→   899→        {(activeSearch.trim() || !isDefaultView) && (
+   900→   900→          <div className="flex flex-wrap items-center gap-2">
+   901→   901→            <Select value={genreFilter} onValueChange={handleGenreFilterChange}>
+   902→   902→              <SelectTrigger className="w-[150px] h-8 text-xs">
+   903→   903→                <SelectValue placeholder="All Genres" />
+   904→   904→              </SelectTrigger>
+   905→   905→              <SelectContent>
+   906→   906→                <SelectItem value="all">All Genres</SelectItem>
+   907→   907→                {allGenres.map((g) => (
+   908→   908→                  <SelectItem key={g} value={g}>{g}</SelectItem>
+   909→   909→                ))}
+   910→   910→              </SelectContent>
+   911→   911→            </Select>
+   912→   912→
+   913→   913→            <Select value={countryFilter} onValueChange={handleCountryFilterChange}>
+   914→   914→              <SelectTrigger className="w-[150px] h-8 text-xs">
+   915→   915→                <SelectValue placeholder="All Countries" />
+   916→   916→              </SelectTrigger>
+   917→   917→              <SelectContent>
+   918→   918→                <SelectItem value="all">All Countries</SelectItem>
+   919→   919→                {allCountries.map((c) => (
+   920→   920→                  <SelectItem key={c.code} value={c.code}>
+   921→   921→                    <span className="flex items-center gap-1.5">
+   922→   922→                      <span>{countryCodeToFlag(c.code)}</span>
+   923→   923→                      <span>{c.name}</span>
+   924→   924→                    </span>
+   925→   925→                  </SelectItem>
+   926→   926→                ))}
+   927→   927→              </SelectContent>
+   928→   928→            </Select>
+   929→   929→
+   930→   930→            <Select value={sourceFilter} onValueChange={handleSourceFilterChange}>
+   931→   931→              <SelectTrigger className="w-[140px] h-8 text-xs">
+   932→   932→                <SelectValue placeholder="All Sources" />
+   933→   933→              </SelectTrigger>
+   934→   934→              <SelectContent>
+   935→   935→                <SelectItem value="all">All Sources</SelectItem>
+   936→   936→                {allSources.map((src) => (
+   937→   937→                  <SelectItem key={src} value={src}>{src}</SelectItem>
+   938→   938→                ))}
+   939→   939→              </SelectContent>
+   940→   940→            </Select>
+   941→   941→
+   942→   942→            <Select value={sortOption} onValueChange={handleSortChange}>
+   943→   943→              <SelectTrigger className="w-[130px] h-8 text-xs">
+   944→   944→                <SelectValue />
+   945→   945→              </SelectTrigger>
+   946→   946→              <SelectContent>
+   947→   947→                <SelectItem value="az"><span className="flex items-center gap-1"><ArrowDownAZ className="w-3 h-3" />A-Z</span></SelectItem>
+   948→   948→                <SelectItem value="za"><span className="flex items-center gap-1"><ArrowUpAZ className="w-3 h-3" />Z-A</span></SelectItem>
+   949→   949→                <SelectItem value="country"><span className="flex items-center gap-1"><Globe className="w-3 h-3" />Country</span></SelectItem>
+   950→   950→                <SelectItem value="genre"><span className="flex items-center gap-1"><Filter className="w-3 h-3" />Genre</span></SelectItem>
+   951→   951→              </SelectContent>
+   952→   952→            </Select>
+   953→   953→
+   954→   954→            <Button
+   955→   955→              variant={showFavoritesOnly ? 'default' : 'outline'}
+   956→   956→              size="sm"
+   957→   957→              className="h-8 gap-1.5 text-xs"
+   958→   958→              onClick={() => { setShowFavoritesOnly(prev => !prev); setVisibleCount(PAGE_SIZE); }}
+   959→   959→            >
+   960→   960→              <Heart className={cn('w-3.5 h-3.5', showFavoritesOnly && 'fill-current')} />
+   961→   961→              Favorites
+   962→   962→            </Button>
+   963→   963→
+   964→   964→            {(activeSearch.trim() || genreFilter !== 'all' || countryFilter !== 'all' || showFavoritesOnly) && (
+   965→   965→              <Button
+   966→   966→                variant="ghost"
+   967→   967→                size="sm"
+   968→   968→                className="h-8 text-xs"
+   969→   969→                onClick={() => {
+   970→   970→                  setLocalSearch('');
+   971→   971→                  setGenreFilter('all');
+   972→   972→                  setCountryFilter('all');
+   973→   973→                  setSourceFilter('all');
+   974→   974→                  setShowFavoritesOnly(false);
+   975→   975→                  setSortOption('az');
+   976→   976→                  setVisibleCount(PAGE_SIZE);
+   977→   977→                }}
+   978→   978→              >
+   979→   979→                Clear all
+   980→   980→              </Button>
+   981→   981→            )}
+   982→   982→          </div>
+   983→   983→        )}
+   984→   984→
+   985→   985→        {/* ═══ SOMAFM SECTION ═══ */}
+   986→   986→        {isDefaultView && (
+   987→   987→          <div className="space-y-4">
+   988→   988→            <div className="flex items-center justify-between">
+   989→   989→              <div className="flex items-center gap-2">
+   990→   990→                <div className="w-6 h-6 rounded-md bg-gradient-to-br from-orange-700 to-rose-700 flex items-center justify-center">
+   991→   991→                  <Waves className="w-3 h-3 text-orange-200" />
+   992→   992→                </div>
+   993→   993→                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">SomaFM — Listener Supported</h2>
+   994→   994→                <Badge variant="outline" className="text-[10px] font-normal border-orange-500/30 text-orange-400">
+   995→   995→                  {somaFMStations.length} channels
+   996→   996→                </Badge>
+   997→   997→              </div>
+   998→   998→              <a
+   999→   999→                href="https://somafm.com"
+  1000→  1000→                target="_blank"
+  1001→  1001→                rel="noopener noreferrer"
+  1002→  1002→                className="text-xs text-muted-foreground hover:text-orange-400 flex items-center gap-1 transition-colors"
+  1003→  1003→              >
+  1004→  1004→                somafm.com <ExternalLink className="w-3 h-3" />
+  1005→  1005→              </a>
+  1006→  1006→            </div>
+  1007→  1007→            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+  1008→  1008→              {somaFMStations.map((station) => (
+  1009→  1009→                <SomaFMShowcaseCard
+  1010→  1010→                  key={station.id}
+  1011→  1011→                  station={station}
+  1012→  1012→                  isPlaying={playbackMode === 'radio' && currentRadioStationId === station.id && isPlaying}
+  1013→  1013→                  onPlay={() => handlePlayStation(station)}
+  1014→  1014→                  onToggleFavorite={() => handleToggleFavorite(station.id)}
+  1015→  1015→                />
+  1016→  1016→              ))}
+  1017→  1017→            </div>
+  1018→  1018→            <Separator />
+  1019→  1019→          </div>
+  1020→  1020→        )}
+  1021→  1021→
+  1022→  1022→        {/* ═══ RESULTS COUNT ═══ */}
+  1023→  1023→        <div className="flex items-center justify-between">
+  1024→  1024→          <p className="text-sm text-muted-foreground">
+  1025→  1025→            Showing{' '}
+  1026→  1026→            <span className="text-foreground font-medium">{Math.min(visibleCount, filteredStations.length)}</span>
+  1027→  1027→            {' '}of{' '}
+  1028→  1028→            <span className="text-foreground font-medium">{filteredStations.length}</span>
+  1029→  1029→            {' '}stations
+  1030→  1030→          </p>
+  1031→  1031→        </div>
+  1032→  1032→
+  1033→  1033→        {/* ═══ STATION LIST ═══ */}
+  1034→  1034→        {filteredStations.length === 0 ? (
+  1035→  1035→          <div className="text-center py-20">
+  1036→  1036→            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-muted/50 flex items-center justify-center">
+  1037→  1037→              <Antenna className="w-7 h-7 text-muted-foreground/40" />
+  1038→  1038→            </div>
+  1039→  1039→            <h3 className="text-lg font-medium mb-1">No stations found</h3>
+  1040→  1040→            <p className="text-sm text-muted-foreground mb-4">Try adjusting your search or filters</p>
+  1041→  1041→            <Button variant="outline" onClick={() => {
+  1042→  1042→              setLocalSearch('');
+  1043→  1043→              setGenreFilter('all');
+  1044→  1044→              setCountryFilter('all');
+  1045→  1045→              setSourceFilter('all');
+  1046→  1046→              setShowFavoritesOnly(false);
+  1047→  1047→              setSortOption('az');
+  1048→  1048→              setVisibleCount(PAGE_SIZE);
+  1049→  1049→            }}>
+  1050→  1050→              Clear all filters
+  1051→  1051→            </Button>
+  1052→  1052→          </div>
+  1053→  1053→        ) : (
+  1054→  1054→          <div className="space-y-1">
+  1055→  1055→            {visibleStations.map((station, idx) => (
+  1056→  1056→              <StationListItem
+  1057→  1057→                key={station.id}
+  1058→  1058→                station={station}
+  1059→  1059→                isPlaying={playbackMode === 'radio' && currentRadioStationId === station.id && isPlaying}
+  1060→  1060→                index={idx}
+  1061→  1061→                onPlay={() => handlePlayStation(station)}
+  1062→  1062→                onToggleFavorite={() => handleToggleFavorite(station.id)}
+  1063→  1063→              />
+  1064→  1064→            ))}
+  1065→  1065→
+  1066→  1066→            {hasMore && (
+  1067→  1067→              <div className="flex justify-center pt-4 pb-2">
+  1068→  1068→                <Button
+  1069→  1069→                  variant="outline"
+  1070→  1070→                  onClick={handleLoadMore}
+  1071→  1071→                  className="gap-2 rounded-full px-6"
+  1072→  1072→                >
+  1073→  1073→                  <ChevronDown className="w-4 h-4" />
+  1074→  1074→                  Load More
+  1075→  1075→                  <span className="text-muted-foreground text-xs">
+  1076→  1076→                    ({filteredStations.length - visibleCount} remaining)
+  1077→  1077→                  </span>
+  1078→  1078→                </Button>
+  1079→  1079→              </div>
+  1080→  1080→            )}
+  1081→  1081→          </div>
+  1082→  1082→        )}
+  1083→  1083→      </div>
+  1084→  1084→    </ScrollArea>
+  1085→  1085→  );
+  1086→  1086→}
+  1087→  1087→

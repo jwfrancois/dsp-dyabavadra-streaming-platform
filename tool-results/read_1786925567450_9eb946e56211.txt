@@ -1,0 +1,515 @@
+   320→            <div className="flex-1 min-w-0 flex flex-col justify-center">
+   321→              <div className="text-center md:text-left w-full max-w-md md:max-w-none">
+   322→                {/* ── Smart Controls: Crossfade + Bit-Perfect indicators ── */}
+   323→                <div className="flex items-center gap-2 mb-3 justify-center md:justify-start flex-wrap">
+   324→                  {gaplessPlayback && (
+   325→                    <Badge variant="outline" className="text-[10px] gap-1 bg-emerald-500/5 border-emerald-500/20 text-emerald-400">
+   326→                      <Zap className="w-2.5 h-2.5" /> Gapless
+   327→                    </Badge>
+   328→                  )}
+   329→                  {bitPerfectDefault && (
+   330→                    <Badge variant="outline" className="text-[10px] gap-1 bg-sky-500/5 border-sky-500/20 text-sky-400">
+   331→                      <Sparkles className="w-2.5 h-2.5" /> Bit-Perfect
+   332→                    </Badge>
+   333→                  )}
+   334→                </div>
+   335→
+   336→                {/* ── Audio format detail row with quality badge ── */}
+   337→                <div className="flex items-center gap-2 mb-3 justify-center md:justify-start flex-wrap">
+   338→                  <Badge variant="outline" className={`text-[10px] font-mono ${qualityBadge.className}`}>
+   339→                    {qualityBadge.label}
+   340→                  </Badge>
+   341→                  <span className="text-[11px] text-muted-foreground font-mono">
+   342→                    {formatDetailString}
+   343→                  </span>
+   344→                </div>
+   345→
+   346→                {/* Title */}
+   347→                <h1 className="text-3xl lg:text-4xl font-bold mb-2 leading-tight">{currentTrack.title}</h1>
+   348→
+   349→                {/* Artist — clickable → artist-detail */}
+   350→                <p
+   351→                  className="text-lg text-muted-foreground hover:text-primary transition-colors cursor-pointer inline-flex items-center gap-1.5"
+   352→                  onClick={() => navigate('artist-detail', { artistId: currentTrack.artistId })}
+   353→                >
+   354→                  {currentTrack.artistName}
+   355→                </p>
+   356→
+   357→                {/* Album — clickable → album-detail */}
+   358→                <p
+   359→                  className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer inline-flex items-center gap-1"
+   360→                  onClick={() => navigate('album-detail', { albumId: currentTrack.albumId })}
+   361→                >
+   362→                  <Disc3 className="w-3.5 h-3.5" /> {currentTrack.albumName}
+   363→                </p>
+   364→
+   365→                {/* ── Genre badge + Track/Disc info ── */}
+   366→                <div className="flex items-center gap-2 mt-2 flex-wrap justify-center md:justify-start">
+   367→                  {currentTrack.genre && (
+   368→                    <Badge
+   369→                      variant="secondary"
+   370→                      className="text-[10px] cursor-pointer hover:bg-primary/20"
+   371→                      onClick={() => navigate('genre-detail', { genreId: currentTrack.genre.toLowerCase().replace(/\s+/g, '-') })}
+   372→                    >
+   373→                      {currentTrack.genre}
+   374→                    </Badge>
+   375→                  )}
+   376→                  {currentTrack.trackNumber > 0 && (
+   377→                    <span className="text-[11px] text-muted-foreground/70">
+   378→                      Track {currentTrack.trackNumber}{currentTrack.discNumber > 1 ? ` · Disc ${currentTrack.discNumber}` : ''}
+   379→                    </span>
+   380→                  )}
+   381→                </div>
+   382→
+   383→                {/* ── File format details ── */}
+   384→                <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground/60 font-mono flex-wrap justify-center md:justify-start">
+   385→                  <span>{(currentTrack.bitrate / 1000).toFixed(0)} kbps</span>
+   386→                  {currentTrack.fileSize > 0 && <span>{formatFileSize(currentTrack.fileSize)}</span>}
+   387→                  <span className="text-muted-foreground/40">{currentTrack.source === 'local' ? 'Local' : currentTrack.source === 'tidal' ? 'TIDAL' : 'Qobuz'}</span>
+   388→                </div>
+   389→
+   390→                {/* Performer credits */}
+   391→                {currentTrack.performers.length > 0 && (
+   392→                  <div className="mt-3 flex flex-wrap gap-1.5 justify-center md:justify-start">
+   393→                    {currentTrack.performers.map((p, i) => (
+   394→                      <Badge key={i} variant="outline" className="text-[10px]">
+   395→                        <Mic2 className="w-2.5 h-2.5 mr-0.5" /> {p.name} — {p.instrument || p.role}
+   396→                      </Badge>
+   397→                    ))}
+   398→                  </div>
+   399→                )}
+   400→
+   401→                {/* Composer */}
+   402→                {currentTrack.composers.length > 0 && (
+   403→                  <p className="text-xs text-muted-foreground/70 mt-1">
+   404→                    Composer: {currentTrack.composers.join(', ')}
+   405→                  </p>
+   406→                )}
+   407→              </div>
+   408→
+   409→              {/* Full Controls */}
+   410→              <div className="w-full max-w-md md:max-w-lg mt-8 space-y-4 self-center md:self-start">
+   411→                {/* Progress */}
+   412→                <div className="space-y-1">
+   413→                  <Slider
+   414→                    value={[progress]}
+   415→                    min={0}
+   416→                    max={100}
+   417→                    step={0.1}
+   418→                    onValueChange={(v) => seek(v[0])}
+   419→                    className="w-full cursor-pointer [&_[role=slider]]:h-4 [&_[role=slider]]:w-4"
+   420→                  />
+   421→                  <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
+   422→                    <span>{formatDuration(currentTime)}</span>
+   423→                    <span>{formatDuration(currentTrack.duration)}</span>
+   424→                  </div>
+   425→                </div>
+   426→
+   427→                {/* Transport Buttons */}
+   428→                <div className="flex items-center justify-center gap-4">
+   429→                  <Button variant="ghost" size="icon" className={`h-10 w-10 ${isShuffle ? 'text-primary' : 'text-muted-foreground'}`} onClick={toggleShuffle}>
+   430→                    <Shuffle className="w-5 h-5" />
+   431→                  </Button>
+   432→                  <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" onClick={previous}>
+   433→                    <SkipBack className="w-5 h-5" />
+   434→                  </Button>
+   435→                  <Button variant="default" size="icon" className="h-14 w-14 rounded-full shadow-xl shadow-primary/20" onClick={togglePlay}>
+   436→                    {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7 ml-1" />}
+   437→                  </Button>
+   438→                  <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" onClick={next}>
+   439→                    <SkipForward className="w-5 h-5" />
+   440→                  </Button>
+   441→                  <Button variant="ghost" size="icon" className={`h-10 w-10 ${repeatMode !== 'off' ? 'text-primary' : 'text-muted-foreground'}`} onClick={toggleRepeat}>
+   442→                    {repeatMode === 'one' ? <Repeat1 className="w-5 h-5" /> : <Repeat className="w-5 h-5" />}
+   443→                  </Button>
+   444→                </div>
+   445→
+   446→                {/* Volume */}
+   447→                <div className="flex items-center gap-3 justify-center">
+   448→                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
+   449→                    {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-muted-foreground" /> : volume < 50 ? <Volume1 className="w-4 h-4 text-muted-foreground" /> : <Volume2 className="w-4 h-4 text-muted-foreground" />}
+   450→                  </Button>
+   451→                  <Slider value={[isMuted ? 0 : volume]} min={0} max={100} step={1} onValueChange={(v) => setVolume(v[0])} className="w-40" />
+   452→                  <span className="text-xs text-muted-foreground tabular-nums w-8 text-right">{volume}%</span>
+   453→                </div>
+   454→
+   455→                {/* Action Buttons — including Add to Playlist */}
+   456→                <div className="flex items-center justify-center gap-2 mt-1 flex-wrap">
+   457→                  <Button variant="ghost" size="sm" className={`h-8 gap-1.5 ${isTrackLoved(currentTrack.id) ? 'text-red-500' : 'text-muted-foreground'}`} onClick={() => toggleLoveTrack(currentTrack.id)}>
+   458→                    <Heart className={`w-4 h-4 ${isTrackLoved(currentTrack.id) ? 'fill-red-500 text-red-500' : ''}`} />
+   459→                    {isTrackLoved(currentTrack.id) ? 'Loved' : 'Love'}
+   460→                  </Button>
+   461→
+   462→                  {/* ── Add to Playlist Button ── */}
+   463→                  <DropdownMenu>
+   464→                    <DropdownMenuTrigger asChild>
+   465→                      <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-muted-foreground">
+   466→                        <ListPlus className="w-4 h-4" /> Add to Playlist
+   467→                      </Button>
+   468→                    </DropdownMenuTrigger>
+   469→                    <DropdownMenuContent align="center" className="w-56">
+   470→                      <DropdownMenuLabel className="text-xs text-muted-foreground">
+   471→                        Add &ldquo;{currentTrack.title}&rdquo; to…
+   472→                      </DropdownMenuLabel>
+   473→                      <DropdownMenuSeparator />
+   474→                      {playlists.length === 0 && (
+   475→                        <div className="px-2 py-3 text-xs text-muted-foreground text-center">
+   476→                          No playlists yet.
+   477→                          <br />
+   478→                          <button
+   479→                            className="text-primary hover:underline mt-1"
+   480→                            onClick={() => navigate('browse-playlists')}
+   481→                          >
+   482→                            Create one first
+   483→                          </button>
+   484→                        </div>
+   485→                      )}
+   486→                      {playlists.map(pl => {
+   487→                        const alreadyIn = hasTrackInPlaylist(pl.id, currentTrack.id);
+   488→                        return (
+   489→                          <DropdownMenuItem
+   490→                            key={pl.id}
+   491→                            className="text-xs gap-2 cursor-pointer"
+   492→                            disabled={alreadyIn}
+   493→                            onClick={() => addToPlaylist(pl.id, currentTrack.id)}
+   494→                          >
+   495→                            <ListMusic className="w-3.5 h-3.5" />
+   496→                            <span className="flex-1 truncate">{pl.name}</span>
+   497→                            <span className="text-muted-foreground">{pl.trackCount}</span>
+   498→                            {alreadyIn && <Badge variant="secondary" className="text-[9px] h-4 px-1.5">Added</Badge>}
+   499→                          </DropdownMenuItem>
+   500→                        );
+   501→                      })}
+   502→                    </DropdownMenuContent>
+   503→                  </DropdownMenu>
+   504→
+   505→                  <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-muted-foreground" onClick={() => navigate('radio')}>
+   506→                    <Radio className="w-4 h-4" /> Radio
+   507→                  </Button>
+   508→                  <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-muted-foreground" onClick={() => {
+   509→                    const info = `${currentTrack.title} — ${currentTrack.artistName} (${currentTrack.albumName})`;
+   510→                    navigator.clipboard.writeText(info).catch(() => {});
+   511→                  }}>
+   512→                    <Share2 className="w-4 h-4" /> Share
+   513→                  </Button>
+   514→                </div>
+   515→              </div>
+   516→            </div>
+   517→          </div>
+   518→
+   519→          {/* ── AUDIO VISUALIZER — Prominent with glow effect ── */}
+   520→          <div className="mb-8 relative">
+   521→            {/* Glow backdrop */}
+   522→            <div className="absolute inset-0 -m-4 rounded-2xl bg-primary/5 blur-2xl pointer-events-none" />
+   523→            <AudioVisualizer
+   524→              mode="bars"
+   525→              width={900}
+   526→              height={180}
+   527→              barCount={96}
+   528→              colorScheme="gold"
+   529→              className="rounded-xl overflow-hidden relative z-10"
+   530→            />
+   531→          </div>
+   532→
+   533→          {/* ── VISUALIZER / LYRICS TOGGLE ── */}
+   534→          <div className="flex items-center justify-center gap-2 mb-6">
+   535→            <Button
+   536→              variant={showVisualizer ? 'default' : 'ghost'}
+   537→              size="sm"
+   538→              className="h-7 text-xs gap-1.5"
+   539→              onClick={() => setShowVisualizer(true)}
+   540→            >
+   541→              <Waves className="w-3.5 h-3.5" /> Visualizer
+   542→            </Button>
+   543→            <Button
+   544→              variant={!showVisualizer ? 'default' : 'ghost'}
+   545→              size="sm"
+   546→              className="h-7 text-xs gap-1.5"
+   547→              onClick={() => setShowVisualizer(false)}
+   548→            >
+   549→              <Music className="w-3.5 h-3.5" /> Lyrics
+   550→            </Button>
+   551→          </div>
+   552→
+   553→          {/* ── BOTTOM PANELS ── */}
+   554→          <div className="grid md:grid-cols-[1fr_1fr] gap-6">
+   555→            {/* Left Column */}
+   556→            <div className="space-y-6">
+   557→              {/* Lyrics Panel — visible when toggled */}
+   558→              {!showVisualizer && <LyricsPanel />}
+   559→
+   560→              {/* Artist Info Card */}
+   561→              <Card className="bg-card/80 backdrop-blur border-border overflow-hidden">
+   562→                <CardContent className="p-0">
+   563→                  <div className="flex items-center gap-4 p-4 cursor-pointer hover:bg-accent/20 transition-colors" onClick={() => navigate('artist-detail', { artistId: currentTrack.artistId })}>
+   564→                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/30 to-primary/5 flex items-center justify-center flex-shrink-0 ring-1 ring-primary/20">
+   565→                      {artistImageLoading ? (
+   566→                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+   567→                      ) : artistImage?.imageUrl ? (
+   568→                        <div className="w-16 h-16 rounded-full bg-muted overflow-hidden">
+   569→                          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+   570→                            <User className="w-8 h-8 text-primary/40" />
+   571→                          </div>
+   572→                        </div>
+   573→                      ) : (
+   574→                        <User className="w-8 h-8 text-primary/40" />
+   575→                      )}
+   576→                    </div>
+   577→                    <div className="flex-1 min-w-0">
+   578→                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Now Playing Artist</p>
+   579→                      <h3 className="text-base font-semibold truncate">{currentTrack.artistName}</h3>
+   580→                      <p className="text-xs text-muted-foreground">View full artist profile</p>
+   581→                    </div>
+   582→                    <ArrowLeft className="w-4 h-4 text-muted-foreground rotate-180" />
+   583→                  </div>
+   584→                  {artistBio && !bioLoading && artistBio.summaries.length > 0 && (
+   585→                    <div className="px-4 pb-4">
+   586→                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
+   587→                        {artistBio.summaries[0].snippet}
+   588→                      </p>
+   589→                      <a href={artistBio.summaries[0].url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline inline-flex items-center gap-0.5 mt-1">
+   590→                        Read full bio on {artistBio.summaries[0].source} <ExternalLink className="w-2.5 h-2.5" />
+   591→                      </a>
+   592→                    </div>
+   593→                  )}
+   594→                  {bioLoading && (
+   595→                    <div className="px-4 pb-3 flex items-center gap-2 text-xs text-muted-foreground">
+   596→                      <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+   597→                      Loading artist info...
+   598→                    </div>
+   599→                  )}
+   600→                </CardContent>
+   601→              </Card>
+   602→
+   603→              {/* Album Info Card */}
+   604→              <Card className="bg-card/80 backdrop-blur border-border overflow-hidden">
+   605→                <CardContent className="p-0">
+   606→                  <div className="flex items-center gap-4 p-4 cursor-pointer hover:bg-accent/20 transition-colors" onClick={() => navigate('album-detail', { albumId: currentTrack.albumId })}>
+   607→                    <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${getCoverGradient(currentTrack.albumId)} shadow-md flex-shrink-0 overflow-hidden`}>
+   608→                      {trackCoverArt && <img src={trackCoverArt} alt="" className="w-full h-full object-cover" />}
+   609→                    </div>
+   610→                    <div className="flex-1 min-w-0">
+   611→                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">From the Album</p>
+   612→                      <h3 className="text-base font-semibold truncate">{currentTrack.albumName}</h3>
+   613→                      <p className="text-xs text-muted-foreground">{currentTrack.artistName} · {formatDetailString}</p>
+   614→                    </div>
+   615→                    <ArrowLeft className="w-4 h-4 text-muted-foreground rotate-180" />
+   616→                  </div>
+   617→                  {albumInfoData && !albumInfoLoading && albumInfoData.summaries.length > 0 && (
+   618→                    <div className="px-4 pb-4">
+   619→                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
+   620→                        {albumInfoData.summaries[0].snippet}
+   621→                      </p>
+   622→                      <a href={albumInfoData.summaries[0].url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline inline-flex items-center gap-0.5 mt-1">
+   623→                        Read more on {albumInfoData.summaries[0].source} <ExternalLink className="w-2.5 h-2.5" />
+   624→                      </a>
+   625→                    </div>
+   626→                  )}
+   627→                  {albumInfoLoading && (
+   628→                    <div className="px-4 pb-3 flex items-center gap-2 text-xs text-muted-foreground">
+   629→                      <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+   630→                      Loading album info...
+   631→                    </div>
+   632→                  )}
+   633→                </CardContent>
+   634→              </Card>
+   635→            </div>
+   636→
+   637→            {/* Right Column */}
+   638→            <div className="space-y-6">
+   639→              {/* Signal Path */}
+   640→              <Card className="bg-card/80 backdrop-blur border-border">
+   641→                <CardContent className="p-4">
+   642→                  <div className="flex items-center justify-between mb-3">
+   643→                    <h3 className="text-sm font-semibold flex items-center gap-2">
+   644→                      <Gauge className="w-4 h-4 text-primary" /> Signal Path
+   645→                    </h3>
+   646→                    <Badge
+   647→                      variant="outline"
+   648→                      className={`text-[10px] ${
+   649→                        bitPerfectDefault
+   650→                          ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/5'
+   651→                          : 'text-signal-amber'
+   652→                      }`}
+   653→                    >
+   654→                      {bitPerfectDefault ? (
+   655→                        <><Sparkles className="w-3 h-3 mr-0.5" /> Bit-Perfect</>
+   656→                      ) : (
+   657→                        <><AlertCircle className="w-3 h-3 mr-0.5" /> Processing</>
+   658→                      )}
+   659→                    </Badge>
+   660→                  </div>
+   661→                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-2 flex-wrap">
+   662→                    <Badge variant="secondary" className="text-[10px] font-mono">{currentTrack.format}</Badge>
+   663→                    <span className="text-muted-foreground/50">→</span>
+   664→                    <Badge variant="secondary" className="text-[10px] font-mono">{formatSampleRate(currentTrack.sampleRate)}</Badge>
+   665→                    <span className="text-muted-foreground/50">→</span>
+   666→                    <Badge variant="secondary" className="text-[10px] font-mono">{currentTrack.bitDepth}-bit</Badge>
+   667→                    <span className="text-muted-foreground/50">→</span>
+   668→                    <Badge variant="secondary" className="text-[10px] font-mono">{currentTrack.channels}-ch</Badge>
+   669→                    <span className="text-muted-foreground/50">→</span>
+   670→                    <Badge variant="secondary" className="text-[10px]">DAC Output</Badge>
+   671→                  </div>
+   672→                  {gaplessPlayback && (
+   673→                    <div className="mt-2 flex items-center gap-1.5 text-[10px] text-emerald-400">
+   674→                      <Zap className="w-3 h-3" /> Gapless crossfade active
+   675→                    </div>
+   676→                  )}
+   677→                </CardContent>
+   678→              </Card>
+   679→
+   680→              {/* Technical Details */}
+   681→              <Card className="bg-card/80 backdrop-blur border-border">
+   682→                <CardContent className="p-4">
+   683→                  <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+   684→                    <Disc3 className="w-4 h-4 text-muted-foreground" /> Technical Details
+   685→                  </h3>
+   686→                  <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+   687→                    {[
+   688→                      { label: 'Codec', value: currentTrack.format },
+   689→                      { label: 'Sample Rate', value: formatSampleRate(currentTrack.sampleRate) },
+   690→                      { label: 'Bit Depth', value: `${currentTrack.bitDepth}-bit` },
+   691→                      { label: 'Channels', value: `${currentTrack.channels}-ch` },
+   692→                      { label: 'Bitrate', value: `${(currentTrack.bitrate / 1000).toFixed(0)} kbps` },
+   693→                      { label: 'File Size', value: formatFileSize(currentTrack.fileSize) },
+   694→                      { label: 'Source', value: currentTrack.source === 'local' ? 'Local Library' : currentTrack.source === 'tidal' ? 'TIDAL' : 'Qobuz' },
+   695→                      { label: 'Duration', value: formatDuration(currentTrack.duration) },
+   696→                    ].map(item => (
+   697→                      <div key={item.label}>
+   698→                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</p>
+   699→                        <p className="text-sm font-mono font-medium">{item.value}</p>
+   700→                      </div>
+   701→                    ))}
+   702→                  </div>
+   703→                </CardContent>
+   704→              </Card>
+   705→
+   706→              {/* Zone Info */}
+   707→              {activeZone && (
+   708→                <Card className="bg-card/80 backdrop-blur border-border">
+   709→                  <CardContent className="p-4">
+   710→                    <div className="flex items-center justify-between mb-3">
+   711→                      <h3 className="text-sm font-semibold flex items-center gap-2">
+   712→                        <Gauge className="w-4 h-4 text-primary" /> {activeZone.name}
+   713→                      </h3>
+   714→                      <Badge variant="outline" className="text-[10px]">
+   715→                        {activeZone.endpoints[0]?.dac || 'Unknown DAC'}
+   716→                      </Badge>
+   717→                    </div>
+   718→                    <div className="space-y-2">
+   719→                      {activeZone.dspEnabled && activeZone.dspChain && (
+   720→                        <div>
+   721→                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">DSP Chain</p>
+   722→                          <div className="flex flex-wrap gap-1 mt-1">
+   723→                            {activeZone.dspChain.map(dsp => (
+   724→                              <Badge key={dsp} variant="secondary" className="text-[10px]">{dsp}</Badge>
+   725→                            ))}
+   726→                          </div>
+   727→                        </div>
+   728→                      )}
+   729→                    </div>
+   730→                  </CardContent>
+   731→                </Card>
+   732→              )}
+   733→
+   734→              {/* File Info */}
+   735→              {currentTrack.filePath && (
+   736→                <Card className="bg-card/80 backdrop-blur border-border">
+   737→                  <CardContent className="p-4">
+   738→                    <h3 className="text-sm font-semibold flex items-center gap-2 mb-2">
+   739→                      <Clock className="w-4 h-4 text-muted-foreground" /> File Info
+   740→                    </h3>
+   741→                    <p className="text-xs font-mono text-muted-foreground break-all">{currentTrack.filePath}</p>
+   742→                  </CardContent>
+   743→                </Card>
+   744→              )}
+   745→            </div>
+   746→          </div>
+   747→
+   748→          {/* ── QUEUE PEEK PANEL — Collapsible ── */}
+   749→          <div className="mt-8">
+   750→            <Collapsible open={queueOpen} onOpenChange={setQueueOpen}>
+   751→              <CollapsibleTrigger asChild>
+   752→                <Button
+   753→                  variant="ghost"
+   754→                  className="w-full h-auto py-3 px-4 flex items-center justify-between hover:bg-accent/10 rounded-xl transition-colors"
+   755→                >
+   756→                  <div className="flex items-center gap-2">
+   757→                    <ListMusic className="w-4 h-4 text-muted-foreground" />
+   758→                    <span className="text-sm font-semibold">Up Next</span>
+   759→                    <Badge variant="secondary" className="text-[10px] font-mono">
+   760→                      {queue.length - queueIndex - 1}
+   761→                    </Badge>
+   762→                  </div>
+   763→                  <div className="flex items-center gap-2">
+   764→                    <Button
+   765→                      variant="ghost"
+   766→                      size="sm"
+   767→                      className="h-6 text-[11px] gap-1 text-muted-foreground hover:text-primary"
+   768→                      onClick={(e) => {
+   769→                        e.stopPropagation();
+   770→                        toggleQueueDrawer();
+   771→                      }}
+   772→                    >
+   773→                      <LayoutList className="w-3.5 h-3.5" /> Show Full Queue
+   774→                    </Button>
+   775→                    {queueOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+   776→                  </div>
+   777→                </Button>
+   778→              </CollapsibleTrigger>
+   779→              <CollapsibleContent>
+   780→                <Card className="bg-card/60 backdrop-blur border-border mt-2">
+   781→                  <CardContent className="p-2">
+   782→                    {queuePeekTracks.length === 0 ? (
+   783→                      <p className="text-xs text-muted-foreground text-center py-4">Queue is empty — add more tracks to keep the music going</p>
+   784→                    ) : (
+   785→                      <div className="space-y-0.5">
+   786→                        {queuePeekTracks.map((track, idx) => {
+   787→                          const nextCover = localTracks.find(lt => lt.id === track.id)?.coverArt;
+   788→                          const globalIdx = queueIndex + 1 + idx;
+   789→                          return (
+   790→                            <div
+   791→                              key={track.id}
+   792→                              className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors group"
+   793→                              onClick={() => usePlayerStore.getState().play(track)}
+   794→                            >
+   795→                              {/* Queue index number */}
+   796→                              <span className="text-[10px] text-muted-foreground/50 w-4 text-right tabular-nums font-mono">
+   797→                                {globalIdx + 1}
+   798→                              </span>
+   799→                              {/* Cover art */}
+   800→                              {nextCover ? (
+   801→                                <img src={nextCover} alt="" className="w-10 h-10 rounded-md object-cover flex-shrink-0 shadow-sm" />
+   802→                              ) : (
+   803→                                <div className={`w-10 h-10 rounded-md bg-gradient-to-br ${getCoverGradient(track.id)} flex-shrink-0 shadow-sm`} />
+   804→                              )}
+   805→                              {/* Track info */}
+   806→                              <div className="min-w-0 flex-1">
+   807→                                <p className="text-xs font-medium truncate group-hover:text-primary transition-colors">{track.title}</p>
+   808→                                <p className="text-[11px] text-muted-foreground truncate">{track.artistName}</p>
+   809→                              </div>
+   810→                              {/* Format + Duration */}
+   811→                              <div className="flex items-center gap-2 flex-shrink-0">
+   812→                                <Badge variant="outline" className="text-[9px] font-mono px-1.5 h-4 hidden sm:inline-flex">
+   813→                                  {track.format}
+   814→                                </Badge>
+   815→                                <span className="text-[11px] text-muted-foreground tabular-nums w-10 text-right">
+   816→                                  {formatDuration(track.duration)}
+   817→                                </span>
+   818→                              </div>
+   819→                            </div>
+   820→                          );
+   821→                        })}
+   822→                      </div>
+   823→                    )}
+   824→                  </CardContent>
+   825→                </Card>
+   826→              </CollapsibleContent>
+   827→            </Collapsible>
+   828→          </div>
+   829→        </div>
+   830→      </ScrollArea>
+   831→    </div>
+   832→  );
+   833→}
+   834→
