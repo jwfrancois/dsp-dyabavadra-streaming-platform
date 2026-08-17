@@ -383,7 +383,7 @@ export interface SignalPathComponent {
 
 export type PlaybackMode = 'music' | 'radio' | 'podcast';
 
-export type ViewName = 'home' | 'browse-artists' | 'browse-albums' | 'browse-tracks' | 'browse-genres' | 'browse-playlists' | 'podcasts' | 'podcast-detail' | 'library' | 'now-playing' | 'artist-detail' | 'album-detail' | 'performer-detail' | 'search' | 'zones' | 'settings' | 'radio' | 'composer-detail' | 'genre-detail' | 'editorial' | 'streaming' | 'work-detail' | 'system' | 'dsp-config' | 'signal-path' | 'endpoints' | 'play-history' | 'profiles' | 'system-health' | 'security' | 'plugins' | 'licensing' | 'listening-stats';
+export type ViewName = 'home' | 'browse-artists' | 'browse-albums' | 'browse-tracks' | 'browse-genres' | 'browse-playlists' | 'podcasts' | 'podcast-detail' | 'library' | 'now-playing' | 'artist-detail' | 'album-detail' | 'performer-detail' | 'search' | 'zones' | 'settings' | 'radio' | 'composers' | 'composer-detail' | 'genre-detail' | 'editorial' | 'streaming' | 'work-detail' | 'system' | 'dsp-config' | 'signal-path' | 'endpoints' | 'play-history' | 'profiles' | 'system-health' | 'security' | 'plugins' | 'licensing' | 'listening-stats';
 
 // ─── User Profile ───
 

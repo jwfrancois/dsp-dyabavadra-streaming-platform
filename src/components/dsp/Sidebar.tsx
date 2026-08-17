@@ -37,7 +37,7 @@ const navItems: Array<{ icon: typeof Home; label: string; view: string; badge?: 
 const discoveryItems: Array<{ icon: typeof Home; label: string; view: string; params?: Record<string, string> }> = [
   { icon: Clapperboard, label: 'Editorial', view: 'editorial' as const },
   { icon: Radio, label: 'Radio', view: 'radio' as const },
-  { icon: Workflow, label: 'Composers', view: 'composer-detail' as const, params: { composerId: 'comp-1' } },
+  { icon: Workflow, label: 'Composers', view: 'composers' as const },
 ];
 
 const systemItems = [

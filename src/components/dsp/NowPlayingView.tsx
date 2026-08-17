@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useUIStore } from '@/store/ui';
 import { usePlayerStore } from '@/store/player';
 import { usePodcastStore } from '@/store/podcast';
@@ -8,7 +8,9 @@ import { useLocalLibraryStore } from '@/store/local-library';
 import { useDSPEngineStore } from '@/store/dsp-engine';
 import { usePlaylistStore } from '@/store/playlists';
 import { useProfilesStore } from '@/store/profiles';
-import { formatEpisodeDuration } from '@/lib/podcast-data';
+import { formatEpisodeDuration, formatDate } from '@/lib/podcast-data';
+import { internetRadioStations } from '@/lib/radio-stations';
+import type { RadioStation } from '@/lib/radio-stations';
 import { formatDuration, formatSampleRate, formatFileSize, getCoverGradient } from '@/lib/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,6 +41,8 @@ import {
   Radio, Disc3, ExternalLink,
   User, Mic2, Clock, Waves, ChevronDown, ChevronUp,
   ListPlus, LayoutList, Sparkles, Zap,
+  Podcast, FastForward, Scissors, Moon, Square, Loader2,
+  Globe, Wifi, Signal, Calendar, MapPin, Flag, Tag, FileText,
 } from 'lucide-react';
 
 // ── Audio quality badge color logic ──
@@ -126,142 +130,685 @@ export function NowPlayingView() {
   }, [currentTrack]);
 
   // ═══════════════════════════════════════════════════════════════
-  // PODCAST MODE
+  // PODCAST MODE — Rich Now Playing with artwork, show notes, metadata
   // ═══════════════════════════════════════════════════════════════
   if (isPodcastMode && currentEpisode) {
     const show = currentEpisode ? { title: currentEpisode.showId.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) } : null;
     const dur = duration > 0 ? duration : currentEpisode.duration;
     const prog = dur > 0 ? (currentTime / dur) * 100 : 0;
+    const skipSilence = usePodcastStore.getState().skipSilence;
+    const sleepTimerMinutes = usePodcastStore.getState().sleepTimerMinutes;
+
+    // Strip HTML from description
+    const cleanDescription = useMemo(() => {
+      if (!currentEpisode.description) return '';
+      return currentEpisode.description
+        .replace(/<[^>]*>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .trim();
+    }, [currentEpisode.description]);
+
+    const [showNotesExpanded, setShowNotesExpanded] = useState(false);
+    const [descExpanded, setDescExpanded] = useState(false);
 
     return (
-      <ScrollArea className="h-full">
-        <div className="max-w-5xl mx-auto p-6">
-          <Button variant="ghost" size="sm" className="mb-4 text-muted-foreground" onClick={() => navigate('home')}>
-            <ArrowLeft className="w-4 h-4 mr-1" /> Back
-          </Button>
+      <div className="h-full bg-gradient-to-b from-zinc-950 via-zinc-900 to-zinc-950">
+        <ScrollArea className="h-full">
+          <div className="max-w-5xl mx-auto p-6 pb-32">
+            {/* Back button */}
+            <Button variant="ghost" size="sm" className="mb-6 text-muted-foreground hover:text-foreground" onClick={() => navigate('home')}>
+              <ArrowLeft className="w-4 h-4 mr-2" /> Back
+            </Button>
 
-          <div className="flex flex-col md:flex-row gap-8">
-            {/* Cover Art */}
-            <div className="flex-shrink-0">
-              <div className={`w-56 h-56 rounded-xl bg-gradient-to-br ${getCoverGradient(currentEpisode.showId)} shadow-lg`} />
-            </div>
-
-            {/* Track Info */}
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Podcast Episode</p>
-              <h1 className="text-2xl font-bold mb-1">{currentEpisode.title}</h1>
-              <p className="text-sm text-muted-foreground mb-4">{show?.title}</p>
-
-              <div className="flex items-center gap-3 mb-4">
-                <Badge variant="outline" className="text-xs">{currentEpisode.format}</Badge>
-                <Badge variant="outline" className="text-xs">{formatEpisodeDuration(currentEpisode.duration)}</Badge>
-                <Button
-                  variant="secondary" size="sm" className="h-7 text-xs font-mono"
-                  onClick={cyclePlaybackSpeed}
+            {/* ── HERO: Large Cover Art + Episode Info ── */}
+            <div className="flex flex-col md:flex-row gap-8 mb-8">
+              {/* Podcast Artwork — Large */}
+              <div className="flex-shrink-0 self-center">
+                <div className={`w-72 h-72 lg:w-80 lg:h-80 rounded-2xl bg-gradient-to-br ${getCoverGradient(currentEpisode.showId)} shadow-2xl relative overflow-hidden group cursor-pointer`}
+                  onClick={() => navigate('podcast-detail', { showId: currentEpisode.showId })}
                 >
-                  {playbackSpeed}x
-                </Button>
+                  {currentEpisode.artworkUrl ? (
+                    <img src={currentEpisode.artworkUrl} alt={show?.title || 'Podcast'} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Podcast className="w-20 h-20 text-white/20" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.12),transparent_70%)] pointer-events-none" />
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 w-full max-w-lg">
-                <span className="text-xs text-muted-foreground w-12 text-right tabular-nums">{formatDuration(currentTime)}</span>
-                <Slider value={[prog]} min={0} max={100} step={0.1} onValueChange={(v) => seek(v[0])} className="flex-1" />
-                <span className="text-xs text-muted-foreground w-16 tabular-nums">{formatEpisodeDuration(currentEpisode.duration)}</span>
+              {/* Episode Info + Controls */}
+              <div className="flex-1 min-w-0 flex flex-col justify-center">
+                <div className="text-center md:text-left w-full">
+                  {/* Type label */}
+                  <div className="flex items-center gap-2 mb-3 justify-center md:justify-start">
+                    <Badge variant="outline" className="text-[10px] gap-1 bg-purple-500/10 text-purple-400 border-purple-500/20">
+                      <Podcast className="w-2.5 h-2.5" /> Podcast Episode
+                    </Badge>
+                    {currentEpisode.season && (
+                      <Badge variant="outline" className="text-[10px]">
+                        S{currentEpisode.season}{currentEpisode.episodeNumber ? `E${currentEpisode.episodeNumber}` : ''}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Episode Title */}
+                  <h1 className="text-2xl lg:text-3xl font-bold mb-2 leading-tight">{currentEpisode.title}</h1>
+
+                  {/* Show Name — clickable */}
+                  <p
+                    className="text-lg text-muted-foreground hover:text-primary transition-colors cursor-pointer inline-flex items-center gap-1.5 mb-3"
+                    onClick={() => navigate('podcast-detail', { showId: currentEpisode.showId })}
+                  >
+                    <Podcast className="w-4 h-4" /> {show?.title}
+                  </p>
+
+                  {/* Metadata badges row */}
+                  <div className="flex items-center gap-2 mb-4 flex-wrap justify-center md:justify-start">
+                    <Badge variant="outline" className="text-[10px] font-mono">
+                      {currentEpisode.format.toUpperCase()}
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      {currentEpisode.bitrate > 0 ? `${currentEpisode.bitrate} kbps` : '—'}
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      <Clock className="w-2.5 h-2.5 mr-0.5" /> {formatEpisodeDuration(currentEpisode.duration)}
+                    </Badge>
+                    {currentEpisode.publishDate && (
+                      <Badge variant="outline" className="text-[10px]">
+                        <Calendar className="w-2.5 h-2.5 mr-0.5" /> {formatDate(currentEpisode.publishDate)}
+                      </Badge>
+                    )}
+                    {currentEpisode.fileSize > 0 && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {formatFileSize(currentEpisode.fileSize)}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Playback Speed + Skip Silence + Sleep Timer */}
+                  <div className="flex items-center gap-2 flex-wrap justify-center md:justify-start mb-4">
+                    <Button
+                      variant={skipSilence ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className="h-7 text-xs gap-1.5"
+                      onClick={() => usePodcastStore.getState().toggleSkipSilence()}
+                      title="Skip Silence"
+                    >
+                      <Scissors className="w-3.5 h-3.5" /> Skip Silence
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-7 text-xs font-mono gap-1.5"
+                      onClick={cyclePlaybackSpeed}
+                    >
+                      <FastForward className="w-3 h-3" /> {playbackSpeed}x
+                    </Button>
+                    {sleepTimerMinutes !== null && (
+                      <Badge variant="outline" className="text-[10px] gap-1 text-signal-amber border-signal-amber/30">
+                        <Moon className="w-3 h-3" /> Sleep: {sleepTimerMinutes}m
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                {/* Progress + Controls */}
+                <div className="w-full max-w-lg self-center md:self-start">
+                  {/* Seek bar */}
+                  <div className="space-y-1 mb-4">
+                    <Slider
+                      value={[prog]}
+                      min={0}
+                      max={100}
+                      step={0.1}
+                      onValueChange={(v) => seek(v[0])}
+                      className="w-full cursor-pointer [&_[role=slider]]:h-4 [&_[role=slider]]:w-4"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
+                      <span>{formatDuration(currentTime)}</span>
+                      <span>{formatEpisodeDuration(currentEpisode.duration)}</span>
+                    </div>
+                  </div>
+
+                  {/* Transport */}
+                  <div className="flex items-center justify-center gap-4 mb-4">
+                    <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" onClick={previous}>
+                      <SkipBack className="w-5 h-5" />
+                    </Button>
+                    <Button variant="default" size="icon" className="h-14 w-14 rounded-full shadow-xl shadow-primary/20" onClick={togglePlay}>
+                      {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7 ml-1" />}
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" onClick={next}>
+                      <SkipForward className="w-5 h-5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 text-muted-foreground"
+                      onClick={() => usePodcastStore.getState().stopPodcast()}
+                      title="Stop"
+                    >
+                      <Square className="w-5 h-5" />
+                    </Button>
+                  </div>
+
+                  {/* Volume */}
+                  <div className="flex items-center gap-3 justify-center">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
+                      {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-muted-foreground" /> : volume < 50 ? <Volume1 className="w-4 h-4 text-muted-foreground" /> : <Volume2 className="w-4 h-4 text-muted-foreground" />}
+                    </Button>
+                    <Slider value={[isMuted ? 0 : volume]} min={0} max={100} step={1} onValueChange={(v) => setVolume(v[0])} className="w-40" />
+                    <span className="text-xs text-muted-foreground tabular-nums w-8 text-right">{volume}%</span>
+                    {activeZone && (
+                      <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground ml-2" onClick={() => navigate('zones')}>
+                        <Gauge className="w-3.5 h-3.5" /> {activeZone.name}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── AUDIO VISUALIZER ── */}
+            <div className="mb-8 relative">
+              <div className="absolute inset-0 -m-4 rounded-2xl bg-primary/5 blur-2xl pointer-events-none" />
+              <AudioVisualizer
+                mode="bars"
+                width={900}
+                height={180}
+                barCount={96}
+                colorScheme="purple"
+                className="rounded-xl overflow-hidden relative z-10"
+              />
+            </div>
+
+            {/* ── BOTTOM INFO CARDS ── */}
+            <div className="grid md:grid-cols-[1fr_1fr] gap-6">
+              {/* Left Column: Episode Description + Show Notes */}
+              <div className="space-y-6">
+                {/* Episode Description */}
+                <Card className="bg-card/80 backdrop-blur border-border overflow-hidden">
+                  <CardContent className="p-0">
+                    <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-accent/20 transition-colors" onClick={() => navigate('podcast-detail', { showId: currentEpisode.showId })}>
+                      <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${getCoverGradient(currentEpisode.showId)} flex-shrink-0 overflow-hidden shadow-md`}>
+                        {currentEpisode.artworkUrl ? (
+                          <img src={currentEpisode.artworkUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <Podcast className="w-5 h-5 text-white/30 m-auto mt-3.5" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">From the Show</p>
+                        <h3 className="text-sm font-semibold truncate">{show?.title}</h3>
+                      </div>
+                      <ArrowLeft className="w-4 h-4 text-muted-foreground rotate-180" />
+                    </div>
+                    {cleanDescription && (
+                      <div className="px-4 pb-4">
+                        <p className={`text-xs text-muted-foreground leading-relaxed ${!descExpanded ? 'line-clamp-4' : ''}`}>
+                          {cleanDescription}
+                        </p>
+                        {cleanDescription.length > 200 && (
+                          <button
+                            className="text-[10px] text-primary hover:underline mt-1"
+                            onClick={() => setDescExpanded(!descExpanded)}
+                          >
+                            {descExpanded ? 'Show less' : 'Read full description'}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Show Notes (extended notes) */}
+                {currentEpisode.showNotes && (
+                  <Card className="bg-card/80 backdrop-blur border-border overflow-hidden">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-semibold flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-purple-400" /> Show Notes
+                        </h3>
+                        <Badge variant="outline" className="text-[10px]">{currentEpisode.showNotes.length > 500 ? 'Detailed' : 'Brief'}</Badge>
+                      </div>
+                      <div
+                        className="text-xs text-muted-foreground leading-relaxed prose prose-invert prose-xs max-w-none [&_a]:text-primary [&_a]:hover:underline [&_a]:underline-offset-2"
+                        dangerouslySetInnerHTML={{ __html: showNotesExpanded ? currentEpisode.showNotes : currentEpisode.showNotes.slice(0, 500) + (currentEpisode.showNotes.length > 500 ? '…' : '') }}
+                      />
+                      {currentEpisode.showNotes.length > 500 && (
+                        <button
+                          className="text-[10px] text-primary hover:underline mt-2"
+                          onClick={() => setShowNotesExpanded(!showNotesExpanded)}
+                        >
+                          {showNotesExpanded ? 'Collapse notes' : 'Expand full show notes'}
+                        </button>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {/* Right Column: Technical Details + Actions */}
+              <div className="space-y-6">
+                {/* Technical Details */}
+                <Card className="bg-card/80 backdrop-blur border-border">
+                  <CardContent className="p-4">
+                    <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                      <Disc3 className="w-4 h-4 text-muted-foreground" /> Episode Details
+                    </h3>
+                    <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+                      {[
+                        { label: 'Format', value: currentEpisode.format.toUpperCase() },
+                        { label: 'Duration', value: formatEpisodeDuration(currentEpisode.duration) },
+                        ...(currentEpisode.bitrate > 0 ? [{ label: 'Bitrate', value: `${currentEpisode.bitrate} kbps` }] : []),
+                        ...(currentEpisode.fileSize > 0 ? [{ label: 'File Size', value: formatFileSize(currentEpisode.fileSize) }] : []),
+                        ...(currentEpisode.publishDate ? [{ label: 'Published', value: formatDate(currentEpisode.publishDate) }] : []),
+                        ...(currentEpisode.season ? [{ label: 'Season', value: `Season ${currentEpisode.season}` }] : []),
+                        ...(currentEpisode.episodeNumber ? [{ label: 'Episode', value: `#${currentEpisode.episodeNumber}` }] : []),
+                        { label: 'Status', value: currentEpisode.completed ? 'Completed' : currentEpisode.isPlayed ? 'Played' : 'New' },
+                      ].map(item => (
+                        <div key={item.label}>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</p>
+                          <p className="text-sm font-medium">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Playback Settings Card */}
+                <Card className="bg-card/80 backdrop-blur border-border">
+                  <CardContent className="p-4">
+                    <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                      <Sparkles className="w-4 h-4 text-primary" /> Playback Settings
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FastForward className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-xs">Playback Speed</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-mono font-medium">{playbackSpeed}x</span>
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={cyclePlaybackSpeed}>
+                            Cycle
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Scissors className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-xs">Skip Silence</span>
+                        </div>
+                        <Button
+                          variant={skipSilence ? 'secondary' : 'ghost'}
+                          size="sm"
+                          className="h-6 text-[10px]"
+                          onClick={() => usePodcastStore.getState().toggleSkipSilence()}
+                        >
+                          {skipSilence ? 'On' : 'Off'}
+                        </Button>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Moon className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-xs">Sleep Timer</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {sleepTimerMinutes !== null ? `${sleepTimerMinutes}m remaining` : 'Off'}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Zone Info */}
+                {activeZone && (
+                  <Card className="bg-card/80 backdrop-blur border-border">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-semibold flex items-center gap-2">
+                          <Gauge className="w-4 h-4 text-primary" /> {activeZone.name}
+                        </h3>
+                        <Badge variant="outline" className="text-[10px]">
+                          {activeZone.endpoints[0]?.dac || 'Unknown DAC'}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </div>
           </div>
-
-          <Separator className="my-8" />
-
-          {/* Controls */}
-          <div className="flex items-center justify-center gap-4">
-            <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" onClick={previous}>
-              <SkipBack className="w-5 h-5" />
-            </Button>
-            <Button variant="default" size="icon" className="h-12 w-12 rounded-full" onClick={togglePlay}>
-              {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-0.5" />}
-            </Button>
-            <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" onClick={next}>
-              <SkipForward className="w-5 h-5" />
-            </Button>
-          </div>
-
-          <Separator className="my-8" />
-
-          {/* Volume & Zone */}
-          <div className="flex items-center justify-center gap-4">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
-              {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-muted-foreground" /> : volume < 50 ? <Volume1 className="w-4 h-4 text-muted-foreground" /> : <Volume2 className="w-4 h-4 text-muted-foreground" />}
-            </Button>
-            <Slider value={[isMuted ? 0 : volume]} min={0} max={100} step={1} onValueChange={(v) => setVolume(v[0])} className="w-40" />
-            {activeZone && (
-              <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground" onClick={() => navigate('zones')}>
-                <Gauge className="w-3.5 h-3.5" /> {activeZone.name}
-              </Button>
-            )}
-          </div>
-        </div>
-      </ScrollArea>
+        </ScrollArea>
+      </div>
     );
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // RADIO MODE
+  // RADIO MODE — Rich Now Playing with station info, codec, genre
   // ═══════════════════════════════════════════════════════════════
   if (playbackMode === 'radio' && currentTrack) {
+    const stationId = usePlayerStore.getState().currentRadioStationId;
+    const station = stationId ? internetRadioStations.find(s => s.id === stationId) : null;
+
+    // Elapsed time since playback started (for live streams)
+    const [elapsed, setElapsed] = useState(0);
+    useEffect(() => {
+      const timer = setInterval(() => {
+        if (usePlayerStore.getState().isPlaying) setElapsed(e => e + 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    }, []);
+
+    const formatElapsed = (s: number) => {
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const sec = s % 60;
+      if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+      return `${m}:${sec.toString().padStart(2, '0')}`;
+    };
+
+    const genreGradient = useMemo(() => {
+      const genre = station?.genre || currentTrack.albumName;
+      const genreColors: Record<string, string> = {
+        'Jazz': 'from-amber-600 to-orange-800',
+        'Classical': 'from-violet-600 to-purple-800',
+        'Electronic': 'from-cyan-600 to-blue-800',
+        'Rock': 'from-red-600 to-rose-800',
+        'Pop': 'from-pink-600 to-fuchsia-800',
+        'Ambient': 'from-teal-600 to-emerald-800',
+        'Lo-Fi': 'from-indigo-600 to-violet-800',
+        'World': 'from-yellow-600 to-amber-800',
+        'Metal': 'from-zinc-600 to-gray-800',
+        'Blues': 'from-blue-600 to-indigo-800',
+        'Folk': 'from-lime-600 to-green-800',
+        'Country': 'from-orange-600 to-red-800',
+        'Reggae': 'from-green-600 to-teal-800',
+        'Latin': 'from-rose-600 to-orange-800',
+        'Hip Hop': 'from-purple-600 to-indigo-800',
+        'Soul / R&B': 'from-red-600 to-pink-800',
+      };
+      return genreColors[genre] || getCoverGradient(currentTrack.id);
+    }, [station, currentTrack]);
+
     return (
-      <div className={`h-full bg-gradient-to-b ${bgGradient}`}>
+      <div className="h-full bg-gradient-to-b from-zinc-950 via-zinc-900 to-zinc-950">
         <ScrollArea className="h-full">
           <div className="max-w-6xl mx-auto p-6 pb-32">
             <Button variant="ghost" size="sm" className="mb-6 text-muted-foreground hover:text-foreground" onClick={() => navigate('home')}>
               <ArrowLeft className="w-4 h-4 mr-2" /> Back
             </Button>
 
-            <div className="flex flex-col items-center text-center mb-10">
-              <div className={`w-72 h-72 lg:w-80 lg:h-80 rounded-2xl bg-gradient-to-br ${getCoverGradient(currentTrack.id)} shadow-2xl relative overflow-hidden mb-8`}>
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.12),transparent_70%)] pointer-events-none" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Radio className="w-20 h-20 text-white/20" />
+            {/* ── HERO: Station Cover + Info ── */}
+            <div className="flex flex-col md:flex-row gap-8 mb-8">
+              {/* Station Art — Large with genre gradient */}
+              <div className="flex-shrink-0 self-center">
+                <div className={`w-72 h-72 lg:w-80 lg:h-80 rounded-2xl bg-gradient-to-br ${genreGradient} shadow-2xl relative overflow-hidden`}>
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.12),transparent_70%)] pointer-events-none" />
+                  {/* Signal pattern overlay */}
+                  <div className="absolute inset-0 opacity-10">
+                    <svg width="100%" height="100%" viewBox="0 0 100 100">
+                      <circle cx="50" cy="50" r="10" fill="none" stroke="white" strokeWidth="0.5" />
+                      <circle cx="50" cy="50" r="20" fill="none" stroke="white" strokeWidth="0.3" />
+                      <circle cx="50" cy="50" r="30" fill="none" stroke="white" strokeWidth="0.2" />
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="white" strokeWidth="0.1" />
+                    </svg>
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Radio className="w-24 h-24 text-white/25" />
+                  </div>
+                  {/* LIVE badge */}
+                  <div className="absolute top-4 right-4">
+                    <Badge className="text-[10px] bg-red-500/90 text-white border-red-500/50 h-5 px-1.5 gap-1 animate-pulse">
+                      <span className="w-1.5 h-1.5 rounded-full bg-white" /> LIVE
+                    </Badge>
+                  </div>
                 </div>
               </div>
-              <Badge variant="outline" className="text-xs font-mono mb-3">
-                <Radio className="w-3 h-3 mr-1" /> Live Radio
-              </Badge>
-              <h1 className="text-3xl lg:text-4xl font-bold mb-2">{currentTrack.title}</h1>
-              <p className="text-lg text-muted-foreground">{currentTrack.albumName}</p>
+
+              {/* Station Info */}
+              <div className="flex-1 min-w-0 flex flex-col justify-center">
+                <div className="text-center md:text-left w-full">
+                  {/* Type label + ON AIR */}
+                  <div className="flex items-center gap-2 mb-3 justify-center md:justify-start">
+                    <Badge variant="outline" className="text-[10px] gap-1 bg-red-500/10 text-red-400 border-red-500/20">
+                      <Radio className="w-2.5 h-2.5" /> Live Radio
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px] gap-1 animate-pulse">
+                      <Wifi className="w-2.5 h-2.5" /> ON AIR
+                    </Badge>
+                  </div>
+
+                  {/* Station Name */}
+                  <h1 className="text-3xl lg:text-4xl font-bold mb-2 leading-tight">{currentTrack.title}</h1>
+
+                  {/* Genre */}
+                  <p
+                    className="text-lg text-muted-foreground hover:text-primary transition-colors cursor-pointer inline-flex items-center gap-1.5 mb-3"
+                    onClick={() => navigate('radio')}
+                  >
+                    <Tag className="w-4 h-4" /> {station?.genre || currentTrack.albumName}
+                  </p>
+
+                  {/* Description */}
+                  {station?.description && (
+                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{station.description}</p>
+                  )}
+
+                  {/* Metadata badges */}
+                  <div className="flex items-center gap-2 mb-4 flex-wrap justify-center md:justify-start">
+                    {station?.codec && (
+                      <Badge variant="outline" className="text-[10px] font-mono">
+                        {station.codec.toUpperCase()}
+                      </Badge>
+                    )}
+                    {(station?.bitrate || currentTrack.bitrate) && (
+                      <Badge variant="outline" className="text-[10px] font-mono">
+                        <Signal className="w-2.5 h-2.5 mr-0.5" /> {(station?.bitrate || currentTrack.bitrate)} kbps
+                      </Badge>
+                    )}
+                    {station?.sampleRate > 0 && (
+                      <Badge variant="outline" className="text-[10px] font-mono">
+                        {(station.sampleRate / 1000).toFixed(1)} kHz
+                      </Badge>
+                    )}
+                    {station?.country && (
+                      <Badge variant="outline" className="text-[10px]">
+                        <MapPin className="w-2.5 h-2.5 mr-0.5" /> {station.country}
+                      </Badge>
+                    )}
+                    {station?.language && (
+                      <Badge variant="outline" className="text-[10px]">
+                        <Globe className="w-2.5 h-2.5 mr-0.5" /> {station.language}
+                      </Badge>
+                    )}
+                    {station?.source && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {station.source}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Elapsed time */}
+                  <div className="flex items-center gap-2 mb-4 justify-center md:justify-start">
+                    <Badge variant="outline" className="text-[10px] gap-1 text-emerald-400 border-emerald-500/20">
+                      <Clock className="w-2.5 h-2.5" /> Listening for {formatElapsed(elapsed)}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Controls */}
+                <div className="w-full max-w-lg self-center md:self-start">
+                  <div className="flex items-center justify-center gap-4 mb-4">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 text-muted-foreground"
+                      onClick={() => usePlayerStore.getState().stopRadio()}
+                      title="Stop"
+                    >
+                      <Square className="w-5 h-5" />
+                    </Button>
+                    <Button variant="default" size="icon" className="h-14 w-14 rounded-full shadow-xl shadow-primary/20" onClick={togglePlay}>
+                      {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7 ml-1" />}
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" onClick={() => navigate('radio')}>
+                      <ListMusic className="w-5 h-5" />
+                    </Button>
+                  </div>
+
+                  {/* Volume */}
+                  <div className="flex items-center gap-3 justify-center">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
+                      {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-muted-foreground" /> : volume < 50 ? <Volume1 className="w-4 h-4 text-muted-foreground" /> : <Volume2 className="w-4 h-4 text-muted-foreground" />}
+                    </Button>
+                    <Slider value={[isMuted ? 0 : volume]} min={0} max={100} step={1} onValueChange={(v) => setVolume(v[0])} className="w-40" />
+                    <span className="text-xs text-muted-foreground tabular-nums w-8 text-right">{volume}%</span>
+                    {activeZone && (
+                      <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground ml-2" onClick={() => navigate('zones')}>
+                        <Gauge className="w-3.5 h-3.5" /> {activeZone.name}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Controls */}
-            <div className="flex items-center justify-center gap-4 max-w-md mx-auto">
-              <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" onClick={() => usePlayerStore.getState().stopRadio()}>
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <Button variant="default" size="icon" className="h-14 w-14 rounded-full shadow-xl shadow-primary/20" onClick={togglePlay}>
-                {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7 ml-1" />}
-              </Button>
-              <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" onClick={() => navigate('radio')}>
-                <ListMusic className="w-5 h-5" />
-              </Button>
-            </div>
-
-            <div className="flex items-center gap-3 justify-center mt-6">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
-                {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-muted-foreground" /> : volume < 50 ? <Volume1 className="w-4 h-4 text-muted-foreground" /> : <Volume2 className="w-4 h-4 text-muted-foreground" />}
-              </Button>
-              <Slider value={[isMuted ? 0 : volume]} min={0} max={100} step={1} onValueChange={(v) => setVolume(v[0])} className="w-40" />
-              <span className="text-xs text-muted-foreground tabular-nums w-8 text-right">{volume}%</span>
-            </div>
-
-            {/* Visualizer */}
-            <div className="mt-10">
+            {/* ── AUDIO VISUALIZER ── */}
+            <div className="mb-8 relative">
+              <div className="absolute inset-0 -m-4 rounded-2xl bg-primary/5 blur-2xl pointer-events-none" />
               <AudioVisualizer
                 mode="bars"
                 width={900}
                 height={180}
                 barCount={96}
                 colorScheme="gold"
-                className="rounded-xl overflow-hidden"
+                className="rounded-xl overflow-hidden relative z-10"
               />
+            </div>
+
+            {/* ── BOTTOM INFO CARDS ── */}
+            <div className="grid md:grid-cols-[1fr_1fr] gap-6">
+              {/* Left Column: Station Details */}
+              <div className="space-y-6">
+                {/* Station Info Card */}
+                <Card className="bg-card/80 backdrop-blur border-border overflow-hidden">
+                  <CardContent className="p-0">
+                    <div className="flex items-center gap-4 p-4 cursor-pointer hover:bg-accent/20 transition-colors" onClick={() => navigate('radio')}>
+                      <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${genreGradient} shadow-md flex-shrink-0 flex items-center justify-center`}>
+                        <Radio className="w-6 h-6 text-white/40" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Now Playing Station</p>
+                        <h3 className="text-base font-semibold truncate">{currentTrack.title}</h3>
+                        <p className="text-xs text-muted-foreground">Browse all radio stations</p>
+                      </div>
+                      <ArrowLeft className="w-4 h-4 text-muted-foreground rotate-180" />
+                    </div>
+                    {station?.description && (
+                      <div className="px-4 pb-4">
+                        <p className="text-xs text-muted-foreground leading-relaxed">{station.description}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Tags */}
+                {station?.tags && station.tags.length > 0 && (
+                  <Card className="bg-card/80 backdrop-blur border-border">
+                    <CardContent className="p-4">
+                      <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                        <Tag className="w-4 h-4 text-muted-foreground" /> Tags
+                      </h3>
+                      <div className="flex flex-wrap gap-1.5">
+                        {station.tags.map(tag => (
+                          <Badge key={tag} variant="secondary" className="text-[10px]">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {/* Right Column: Technical + Signal Path */}
+              <div className="space-y-6">
+                {/* Technical Details */}
+                <Card className="bg-card/80 backdrop-blur border-border">
+                  <CardContent className="p-4">
+                    <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                      <Disc3 className="w-4 h-4 text-muted-foreground" /> Stream Details
+                    </h3>
+                    <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+                      {[
+                        { label: 'Codec', value: station?.codec?.toUpperCase() || currentTrack.format },
+                        { label: 'Bitrate', value: `${(station?.bitrate || currentTrack.bitrate)} kbps` },
+                        ...(station?.sampleRate > 0 ? [{ label: 'Sample Rate', value: `${(station.sampleRate / 1000).toFixed(1)} kHz` }] : []),
+                        { label: 'Source', value: station?.source || 'Internet Radio' },
+                        ...(station?.country ? [{ label: 'Country', value: station.country }] : []),
+                        ...(station?.language ? [{ label: 'Language', value: station.language }] : []),
+                        { label: 'Listened', value: formatElapsed(elapsed) },
+                        { label: 'Status', value: isPlaying ? 'Streaming' : 'Paused' },
+                      ].map(item => (
+                        <div key={item.label}>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</p>
+                          <p className="text-sm font-mono font-medium">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Signal Path */}
+                <Card className="bg-card/80 backdrop-blur border-border">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold flex items-center gap-2">
+                        <Gauge className="w-4 h-4 text-primary" /> Signal Path
+                      </h3>
+                      <Badge variant="outline" className="text-[10px] text-red-400 border-red-500/30">
+                        <Wifi className="w-3 h-3 mr-0.5" /> Live Stream
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground py-2 flex-wrap">
+                      <Badge variant="secondary" className="text-[10px] font-mono">{station?.codec?.toUpperCase() || 'MP3'}</Badge>
+                      <span className="text-muted-foreground/50">→</span>
+                      <Badge variant="secondary" className="text-[10px] font-mono">{(station?.bitrate || currentTrack.bitrate)}kbps</Badge>
+                      <span className="text-muted-foreground/50">→</span>
+                      <Badge variant="secondary" className="text-[10px]">HTTP Proxy</Badge>
+                      <span className="text-muted-foreground/50">→</span>
+                      <Badge variant="secondary" className="text-[10px]">Web Audio API</Badge>
+                      <span className="text-muted-foreground/50">→</span>
+                      <Badge variant="secondary" className="text-[10px]">DAC Output</Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Zone Info */}
+                {activeZone && (
+                  <Card className="bg-card/80 backdrop-blur border-border">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-semibold flex items-center gap-2">
+                          <Gauge className="w-4 h-4 text-primary" /> {activeZone.name}
+                        </h3>
+                        <Badge variant="outline" className="text-[10px]">
+                          {activeZone.endpoints[0]?.dac || 'Unknown DAC'}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             </div>
           </div>
         </ScrollArea>

@@ -22,6 +22,7 @@ import { LibraryManagementView } from '@/components/dsp/LibraryManagementView';
 import { PerformerDetailView } from '@/components/dsp/PerformerDetailView';
 import { RadioView } from '@/components/dsp/RadioView';
 import { ComposerDetailView } from '@/components/dsp/ComposerDetailView';
+import { ComposersBrowseView } from '@/components/dsp/ComposersBrowseView';
 import { WorkDetailView } from '@/components/dsp/WorkDetailView';
 import { GenreDetailView } from '@/components/dsp/GenreDetailView';
 import { EditorialView } from '@/components/dsp/EditorialView';
@@ -66,6 +67,7 @@ function ViewRouter({ view }: { view: ViewName }) {
     case 'library': return <LibraryManagementView />;
     case 'performer-detail': return <PerformerDetailView />;
     case 'radio': return <RadioView />;
+    case 'composers': return <ComposersBrowseView />;
     case 'composer-detail': return <ComposerDetailView />;
     case 'work-detail': return <WorkDetailView />;
     case 'genre-detail': return <GenreDetailView />;
