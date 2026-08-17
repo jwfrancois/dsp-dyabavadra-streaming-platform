@@ -19,7 +19,7 @@ import {
   Clock, Gauge, Shield, Eye, EyeOff, ArrowRight, Star, ExternalLink,
   Radio, Volume2, FolderOpen, Box, Plug, Unplug, Settings,
   Zap, Album, Mic2, Users, Grid3X3, List, SkipForward,
-  PlayCircle, RadioStation, Signal, Podcast, Rss, Headphones,
+  PlayCircle, RadioStation, Signal, Podcast, Rss, Headphones, Key,
 } from 'lucide-react';
 
 // ─── Types ───
@@ -72,8 +72,10 @@ function ConnectionPanel() {
   const [serverUrl, setServerUrl] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [apiKey, setApiKey] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const { connectionStatus, error, config, connect, disconnect, clearError } = useJellyfinStore();
+  const [authMode, setAuthMode] = useState<'password' | 'apikey'>('password');
+  const { connectionStatus, error, config, connect, connectWithApiKey, disconnect, clearError } = useJellyfinStore();
 
   useEffect(() => {
     if (config?.serverUrl) setServerUrl(config.serverUrl);
@@ -83,9 +85,15 @@ function ConnectionPanel() {
   const handleConnect = useCallback(async () => {
     clearError();
     const url = serverUrl.trim().replace(/\/+$/, '');
-    if (!url || !username.trim()) return;
-    await connect(url, username.trim(), password);
-  }, [serverUrl, username, password, connect, clearError]);
+    if (!url) return;
+    if (authMode === 'apikey') {
+      if (!apiKey.trim()) return;
+      await connectWithApiKey(url, apiKey.trim());
+    } else {
+      if (!username.trim()) return;
+      await connect(url, username.trim(), password);
+    }
+  }, [serverUrl, username, password, apiKey, authMode, connect, connectWithApiKey, clearError]);
 
   const handleDisconnect = useCallback(async () => {
     await disconnect();
@@ -157,37 +165,86 @@ function ConnectionPanel() {
                 disabled={connectionStatus === 'connecting'}
               />
             </div>
-            <div className="w-full sm:w-48">
-              <label className="text-xs text-muted-foreground mb-1 block">Username</label>
-              <Input
-                placeholder="admin"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="bg-surface/50 border-border"
-                disabled={connectionStatus === 'connecting'}
-              />
-            </div>
           </div>
-          <div className="relative">
-            <label className="text-xs text-muted-foreground mb-1 block">Password</label>
-            <Input
-              type={showPassword ? 'text' : 'password'}
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="bg-surface/50 border-border pr-10"
-              disabled={connectionStatus === 'connecting'}
-              onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
-            />
+
+          {/* Auth mode toggle */}
+          <div className="flex items-center gap-1 p-1 rounded-lg bg-surface/50 border border-border w-fit">
             <button
-              className="absolute right-3 top-[38px] text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => setShowPassword(!showPassword)}
               type="button"
-              tabIndex={-1}
+              className={`px-3 py-1.5 text-xs rounded-md transition-all ${
+                authMode === 'password'
+                  ? 'bg-purple-500/20 text-purple-300 shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              onClick={() => setAuthMode('password')}
             >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              <User className="w-3 h-3 inline mr-1" />Username / Password
+            </button>
+            <button
+              type="button"
+              className={`px-3 py-1.5 text-xs rounded-md transition-all ${
+                authMode === 'apikey'
+                  ? 'bg-purple-500/20 text-purple-300 shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              onClick={() => setAuthMode('apikey')}
+            >
+              <Key className="w-3 h-3 inline mr-1" />API Key
             </button>
           </div>
+
+          {authMode === 'password' ? (
+            <>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground mb-1 block">Username</label>
+                  <Input
+                    placeholder="admin"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="bg-surface/50 border-border"
+                    disabled={connectionStatus === 'connecting'}
+                  />
+                </div>
+              </div>
+              <div className="relative">
+                <label className="text-xs text-muted-foreground mb-1 block">Password</label>
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="bg-surface/50 border-border pr-10"
+                  disabled={connectionStatus === 'connecting'}
+                  onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
+                />
+                <button
+                  className="absolute right-3 top-[38px] text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => setShowPassword(!showPassword)}
+                  type="button"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">API Key</label>
+              <Input
+                type="text"
+                placeholder="Your Jellyfin API key"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                className="bg-surface/50 border-border font-mono text-xs"
+                disabled={connectionStatus === 'connecting'}
+                onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Find your API key in Jellyfin under Dashboard → API Keys
+              </p>
+            </div>
+          )}
 
           {error && (
             <div className="flex items-start gap-2 p-2.5 rounded-lg bg-red-950/40 border border-red-800/30">
@@ -199,7 +256,7 @@ function ConnectionPanel() {
           <Button
             className="w-full gap-2"
             onClick={handleConnect}
-            disabled={connectionStatus === 'connecting' || !serverUrl.trim() || !username.trim()}
+            disabled={connectionStatus === 'connecting' || !serverUrl.trim() || (authMode === 'password' ? !username.trim() : !apiKey.trim())}
           >
             {connectionStatus === 'connecting' ? (
               <>
