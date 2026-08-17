@@ -429,14 +429,6 @@ export const useJellyfinStore = create<JellyfinState>((set, get) => ({
         config,
         error: null,
       });
-      // Refresh library IDs in case initial detection missed some
-      try {
-        await jellyfinClient.refreshLibraryIds();
-        // Update stored config after refresh
-        set({ config: { ...jellyfinClient.getConfig() } });
-      } catch {
-        // Non-critical — continue without refresh
-      }
       get().fetchRecentAlbums();
       return true;
     } catch (err) {
