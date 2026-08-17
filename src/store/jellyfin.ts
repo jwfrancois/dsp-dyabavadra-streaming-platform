@@ -306,6 +306,7 @@ interface JellyfinState {
 
   // Actions — Connection
   connect: (serverUrl: string, username: string, password: string) => Promise<boolean>;
+  connectWithApiKey: (serverUrl: string, apiKey: string) => Promise<boolean>;
   disconnect: () => Promise<void>;
   clearError: () => void;
 
@@ -400,12 +401,42 @@ export const useJellyfinStore = create<JellyfinState>((set, get) => ({
       let message: string;
       if (err instanceof JellyfinApiError) {
         if (err.statusCode === 0) {
-          // Network error — the proxy itself couldn't reach the server
           message = 'Could not reach the Jellyfin server. Check the server URL and ensure the server is running and accessible.';
         } else if (err.statusCode === 401) {
           message = 'Authentication failed. Please check your username and password.';
         } else if (err.statusCode === 404) {
           message = 'Jellyfin server found but the API endpoint was not available. Ensure you are running Jellyfin 10.7+.';
+        } else {
+          message = err.message;
+        }
+      } else if (err instanceof Error) {
+        message = err.message;
+      } else {
+        message = 'Connection failed';
+      }
+      set({ connectionStatus: 'error', error: message });
+      return false;
+    }
+  },
+
+  connectWithApiKey: async (serverUrl, apiKey) => {
+    set({ connectionStatus: 'connecting', error: null });
+    try {
+      const config = await jellyfinClient.connectWithApiKey(serverUrl, apiKey);
+      set({
+        connectionStatus: 'connected',
+        config,
+        error: null,
+      });
+      get().fetchRecentAlbums();
+      return true;
+    } catch (err) {
+      let message: string;
+      if (err instanceof JellyfinApiError) {
+        if (err.statusCode === 0) {
+          message = 'Could not reach the Jellyfin server. Check the server URL and ensure the server is running and accessible.';
+        } else if (err.statusCode === 401) {
+          message = 'API key authentication failed. Please check your API key.';
         } else {
           message = err.message;
         }

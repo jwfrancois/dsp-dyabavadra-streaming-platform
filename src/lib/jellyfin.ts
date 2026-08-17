@@ -94,6 +94,7 @@ export interface JellyfinItem {
     PrimaryImageTag?: string;
   }>;
   ChildCount?: number;
+  DateCreated?: string;
 }
 
 /** Paged items response from Jellyfin */
@@ -404,23 +405,39 @@ export class JellyfinClient {
       // If system info fails, continue with defaults
     }
 
-    // Step 3: Auto-detect music and podcast libraries
+    // Step 3: Auto-detect music and podcast libraries using /Library/VirtualFolders
+    // This is the authoritative Jellyfin API — each virtual folder has a CollectionType
+    // (e.g. "music", "podcasts", "movies", "tvshows") regardless of user-chosen folder names.
     let musicLibraryId = '';
     let podcastLibraryId = '';
     try {
-      const views = await this.getViews();
-      for (const item of views.Items) {
-        if (item.Type !== 'CollectionFolder') continue;
-        const name = item.Name.toLowerCase();
-        if (name.includes('music') && !name.includes('podcast') && !musicLibraryId) {
-          musicLibraryId = item.Id;
+      const vfResponse = await this.request<{ Items?: Array<{ Name: string; CollectionType?: string; ItemId?: string; Id?: string }> }>('/Library/VirtualFolders');
+      const folders = vfResponse.Items ?? [];
+      for (const folder of folders) {
+        const ct = (folder.CollectionType || '').toLowerCase();
+        if (ct === 'music' && !musicLibraryId) {
+          musicLibraryId = folder.ItemId || folder.Id || '';
         }
-        if (name.includes('podcast') && !podcastLibraryId) {
-          podcastLibraryId = item.Id;
+        if (ct === 'podcasts' && !podcastLibraryId) {
+          podcastLibraryId = folder.ItemId || folder.Id || '';
+        }
+      }
+      // Fallback: if VirtualFolders didn't expose ItemId/Id, try Views-based matching as backup
+      if (!musicLibraryId || !podcastLibraryId) {
+        const views = await this.getViews();
+        for (const item of views.Items) {
+          if (item.Type !== 'CollectionFolder') continue;
+          const name = item.Name.toLowerCase();
+          if (!musicLibraryId && name.includes('music') && !name.includes('podcast')) {
+            musicLibraryId = item.Id;
+          }
+          if (!podcastLibraryId && name.includes('podcast')) {
+            podcastLibraryId = item.Id;
+          }
         }
       }
     } catch {
-      // Continue without auto-detected library
+      // Continue without auto-detected library — queries will work globally
     }
 
     // Step 4: Build and save config
@@ -481,6 +498,158 @@ export class JellyfinClient {
   /** Get the current configuration, or null if not authenticated */
   getConfig(): JellyfinConfig | null {
     return this.config;
+  }
+
+  /**
+   * Re-detect music and podcast library IDs using /Library/VirtualFolders.
+   * Useful when a saved config has empty library IDs from a previous buggy detection.
+   * Call this after connecting to refresh library discovery.
+   */
+  async refreshLibraryIds(): Promise<void> {
+    if (!this.config) throw new JellyfinNotAuthenticatedError();
+
+    try {
+      const vfResponse = await this.request<{ Items?: Array<{ Name: string; CollectionType?: string; ItemId?: string; Id?: string }> }>('/Library/VirtualFolders');
+      const folders = vfResponse.Items ?? [];
+      for (const folder of folders) {
+        const ct = (folder.CollectionType || '').toLowerCase();
+        if (ct === 'music' && !this.config.musicLibraryId) {
+          this.config.musicLibraryId = folder.ItemId || folder.Id || '';
+        }
+        if (ct === 'podcasts' && !this.config.podcastLibraryId) {
+          this.config.podcastLibraryId = folder.ItemId || folder.Id || '';
+        }
+      }
+      // Fallback to Views-based matching
+      if (!this.config.musicLibraryId || !this.config.podcastLibraryId) {
+        const views = await this.getViews();
+        for (const item of views.Items) {
+          if (item.Type !== 'CollectionFolder') continue;
+          const name = item.Name.toLowerCase();
+          if (!this.config.musicLibraryId && name.includes('music') && !name.includes('podcast')) {
+            this.config.musicLibraryId = item.Id;
+          }
+          if (!this.config.podcastLibraryId && name.includes('podcast')) {
+            this.config.podcastLibraryId = item.Id;
+          }
+        }
+      }
+      this.saveConfig();
+    } catch {
+      // Non-critical — queries will still work globally
+    }
+  }
+
+  /**
+   * Connect using an API key instead of username/password.
+   * This is useful for admin-level access or when the user prefers key-based auth.
+   */
+  async connectWithApiKey(serverUrl: string, apiKey: string): Promise<JellyfinConfig> {
+    const baseUrl = normalizeServerUrl(serverUrl);
+
+    // Authenticate with API key via /Users/AuthenticateByName using the api_key query param
+    // Jellyfin allows API key auth by passing the key as the password for a special user
+    const deviceId = typeof window !== 'undefined'
+      ? window.navigator.userAgent.slice(0, 32).replace(/[^a-zA-Z0-9]/g, '')
+      : 'ssr';
+    const mediaBrowserAuth = `MediaBrowser Client="DSP", Device="Browser", DeviceId="dsp-jellyfin-${deviceId}", Version="1.0.0"`;
+
+    // First, get the user info using the API key
+    // We temporarily set the config so request() will forward the API key as the token
+    this.config = {
+      serverUrl: baseUrl,
+      username: 'API Key User',
+      accessToken: apiKey,
+      userId: '',
+      serverId: '',
+      serverName: 'Jellyfin',
+      serverVersion: 'unknown',
+      connectedAt: new Date().toISOString(),
+      lastHeartbeat: new Date().toISOString(),
+      musicLibraryId: '',
+      podcastLibraryId: '',
+    };
+    const userInfo = await this.request<JellyfinItem & { ServerId: string; HasPassword: boolean; AccessToken: string }>(
+      '/Users/Me'
+    );
+
+    const token = apiKey;
+    const userId = userInfo.Id;
+    const serverId = userInfo.ServerId;
+
+    // Fetch server info
+    let serverName = 'Jellyfin';
+    let serverVersion = 'unknown';
+    try {
+      this.config = {
+        serverUrl: baseUrl,
+        username: userInfo.Name || 'API Key User',
+        accessToken: token,
+        userId,
+        serverId,
+        serverName,
+        serverVersion,
+        connectedAt: new Date().toISOString(),
+        lastHeartbeat: new Date().toISOString(),
+        musicLibraryId: '',
+        podcastLibraryId: '',
+      };
+      const sysInfo = await this.getSystemInfo();
+      serverName = sysInfo.ServerName;
+      serverVersion = sysInfo.Version;
+    } catch {
+      // Continue with defaults
+    }
+
+    // Auto-detect libraries
+    let musicLibraryId = '';
+    let podcastLibraryId = '';
+    try {
+      const vfResponse = await this.request<{ Items?: Array<{ Name: string; CollectionType?: string; ItemId?: string; Id?: string }> }>('/Library/VirtualFolders');
+      const folders = vfResponse.Items ?? [];
+      for (const folder of folders) {
+        const ct = (folder.CollectionType || '').toLowerCase();
+        if (ct === 'music' && !musicLibraryId) {
+          musicLibraryId = folder.ItemId || folder.Id || '';
+        }
+        if (ct === 'podcasts' && !podcastLibraryId) {
+          podcastLibraryId = folder.ItemId || folder.Id || '';
+        }
+      }
+      if (!musicLibraryId || !podcastLibraryId) {
+        const views = await this.getViews();
+        for (const item of views.Items) {
+          if (item.Type !== 'CollectionFolder') continue;
+          const name = item.Name.toLowerCase();
+          if (!musicLibraryId && name.includes('music') && !name.includes('podcast')) {
+            musicLibraryId = item.Id;
+          }
+          if (!podcastLibraryId && name.includes('podcast')) {
+            podcastLibraryId = item.Id;
+          }
+        }
+      }
+    } catch {
+      // Continue without auto-detected library
+    }
+
+    const config: JellyfinConfig = {
+      serverUrl: baseUrl,
+      username: userInfo.Name || 'API Key User',
+      accessToken: token,
+      userId,
+      serverId,
+      serverName,
+      serverVersion,
+      connectedAt: new Date().toISOString(),
+      lastHeartbeat: new Date().toISOString(),
+      musicLibraryId,
+      podcastLibraryId,
+    };
+
+    this.config = config;
+    this.saveConfig();
+    return config;
   }
 
   // ═══════════════════════════════════════════════════════
@@ -782,8 +951,9 @@ export class JellyfinClient {
 
   /**
    * Get all podcast shows from the server.
-   * Jellyfin stores podcasts in a dedicated "Podcasts" library folder.
-   * We query that folder's contents for Series (podcast shows).
+   * Jellyfin stores podcasts as "Series" items inside the podcast library.
+   * We query globally but prefer the podcast library if detected.
+   * Uses IncludeItemTypes=["Series"] to match how Jellyfin indexes podcast feeds.
    */
   async getPodcasts(limit: number = 200): Promise<JellyfinItemsResponse> {
     const queryParams: Record<string, unknown> = {
@@ -817,14 +987,17 @@ export class JellyfinClient {
 
   /**
    * Get episodes for a podcast show.
-   * Uses /Shows/{seriesId}/Episodes endpoint.
+   * Uses /Items with ParentId=showId — the most reliable approach for podcasts.
+   * The /Shows/{id}/Episodes endpoint may not work for podcast series in all Jellyfin versions.
    */
   async getPodcastEpisodes(showId: string, limit: number = 200): Promise<JellyfinItemsResponse> {
     const qs = buildQueryString({
       UserId: this.config!.userId,
-      Limit: limit,
+      ParentId: showId,
+      IncludeItemTypes: ['Audio', 'Episode'],
       SortBy: 'DateCreated',
       SortOrder: 'Descending',
+      Recursive: true,
       Fields: [
         'PrimaryImageAspectRatio',
         'BasicSyncInfo',
@@ -834,9 +1007,10 @@ export class JellyfinClient {
         'DateCreated',
         'PremiereDate',
       ],
+      Limit: limit,
     });
     return this.request<JellyfinItemsResponse>(
-      `/Shows/${showId}/Episodes${qs}`
+      `/Users/${this.config!.userId}/Items${qs}`
     );
   }
 
