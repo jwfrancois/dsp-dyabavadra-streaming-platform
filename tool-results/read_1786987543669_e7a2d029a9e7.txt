@@ -1,0 +1,1381 @@
+     1→'use client';
+     2→
+     3→import React, { useMemo, useState, useEffect } from 'react';
+     4→import { useUIStore } from '@/store/ui';
+     5→import { usePlayerStore } from '@/store/player';
+     6→import { usePodcastStore } from '@/store/podcast';
+     7→import { useLocalLibraryStore } from '@/store/local-library';
+     8→import { useDSPEngineStore } from '@/store/dsp-engine';
+     9→import { usePlaylistStore } from '@/store/playlists';
+    10→import { useProfilesStore } from '@/store/profiles';
+    11→import { formatEpisodeDuration, formatDate } from '@/lib/podcast-data';
+    12→import { internetRadioStations } from '@/lib/radio-stations';
+    13→import type { RadioStation } from '@/lib/radio-stations';
+    14→import { formatDuration, formatSampleRate, formatFileSize, getCoverGradient } from '@/lib/data';
+    15→import { Card, CardContent } from '@/components/ui/card';
+    16→import { Button } from '@/components/ui/button';
+    17→import { Badge } from '@/components/ui/badge';
+    18→import { ScrollArea } from '@/components/ui/scroll-area';
+    19→import { Separator } from '@/components/ui/separator';
+    20→import { Slider } from '@/components/ui/slider';
+    21→import {
+    22→  DropdownMenu,
+    23→  DropdownMenuContent,
+    24→  DropdownMenuItem,
+    25→  DropdownMenuLabel,
+    26→  DropdownMenuSeparator,
+    27→  DropdownMenuTrigger,
+    28→} from '@/components/ui/dropdown-menu';
+    29→import {
+    30→  Collapsible,
+    31→  CollapsibleContent,
+    32→  CollapsibleTrigger,
+    33→} from '@/components/ui/collapsible';
+    34→import { useLyrics, useArtistBio, useArtistImage, useAlbumInfo } from '@/lib/use-music-metadata';
+    35→import { AudioVisualizer } from '@/components/dsp/AudioVisualizer';
+    36→import { LyricsPanel } from '@/components/dsp/LyricsPanel';
+    37→import {
+    38→  Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Repeat1,
+    39→  Volume2, VolumeX, Volume1, Heart, ListMusic, Share2,
+    40→  ArrowLeft, Gauge, AlertCircle, Music,
+    41→  Radio, Disc3, ExternalLink,
+    42→  User, Mic2, Clock, Waves, ChevronDown, ChevronUp,
+    43→  ListPlus, LayoutList, Sparkles, Zap,
+    44→  Podcast, FastForward, Scissors, Moon, Square, Loader2,
+    45→  Globe, Wifi, Signal, Calendar, MapPin, Flag, Tag, FileText,
+    46→} from 'lucide-react';
+    47→
+    48→// ── Audio quality badge color logic ──
+    49→function getQualityColor(format: string, bitDepth: number, sampleRate: number): { label: string; className: string } {
+    50→  const fmt = format.toUpperCase();
+    51→  const rateKHz = sampleRate / 1000;
+    52→  if (fmt === 'DSD') return { label: 'DSD', className: 'bg-purple-500/15 text-purple-400 border-purple-500/30' };
+    53→  if (fmt === 'FLAC' && bitDepth >= 24 && rateKHz >= 88.2) return { label: 'Hi-Res', className: 'bg-amber-500/15 text-amber-400 border-amber-500/30' };
+    54→  if (fmt === 'FLAC' && bitDepth >= 24) return { label: 'Hi-Res', className: 'bg-amber-500/15 text-amber-400 border-amber-500/30' };
+    55→  if (fmt === 'FLAC' && rateKHz >= 44.1) return { label: 'CD Quality', className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' };
+    56→  if (['ALAC', 'WAV', 'AIFF', 'APE'].includes(fmt)) return { label: 'Lossless', className: 'bg-sky-500/15 text-sky-400 border-sky-500/30' };
+    57→  return { label: 'Lossy', className: 'bg-zinc-500/15 text-zinc-400 border-zinc-500/30' };
+    58→}
+    59→
+    60→export function NowPlayingView() {
+    61→  const {
+    62→    isPlaying, currentTrack, queue, queueIndex, activeZoneId,
+    63→    progress, currentTime, duration, volume, isShuffle, repeatMode, isMuted,
+    64→    togglePlay, next, previous, seek, setVolume, toggleMute,
+    65→    toggleShuffle, toggleRepeat, setActiveZone, playbackMode,
+    66→  } = usePlayerStore();
+    67→  const { navigate, toggleQueueDrawer } = useUIStore();
+    68→  const { isPodcastMode, currentEpisode, playbackSpeed, cyclePlaybackSpeed } = usePodcastStore();
+    69→  const toggleLoveTrack = useProfilesStore(s => s.toggleLoveTrack);
+    70→  const isTrackLoved = useProfilesStore(s => s.isTrackLoved);
+    71→  const localTracks = useLocalLibraryStore(s => s.tracks);
+    72→  const bitPerfectDefault = useDSPEngineStore(s => s.bitPerfectDefault);
+    73→  const gaplessPlayback = useDSPEngineStore(s => s.gaplessPlayback);
+    74→  const playlists = usePlaylistStore(s => s.playlists);
+    75→  const addToPlaylist = usePlaylistStore(s => s.addToPlaylist);
+    76→  const hasTrackInPlaylist = usePlaylistStore(s => s.hasTrack);
+    77→
+    78→  // UI state
+    79→  const [queueOpen, setQueueOpen] = useState(true);
+    80→  const [showVisualizer, setShowVisualizer] = useState(true);
+    81→
+    82→  // Fetch rich metadata for the current track
+    83→  const { data: lyricsData, loading: lyricsLoading } = useLyrics(currentTrack?.artistName || '', currentTrack?.title || '');
+    84→  const { data: artistBio, loading: bioLoading } = useArtistBio(currentTrack?.artistName || '');
+    85→  const { data: artistImage, loading: artistImageLoading } = useArtistImage(currentTrack?.artistName || '');
+    86→  const { data: albumInfoData, loading: albumInfoLoading } = useAlbumInfo(currentTrack?.artistName || '', currentTrack?.albumName || '');
+    87→
+    88→  // Look up cover art from local library for the current track
+    89→  const trackCoverArt = useMemo(() => {
+    90→    if (!currentTrack) return null;
+    91→    const localTrack = localTracks.find(t => t.id === currentTrack.id);
+    92→    if (localTrack?.coverArt) return localTrack.coverArt;
+    93→    const albumTracks = localTracks.filter(t => t.album === currentTrack.albumName && (t.artist === currentTrack.artistName || t.albumArtist === currentTrack.artistName));
+    94→    for (const at of albumTracks) {
+    95→      if (at.coverArt) return at.coverArt;
+    96→    }
+    97→    return null;
+    98→  }, [currentTrack, localTracks]);
+    99→
+   100→  const activeZone = activeZoneId ? {
+   101→    id: activeZoneId,
+   102→    name: activeZoneId === 'zone-1' ? 'Main Listening Room' : activeZoneId === 'zone-2' ? 'Study' : `Zone ${activeZoneId}`,
+   103→    endpoints: [{ dac: 'ESS Sabre ES9038Q2M' }],
+   104→    dspEnabled: false,
+   105→    dspChain: [],
+   106→  } : null;
+   107→
+   108→  // ── Queue peek: next 3-5 tracks ──
+   109→  const queuePeekTracks = useMemo(() => {
+   110→    return queue.slice(queueIndex + 1, queueIndex + 6);
+   111→  }, [queue, queueIndex]);
+   112→
+   113→  // ── Dynamic background gradient ──
+   114→  const bgGradient = useMemo(() => {
+   115→    if (!currentTrack) return 'from-zinc-950 via-zinc-900 to-zinc-950';
+   116→    return 'from-zinc-950 via-zinc-900 to-zinc-950';
+   117→  }, [currentTrack]);
+   118→
+   119→  // ── Quality badge ──
+   120→  const qualityBadge = useMemo(() => {
+   121→    if (!currentTrack) return { label: '—', className: '' };
+   122→    return getQualityColor(currentTrack.format, currentTrack.bitDepth, currentTrack.sampleRate);
+   123→  }, [currentTrack]);
+   124→
+   125→  // ── Detailed format string ──
+   126→  const formatDetailString = useMemo(() => {
+   127→    if (!currentTrack) return '';
+   128→    const channels = currentTrack.channels === 1 ? 'Mono' : currentTrack.channels === 2 ? 'Stereo' : `${currentTrack.channels}-ch`;
+   129→    return `${currentTrack.format.toUpperCase()} · ${currentTrack.bitDepth}bit/${formatSampleRate(currentTrack.sampleRate)} · ${channels}`;
+   130→  }, [currentTrack]);
+   131→
+   132→  // ═══════════════════════════════════════════════════════════════
+   133→  // PODCAST MODE — Rich Now Playing with artwork, show notes, metadata
+   134→  // ═══════════════════════════════════════════════════════════════
+   135→  if (isPodcastMode && currentEpisode) {
+   136→    const show = currentEpisode ? { title: currentEpisode.showId.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) } : null;
+   137→    const dur = duration > 0 ? duration : currentEpisode.duration;
+   138→    const prog = dur > 0 ? (currentTime / dur) * 100 : 0;
+   139→    const skipSilence = usePodcastStore.getState().skipSilence;
+   140→    const sleepTimerMinutes = usePodcastStore.getState().sleepTimerMinutes;
+   141→
+   142→    // Strip HTML from description
+   143→    const cleanDescription = useMemo(() => {
+   144→      if (!currentEpisode.description) return '';
+   145→      return currentEpisode.description
+   146→        .replace(/<[^>]*>/g, '')
+   147→        .replace(/&nbsp;/g, ' ')
+   148→        .replace(/&amp;/g, '&')
+   149→        .replace(/&lt;/g, '<')
+   150→        .replace(/&gt;/g, '>')
+   151→        .replace(/&quot;/g, '"')
+   152→        .replace(/&#39;/g, "'")
+   153→        .trim();
+   154→    }, [currentEpisode.description]);
+   155→
+   156→    const [showNotesExpanded, setShowNotesExpanded] = useState(false);
+   157→    const [descExpanded, setDescExpanded] = useState(false);
+   158→
+   159→    return (
+   160→      <div className="h-full bg-gradient-to-b from-zinc-950 via-zinc-900 to-zinc-950">
+   161→        <ScrollArea className="h-full">
+   162→          <div className="max-w-5xl mx-auto p-6 pb-32">
+   163→            {/* Back button */}
+   164→            <Button variant="ghost" size="sm" className="mb-6 text-muted-foreground hover:text-foreground" onClick={() => navigate('home')}>
+   165→              <ArrowLeft className="w-4 h-4 mr-2" /> Back
+   166→            </Button>
+   167→
+   168→            {/* ── HERO: Large Cover Art + Episode Info ── */}
+   169→            <div className="flex flex-col md:flex-row gap-8 mb-8">
+   170→              {/* Podcast Artwork — Large */}
+   171→              <div className="flex-shrink-0 self-center">
+   172→                <div className={`w-72 h-72 lg:w-80 lg:h-80 rounded-2xl bg-gradient-to-br ${getCoverGradient(currentEpisode.showId)} shadow-2xl relative overflow-hidden group cursor-pointer`}
+   173→                  onClick={() => navigate('podcast-detail', { showId: currentEpisode.showId })}
+   174→                >
+   175→                  {currentEpisode.artworkUrl ? (
+   176→                    <img src={currentEpisode.artworkUrl} alt={show?.title || 'Podcast'} className="w-full h-full object-cover" />
+   177→                  ) : (
+   178→                    <div className="absolute inset-0 flex items-center justify-center">
+   179→                      <Podcast className="w-20 h-20 text-white/20" />
+   180→                    </div>
+   181→                  )}
+   182→                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.12),transparent_70%)] pointer-events-none" />
+   183→                </div>
+   184→              </div>
+   185→
+   186→              {/* Episode Info + Controls */}
+   187→              <div className="flex-1 min-w-0 flex flex-col justify-center">
+   188→                <div className="text-center md:text-left w-full">
+   189→                  {/* Type label */}
+   190→                  <div className="flex items-center gap-2 mb-3 justify-center md:justify-start">
+   191→                    <Badge variant="outline" className="text-[10px] gap-1 bg-purple-500/10 text-purple-400 border-purple-500/20">
+   192→                      <Podcast className="w-2.5 h-2.5" /> Podcast Episode
+   193→                    </Badge>
+   194→                    {currentEpisode.season && (
+   195→                      <Badge variant="outline" className="text-[10px]">
+   196→                        S{currentEpisode.season}{currentEpisode.episodeNumber ? `E${currentEpisode.episodeNumber}` : ''}
+   197→                      </Badge>
+   198→                    )}
+   199→                  </div>
+   200→
+   201→                  {/* Episode Title */}
+   202→                  <h1 className="text-2xl lg:text-3xl font-bold mb-2 leading-tight">{currentEpisode.title}</h1>
+   203→
+   204→                  {/* Show Name — clickable */}
+   205→                  <p
+   206→                    className="text-lg text-muted-foreground hover:text-primary transition-colors cursor-pointer inline-flex items-center gap-1.5 mb-3"
+   207→                    onClick={() => navigate('podcast-detail', { showId: currentEpisode.showId })}
+   208→                  >
+   209→                    <Podcast className="w-4 h-4" /> {show?.title}
+   210→                  </p>
+   211→
+   212→                  {/* Metadata badges row */}
+   213→                  <div className="flex items-center gap-2 mb-4 flex-wrap justify-center md:justify-start">
+   214→                    <Badge variant="outline" className="text-[10px] font-mono">
+   215→                      {currentEpisode.format.toUpperCase()}
+   216→                    </Badge>
+   217→                    <Badge variant="outline" className="text-[10px]">
+   218→                      {currentEpisode.bitrate > 0 ? `${currentEpisode.bitrate} kbps` : '—'}
+   219→                    </Badge>
+   220→                    <Badge variant="outline" className="text-[10px]">
+   221→                      <Clock className="w-2.5 h-2.5 mr-0.5" /> {formatEpisodeDuration(currentEpisode.duration)}
+   222→                    </Badge>
+   223→                    {currentEpisode.publishDate && (
+   224→                      <Badge variant="outline" className="text-[10px]">
+   225→                        <Calendar className="w-2.5 h-2.5 mr-0.5" /> {formatDate(currentEpisode.publishDate)}
+   226→                      </Badge>
+   227→                    )}
+   228→                    {currentEpisode.fileSize > 0 && (
+   229→                      <Badge variant="outline" className="text-[10px]">
+   230→                        {formatFileSize(currentEpisode.fileSize)}
+   231→                      </Badge>
+   232→                    )}
+   233→                  </div>
+   234→
+   235→                  {/* Playback Speed + Skip Silence + Sleep Timer */}
+   236→                  <div className="flex items-center gap-2 flex-wrap justify-center md:justify-start mb-4">
+   237→                    <Button
+   238→                      variant={skipSilence ? 'secondary' : 'ghost'}
+   239→                      size="sm"
+   240→                      className="h-7 text-xs gap-1.5"
+   241→                      onClick={() => usePodcastStore.getState().toggleSkipSilence()}
+   242→                      title="Skip Silence"
+   243→                    >
+   244→                      <Scissors className="w-3.5 h-3.5" /> Skip Silence
+   245→                    </Button>
+   246→                    <Button
+   247→                      variant="secondary"
+   248→                      size="sm"
+   249→                      className="h-7 text-xs font-mono gap-1.5"
+   250→                      onClick={cyclePlaybackSpeed}
+   251→                    >
+   252→                      <FastForward className="w-3 h-3" /> {playbackSpeed}x
+   253→                    </Button>
+   254→                    {sleepTimerMinutes !== null && (
+   255→                      <Badge variant="outline" className="text-[10px] gap-1 text-signal-amber border-signal-amber/30">
+   256→                        <Moon className="w-3 h-3" /> Sleep: {sleepTimerMinutes}m
+   257→                      </Badge>
+   258→                    )}
+   259→                  </div>
+   260→                </div>
+   261→
+   262→                {/* Progress + Controls */}
+   263→                <div className="w-full max-w-lg self-center md:self-start">
+   264→                  {/* Seek bar */}
+   265→                  <div className="space-y-1 mb-4">
+   266→                    <Slider
+   267→                      value={[prog]}
+   268→                      min={0}
+   269→                      max={100}
+   270→                      step={0.1}
+   271→                      onValueChange={(v) => seek(v[0])}
+   272→                      className="w-full cursor-pointer [&_[role=slider]]:h-4 [&_[role=slider]]:w-4"
+   273→                    />
+   274→                    <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
+   275→                      <span>{formatDuration(currentTime)}</span>
+   276→                      <span>{formatEpisodeDuration(currentEpisode.duration)}</span>
+   277→                    </div>
+   278→                  </div>
+   279→
+   280→                  {/* Transport */}
+   281→                  <div className="flex items-center justify-center gap-4 mb-4">
+   282→                    <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" onClick={previous}>
+   283→                      <SkipBack className="w-5 h-5" />
+   284→                    </Button>
+   285→                    <Button variant="default" size="icon" className="h-14 w-14 rounded-full shadow-xl shadow-primary/20" onClick={togglePlay}>
+   286→                      {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7 ml-1" />}
+   287→                    </Button>
+   288→                    <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" onClick={next}>
+   289→                      <SkipForward className="w-5 h-5" />
+   290→                    </Button>
+   291→                    <Button
+   292→                      variant="ghost"
+   293→                      size="icon"
+   294→                      className="h-10 w-10 text-muted-foreground"
+   295→                      onClick={() => usePodcastStore.getState().stopPodcast()}
+   296→                      title="Stop"
+   297→                    >
+   298→                      <Square className="w-5 h-5" />
+   299→                    </Button>
+   300→                  </div>
+   301→
+   302→                  {/* Volume */}
+   303→                  <div className="flex items-center gap-3 justify-center">
+   304→                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
+   305→                      {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-muted-foreground" /> : volume < 50 ? <Volume1 className="w-4 h-4 text-muted-foreground" /> : <Volume2 className="w-4 h-4 text-muted-foreground" />}
+   306→                    </Button>
+   307→                    <Slider value={[isMuted ? 0 : volume]} min={0} max={100} step={1} onValueChange={(v) => setVolume(v[0])} className="w-40" />
+   308→                    <span className="text-xs text-muted-foreground tabular-nums w-8 text-right">{volume}%</span>
+   309→                    {activeZone && (
+   310→                      <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground ml-2" onClick={() => navigate('zones')}>
+   311→                        <Gauge className="w-3.5 h-3.5" /> {activeZone.name}
+   312→                      </Button>
+   313→                    )}
+   314→                  </div>
+   315→                </div>
+   316→              </div>
+   317→            </div>
+   318→
+   319→            {/* ── AUDIO VISUALIZER ── */}
+   320→            <div className="mb-8 relative">
+   321→              <div className="absolute inset-0 -m-4 rounded-2xl bg-primary/5 blur-2xl pointer-events-none" />
+   322→              <AudioVisualizer
+   323→                mode="bars"
+   324→                width={900}
+   325→                height={180}
+   326→                barCount={96}
+   327→                colorScheme="purple"
+   328→                className="rounded-xl overflow-hidden relative z-10"
+   329→              />
+   330→            </div>
+   331→
+   332→            {/* ── BOTTOM INFO CARDS ── */}
+   333→            <div className="grid md:grid-cols-[1fr_1fr] gap-6">
+   334→              {/* Left Column: Episode Description + Show Notes */}
+   335→              <div className="space-y-6">
+   336→                {/* Episode Description */}
+   337→                <Card className="bg-card/80 backdrop-blur border-border overflow-hidden">
+   338→                  <CardContent className="p-0">
+   339→                    <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-accent/20 transition-colors" onClick={() => navigate('podcast-detail', { showId: currentEpisode.showId })}>
+   340→                      <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${getCoverGradient(currentEpisode.showId)} flex-shrink-0 overflow-hidden shadow-md`}>
+   341→                        {currentEpisode.artworkUrl ? (
+   342→                          <img src={currentEpisode.artworkUrl} alt="" className="w-full h-full object-cover" />
+   343→                        ) : (
+   344→                          <Podcast className="w-5 h-5 text-white/30 m-auto mt-3.5" />
+   345→                        )}
+   346→                      </div>
+   347→                      <div className="flex-1 min-w-0">
+   348→                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">From the Show</p>
+   349→                        <h3 className="text-sm font-semibold truncate">{show?.title}</h3>
+   350→                      </div>
+   351→                      <ArrowLeft className="w-4 h-4 text-muted-foreground rotate-180" />
+   352→                    </div>
+   353→                    {cleanDescription && (
+   354→                      <div className="px-4 pb-4">
+   355→                        <p className={`text-xs text-muted-foreground leading-relaxed ${!descExpanded ? 'line-clamp-4' : ''}`}>
+   356→                          {cleanDescription}
+   357→                        </p>
+   358→                        {cleanDescription.length > 200 && (
+   359→                          <button
+   360→                            className="text-[10px] text-primary hover:underline mt-1"
+   361→                            onClick={() => setDescExpanded(!descExpanded)}
+   362→                          >
+   363→                            {descExpanded ? 'Show less' : 'Read full description'}
+   364→                          </button>
+   365→                        )}
+   366→                      </div>
+   367→                    )}
+   368→                  </CardContent>
+   369→                </Card>
+   370→
+   371→                {/* Show Notes (extended notes) */}
+   372→                {currentEpisode.showNotes && (
+   373→                  <Card className="bg-card/80 backdrop-blur border-border overflow-hidden">
+   374→                    <CardContent className="p-4">
+   375→                      <div className="flex items-center justify-between mb-3">
+   376→                        <h3 className="text-sm font-semibold flex items-center gap-2">
+   377→                          <FileText className="w-4 h-4 text-purple-400" /> Show Notes
+   378→                        </h3>
+   379→                        <Badge variant="outline" className="text-[10px]">{currentEpisode.showNotes.length > 500 ? 'Detailed' : 'Brief'}</Badge>
+   380→                      </div>
+   381→                      <div
+   382→                        className="text-xs text-muted-foreground leading-relaxed prose prose-invert prose-xs max-w-none [&_a]:text-primary [&_a]:hover:underline [&_a]:underline-offset-2"
+   383→                        dangerouslySetInnerHTML={{ __html: showNotesExpanded ? currentEpisode.showNotes : currentEpisode.showNotes.slice(0, 500) + (currentEpisode.showNotes.length > 500 ? '…' : '') }}
+   384→                      />
+   385→                      {currentEpisode.showNotes.length > 500 && (
+   386→                        <button
+   387→                          className="text-[10px] text-primary hover:underline mt-2"
+   388→                          onClick={() => setShowNotesExpanded(!showNotesExpanded)}
+   389→                        >
+   390→                          {showNotesExpanded ? 'Collapse notes' : 'Expand full show notes'}
+   391→                        </button>
+   392→                      )}
+   393→                    </CardContent>
+   394→                  </Card>
+   395→                )}
+   396→              </div>
+   397→
+   398→              {/* Right Column: Technical Details + Actions */}
+   399→              <div className="space-y-6">
+   400→                {/* Technical Details */}
+   401→                <Card className="bg-card/80 backdrop-blur border-border">
+   402→                  <CardContent className="p-4">
+   403→                    <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+   404→                      <Disc3 className="w-4 h-4 text-muted-foreground" /> Episode Details
+   405→                    </h3>
+   406→                    <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+   407→                      {[
+   408→                        { label: 'Format', value: currentEpisode.format.toUpperCase() },
+   409→                        { label: 'Duration', value: formatEpisodeDuration(currentEpisode.duration) },
+   410→                        ...(currentEpisode.bitrate > 0 ? [{ label: 'Bitrate', value: `${currentEpisode.bitrate} kbps` }] : []),
+   411→                        ...(currentEpisode.fileSize > 0 ? [{ label: 'File Size', value: formatFileSize(currentEpisode.fileSize) }] : []),
+   412→                        ...(currentEpisode.publishDate ? [{ label: 'Published', value: formatDate(currentEpisode.publishDate) }] : []),
+   413→                        ...(currentEpisode.season ? [{ label: 'Season', value: `Season ${currentEpisode.season}` }] : []),
+   414→                        ...(currentEpisode.episodeNumber ? [{ label: 'Episode', value: `#${currentEpisode.episodeNumber}` }] : []),
+   415→                        { label: 'Status', value: currentEpisode.completed ? 'Completed' : currentEpisode.isPlayed ? 'Played' : 'New' },
+   416→                      ].map(item => (
+   417→                        <div key={item.label}>
+   418→                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</p>
+   419→                          <p className="text-sm font-medium">{item.value}</p>
+   420→                        </div>
+   421→                      ))}
+   422→                    </div>
+   423→                  </CardContent>
+   424→                </Card>
+   425→
+   426→                {/* Playback Settings Card */}
+   427→                <Card className="bg-card/80 backdrop-blur border-border">
+   428→                  <CardContent className="p-4">
+   429→                    <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+   430→                      <Sparkles className="w-4 h-4 text-primary" /> Playback Settings
+   431→                    </h3>
+   432→                    <div className="space-y-3">
+   433→                      <div className="flex items-center justify-between">
+   434→                        <div className="flex items-center gap-2">
+   435→                          <FastForward className="w-4 h-4 text-muted-foreground" />
+   436→                          <span className="text-xs">Playback Speed</span>
+   437→                        </div>
+   438→                        <div className="flex items-center gap-2">
+   439→                          <span className="text-sm font-mono font-medium">{playbackSpeed}x</span>
+   440→                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={cyclePlaybackSpeed}>
+   441→                            Cycle
+   442→                          </Button>
+   443→                        </div>
+   444→                      </div>
+   445→                      <div className="flex items-center justify-between">
+   446→                        <div className="flex items-center gap-2">
+   447→                          <Scissors className="w-4 h-4 text-muted-foreground" />
+   448→                          <span className="text-xs">Skip Silence</span>
+   449→                        </div>
+   450→                        <Button
+   451→                          variant={skipSilence ? 'secondary' : 'ghost'}
+   452→                          size="sm"
+   453→                          className="h-6 text-[10px]"
+   454→                          onClick={() => usePodcastStore.getState().toggleSkipSilence()}
+   455→                        >
+   456→                          {skipSilence ? 'On' : 'Off'}
+   457→                        </Button>
+   458→                      </div>
+   459→                      <div className="flex items-center justify-between">
+   460→                        <div className="flex items-center gap-2">
+   461→                          <Moon className="w-4 h-4 text-muted-foreground" />
+   462→                          <span className="text-xs">Sleep Timer</span>
+   463→                        </div>
+   464→                        <span className="text-xs text-muted-foreground">
+   465→                          {sleepTimerMinutes !== null ? `${sleepTimerMinutes}m remaining` : 'Off'}
+   466→                        </span>
+   467→                      </div>
+   468→                    </div>
+   469→                  </CardContent>
+   470→                </Card>
+   471→
+   472→                {/* Zone Info */}
+   473→                {activeZone && (
+   474→                  <Card className="bg-card/80 backdrop-blur border-border">
+   475→                    <CardContent className="p-4">
+   476→                      <div className="flex items-center justify-between mb-3">
+   477→                        <h3 className="text-sm font-semibold flex items-center gap-2">
+   478→                          <Gauge className="w-4 h-4 text-primary" /> {activeZone.name}
+   479→                        </h3>
+   480→                        <Badge variant="outline" className="text-[10px]">
+   481→                          {activeZone.endpoints[0]?.dac || 'Unknown DAC'}
+   482→                        </Badge>
+   483→                      </div>
+   484→                    </CardContent>
+   485→                  </Card>
+   486→                )}
+   487→              </div>
+   488→            </div>
+   489→          </div>
+   490→        </ScrollArea>
+   491→      </div>
+   492→    );
+   493→  }
+   494→
+   495→  // ═══════════════════════════════════════════════════════════════
+   496→  // RADIO MODE — Rich Now Playing with station info, codec, genre
+   497→  // ═══════════════════════════════════════════════════════════════
+   498→  if (playbackMode === 'radio' && currentTrack) {
+   499→    const stationId = usePlayerStore.getState().currentRadioStationId;
+   500→    const station = stationId ? internetRadioStations.find(s => s.id === stationId) : null;
+   501→
+   502→    // Elapsed time since playback started (for live streams)
+   503→    const [elapsed, setElapsed] = useState(0);
+   504→    useEffect(() => {
+   505→      const timer = setInterval(() => {
+   506→        if (usePlayerStore.getState().isPlaying) setElapsed(e => e + 1);
+   507→      }, 1000);
+   508→      return () => clearInterval(timer);
+   509→    }, []);
+   510→
+   511→    const formatElapsed = (s: number) => {
+   512→      const h = Math.floor(s / 3600);
+   513→      const m = Math.floor((s % 3600) / 60);
+   514→      const sec = s % 60;
+   515→      if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+   516→      return `${m}:${sec.toString().padStart(2, '0')}`;
+   517→    };
+   518→
+   519→    const genreGradient = useMemo(() => {
+   520→      const genre = station?.genre || currentTrack.albumName;
+   521→      const genreColors: Record<string, string> = {
+   522→        'Jazz': 'from-amber-600 to-orange-800',
+   523→        'Classical': 'from-violet-600 to-purple-800',
+   524→        'Electronic': 'from-cyan-600 to-blue-800',
+   525→        'Rock': 'from-red-600 to-rose-800',
+   526→        'Pop': 'from-pink-600 to-fuchsia-800',
+   527→        'Ambient': 'from-teal-600 to-emerald-800',
+   528→        'Lo-Fi': 'from-indigo-600 to-violet-800',
+   529→        'World': 'from-yellow-600 to-amber-800',
+   530→        'Metal': 'from-zinc-600 to-gray-800',
+   531→        'Blues': 'from-blue-600 to-indigo-800',
+   532→        'Folk': 'from-lime-600 to-green-800',
+   533→        'Country': 'from-orange-600 to-red-800',
+   534→        'Reggae': 'from-green-600 to-teal-800',
+   535→        'Latin': 'from-rose-600 to-orange-800',
+   536→        'Hip Hop': 'from-purple-600 to-indigo-800',
+   537→        'Soul / R&B': 'from-red-600 to-pink-800',
+   538→      };
+   539→      return genreColors[genre] || getCoverGradient(currentTrack.id);
+   540→    }, [station, currentTrack]);
+   541→
+   542→    return (
+   543→      <div className="h-full bg-gradient-to-b from-zinc-950 via-zinc-900 to-zinc-950">
+   544→        <ScrollArea className="h-full">
+   545→          <div className="max-w-6xl mx-auto p-6 pb-32">
+   546→            <Button variant="ghost" size="sm" className="mb-6 text-muted-foreground hover:text-foreground" onClick={() => navigate('home')}>
+   547→              <ArrowLeft className="w-4 h-4 mr-2" /> Back
+   548→            </Button>
+   549→
+   550→            {/* ── HERO: Station Cover + Info ── */}
+   551→            <div className="flex flex-col md:flex-row gap-8 mb-8">
+   552→              {/* Station Art — Large with genre gradient */}
+   553→              <div className="flex-shrink-0 self-center">
+   554→                <div className={`w-72 h-72 lg:w-80 lg:h-80 rounded-2xl bg-gradient-to-br ${genreGradient} shadow-2xl relative overflow-hidden`}>
+   555→                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.12),transparent_70%)] pointer-events-none" />
+   556→                  {/* Signal pattern overlay */}
+   557→                  <div className="absolute inset-0 opacity-10">
+   558→                    <svg width="100%" height="100%" viewBox="0 0 100 100">
+   559→                      <circle cx="50" cy="50" r="10" fill="none" stroke="white" strokeWidth="0.5" />
+   560→                      <circle cx="50" cy="50" r="20" fill="none" stroke="white" strokeWidth="0.3" />
+   561→                      <circle cx="50" cy="50" r="30" fill="none" stroke="white" strokeWidth="0.2" />
+   562→                      <circle cx="50" cy="50" r="40" fill="none" stroke="white" strokeWidth="0.1" />
+   563→                    </svg>
+   564→                  </div>
+   565→                  <div className="absolute inset-0 flex items-center justify-center">
+   566→                    <Radio className="w-24 h-24 text-white/25" />
+   567→                  </div>
+   568→                  {/* LIVE badge */}
+   569→                  <div className="absolute top-4 right-4">
+   570→                    <Badge className="text-[10px] bg-red-500/90 text-white border-red-500/50 h-5 px-1.5 gap-1 animate-pulse">
+   571→                      <span className="w-1.5 h-1.5 rounded-full bg-white" /> LIVE
+   572→                    </Badge>
+   573→                  </div>
+   574→                </div>
+   575→              </div>
+   576→
+   577→              {/* Station Info */}
+   578→              <div className="flex-1 min-w-0 flex flex-col justify-center">
+   579→                <div className="text-center md:text-left w-full">
+   580→                  {/* Type label + ON AIR */}
+   581→                  <div className="flex items-center gap-2 mb-3 justify-center md:justify-start">
+   582→                    <Badge variant="outline" className="text-[10px] gap-1 bg-red-500/10 text-red-400 border-red-500/20">
+   583→                      <Radio className="w-2.5 h-2.5" /> Live Radio
+   584→                    </Badge>
+   585→                    <Badge variant="outline" className="text-[10px] gap-1 animate-pulse">
+   586→                      <Wifi className="w-2.5 h-2.5" /> ON AIR
+   587→                    </Badge>
+   588→                  </div>
+   589→
+   590→                  {/* Station Name */}
+   591→                  <h1 className="text-3xl lg:text-4xl font-bold mb-2 leading-tight">{currentTrack.title}</h1>
+   592→
+   593→                  {/* Genre */}
+   594→                  <p
+   595→                    className="text-lg text-muted-foreground hover:text-primary transition-colors cursor-pointer inline-flex items-center gap-1.5 mb-3"
+   596→                    onClick={() => navigate('radio')}
+   597→                  >
+   598→                    <Tag className="w-4 h-4" /> {station?.genre || currentTrack.albumName}
+   599→                  </p>
+   600→
+   601→                  {/* Description */}
+   602→                  {station?.description && (
+   603→                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{station.description}</p>
+   604→                  )}
+   605→
+   606→                  {/* Metadata badges */}
+   607→                  <div className="flex items-center gap-2 mb-4 flex-wrap justify-center md:justify-start">
+   608→                    {station?.codec && (
+   609→                      <Badge variant="outline" className="text-[10px] font-mono">
+   610→                        {station.codec.toUpperCase()}
+   611→                      </Badge>
+   612→                    )}
+   613→                    {(station?.bitrate || currentTrack.bitrate) && (
+   614→                      <Badge variant="outline" className="text-[10px] font-mono">
+   615→                        <Signal className="w-2.5 h-2.5 mr-0.5" /> {(station?.bitrate || currentTrack.bitrate)} kbps
+   616→                      </Badge>
+   617→                    )}
+   618→                    {station?.sampleRate > 0 && (
+   619→                      <Badge variant="outline" className="text-[10px] font-mono">
+   620→                        {(station.sampleRate / 1000).toFixed(1)} kHz
+   621→                      </Badge>
+   622→                    )}
+   623→                    {station?.country && (
+   624→                      <Badge variant="outline" className="text-[10px]">
+   625→                        <MapPin className="w-2.5 h-2.5 mr-0.5" /> {station.country}
+   626→                      </Badge>
+   627→                    )}
+   628→                    {station?.language && (
+   629→                      <Badge variant="outline" className="text-[10px]">
+   630→                        <Globe className="w-2.5 h-2.5 mr-0.5" /> {station.language}
+   631→                      </Badge>
+   632→                    )}
+   633→                    {station?.source && (
+   634→                      <Badge variant="outline" className="text-[10px]">
+   635→                        {station.source}
+   636→                      </Badge>
+   637→                    )}
+   638→                  </div>
+   639→
+   640→                  {/* Elapsed time */}
+   641→                  <div className="flex items-center gap-2 mb-4 justify-center md:justify-start">
+   642→                    <Badge variant="outline" className="text-[10px] gap-1 text-emerald-400 border-emerald-500/20">
+   643→                      <Clock className="w-2.5 h-2.5" /> Listening for {formatElapsed(elapsed)}
+   644→                    </Badge>
+   645→                  </div>
+   646→                </div>
+   647→
+   648→                {/* Controls */}
+   649→                <div className="w-full max-w-lg self-center md:self-start">
+   650→                  <div className="flex items-center justify-center gap-4 mb-4">
+   651→                    <Button
+   652→                      variant="ghost"
+   653→                      size="icon"
+   654→                      className="h-10 w-10 text-muted-foreground"
+   655→                      onClick={() => usePlayerStore.getState().stopRadio()}
+   656→                      title="Stop"
+   657→                    >
+   658→                      <Square className="w-5 h-5" />
+   659→                    </Button>
+   660→                    <Button variant="default" size="icon" className="h-14 w-14 rounded-full shadow-xl shadow-primary/20" onClick={togglePlay}>
+   661→                      {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7 ml-1" />}
+   662→                    </Button>
+   663→                    <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" onClick={() => navigate('radio')}>
+   664→                      <ListMusic className="w-5 h-5" />
+   665→                    </Button>
+   666→                  </div>
+   667→
+   668→                  {/* Volume */}
+   669→                  <div className="flex items-center gap-3 justify-center">
+   670→                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
+   671→                      {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-muted-foreground" /> : volume < 50 ? <Volume1 className="w-4 h-4 text-muted-foreground" /> : <Volume2 className="w-4 h-4 text-muted-foreground" />}
+   672→                    </Button>
+   673→                    <Slider value={[isMuted ? 0 : volume]} min={0} max={100} step={1} onValueChange={(v) => setVolume(v[0])} className="w-40" />
+   674→                    <span className="text-xs text-muted-foreground tabular-nums w-8 text-right">{volume}%</span>
+   675→                    {activeZone && (
+   676→                      <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground ml-2" onClick={() => navigate('zones')}>
+   677→                        <Gauge className="w-3.5 h-3.5" /> {activeZone.name}
+   678→                      </Button>
+   679→                    )}
+   680→                  </div>
+   681→                </div>
+   682→              </div>
+   683→            </div>
+   684→
+   685→            {/* ── AUDIO VISUALIZER ── */}
+   686→            <div className="mb-8 relative">
+   687→              <div className="absolute inset-0 -m-4 rounded-2xl bg-primary/5 blur-2xl pointer-events-none" />
+   688→              <AudioVisualizer
+   689→                mode="bars"
+   690→                width={900}
+   691→                height={180}
+   692→                barCount={96}
+   693→                colorScheme="gold"
+   694→                className="rounded-xl overflow-hidden relative z-10"
+   695→              />
+   696→            </div>
+   697→
+   698→            {/* ── BOTTOM INFO CARDS ── */}
+   699→            <div className="grid md:grid-cols-[1fr_1fr] gap-6">
+   700→              {/* Left Column: Station Details */}
+   701→              <div className="space-y-6">
+   702→                {/* Station Info Card */}
+   703→                <Card className="bg-card/80 backdrop-blur border-border overflow-hidden">
+   704→                  <CardContent className="p-0">
+   705→                    <div className="flex items-center gap-4 p-4 cursor-pointer hover:bg-accent/20 transition-colors" onClick={() => navigate('radio')}>
+   706→                      <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${genreGradient} shadow-md flex-shrink-0 flex items-center justify-center`}>
+   707→                        <Radio className="w-6 h-6 text-white/40" />
+   708→                      </div>
+   709→                      <div className="flex-1 min-w-0">
+   710→                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Now Playing Station</p>
+   711→                        <h3 className="text-base font-semibold truncate">{currentTrack.title}</h3>
+   712→                        <p className="text-xs text-muted-foreground">Browse all radio stations</p>
+   713→                      </div>
+   714→                      <ArrowLeft className="w-4 h-4 text-muted-foreground rotate-180" />
+   715→                    </div>
+   716→                    {station?.description && (
+   717→                      <div className="px-4 pb-4">
+   718→                        <p className="text-xs text-muted-foreground leading-relaxed">{station.description}</p>
+   719→                      </div>
+   720→                    )}
+   721→                  </CardContent>
+   722→                </Card>
+   723→
+   724→                {/* Tags */}
+   725→                {station?.tags && station.tags.length > 0 && (
+   726→                  <Card className="bg-card/80 backdrop-blur border-border">
+   727→                    <CardContent className="p-4">
+   728→                      <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+   729→                        <Tag className="w-4 h-4 text-muted-foreground" /> Tags
+   730→                      </h3>
+   731→                      <div className="flex flex-wrap gap-1.5">
+   732→                        {station.tags.map(tag => (
+   733→                          <Badge key={tag} variant="secondary" className="text-[10px]">
+   734→                            {tag}
+   735→                          </Badge>
+   736→                        ))}
+   737→                      </div>
+   738→                    </CardContent>
+   739→                  </Card>
+   740→                )}
+   741→              </div>
+   742→
+   743→              {/* Right Column: Technical + Signal Path */}
+   744→              <div className="space-y-6">
+   745→                {/* Technical Details */}
+   746→                <Card className="bg-card/80 backdrop-blur border-border">
+   747→                  <CardContent className="p-4">
+   748→                    <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+   749→                      <Disc3 className="w-4 h-4 text-muted-foreground" /> Stream Details
+   750→                    </h3>
+   751→                    <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+   752→                      {[
+   753→                        { label: 'Codec', value: station?.codec?.toUpperCase() || currentTrack.format },
+   754→                        { label: 'Bitrate', value: `${(station?.bitrate || currentTrack.bitrate)} kbps` },
+   755→                        ...(station?.sampleRate > 0 ? [{ label: 'Sample Rate', value: `${(station.sampleRate / 1000).toFixed(1)} kHz` }] : []),
+   756→                        { label: 'Source', value: station?.source || 'Internet Radio' },
+   757→                        ...(station?.country ? [{ label: 'Country', value: station.country }] : []),
+   758→                        ...(station?.language ? [{ label: 'Language', value: station.language }] : []),
+   759→                        { label: 'Listened', value: formatElapsed(elapsed) },
+   760→                        { label: 'Status', value: isPlaying ? 'Streaming' : 'Paused' },
+   761→                      ].map(item => (
+   762→                        <div key={item.label}>
+   763→                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</p>
+   764→                          <p className="text-sm font-mono font-medium">{item.value}</p>
+   765→                        </div>
+   766→                      ))}
+   767→                    </div>
+   768→                  </CardContent>
+   769→                </Card>
+   770→
+   771→                {/* Signal Path */}
+   772→                <Card className="bg-card/80 backdrop-blur border-border">
+   773→                  <CardContent className="p-4">
+   774→                    <div className="flex items-center justify-between mb-3">
+   775→                      <h3 className="text-sm font-semibold flex items-center gap-2">
+   776→                        <Gauge className="w-4 h-4 text-primary" /> Signal Path
+   777→                      </h3>
+   778→                      <Badge variant="outline" className="text-[10px] text-red-400 border-red-500/30">
+   779→                        <Wifi className="w-3 h-3 mr-0.5" /> Live Stream
+   780→                      </Badge>
+   781→                    </div>
+   782→                    <div className="flex items-center gap-2 text-xs text-muted-foreground py-2 flex-wrap">
+   783→                      <Badge variant="secondary" className="text-[10px] font-mono">{station?.codec?.toUpperCase() || 'MP3'}</Badge>
+   784→                      <span className="text-muted-foreground/50">→</span>
+   785→                      <Badge variant="secondary" className="text-[10px] font-mono">{(station?.bitrate || currentTrack.bitrate)}kbps</Badge>
+   786→                      <span className="text-muted-foreground/50">→</span>
+   787→                      <Badge variant="secondary" className="text-[10px]">HTTP Proxy</Badge>
+   788→                      <span className="text-muted-foreground/50">→</span>
+   789→                      <Badge variant="secondary" className="text-[10px]">Web Audio API</Badge>
+   790→                      <span className="text-muted-foreground/50">→</span>
+   791→                      <Badge variant="secondary" className="text-[10px]">DAC Output</Badge>
+   792→                    </div>
+   793→                  </CardContent>
+   794→                </Card>
+   795→
+   796→                {/* Zone Info */}
+   797→                {activeZone && (
+   798→                  <Card className="bg-card/80 backdrop-blur border-border">
+   799→                    <CardContent className="p-4">
+   800→                      <div className="flex items-center justify-between mb-3">
+   801→                        <h3 className="text-sm font-semibold flex items-center gap-2">
+   802→                          <Gauge className="w-4 h-4 text-primary" /> {activeZone.name}
+   803→                        </h3>
+   804→                        <Badge variant="outline" className="text-[10px]">
+   805→                          {activeZone.endpoints[0]?.dac || 'Unknown DAC'}
+   806→                        </Badge>
+   807→                      </div>
+   808→                    </CardContent>
+   809→                  </Card>
+   810→                )}
+   811→              </div>
+   812→            </div>
+   813→          </div>
+   814→        </ScrollArea>
+   815→      </div>
+   816→    );
+   817→  }
+   818→
+   819→  // ═══════════════════════════════════════════════════════════════
+   820→  // EMPTY STATE
+   821→  // ═══════════════════════════════════════════════════════════════
+   822→  if (!currentTrack) {
+   823→    return (
+   824→      <div className="flex items-center justify-center h-full text-muted-foreground">
+   825→        <div className="text-center">
+   826→          <ListMusic className="w-16 h-16 mx-auto mb-4 opacity-30" />
+   827→          <p className="text-lg">Nothing playing</p>
+   828→          <p className="text-sm">Select a track to start listening</p>
+   829→        </div>
+   830→      </div>
+   831→    );
+   832→  }
+   833→
+   834→  // ═══════════════════════════════════════════════════════════════
+   835→  // MAIN NOW PLAYING VIEW
+   836→  // ═══════════════════════════════════════════════════════════════
+   837→  return (
+   838→    <div className={`h-full bg-gradient-to-b ${bgGradient}`}>
+   839→      <ScrollArea className="h-full">
+   840→        <div className="max-w-6xl mx-auto p-6 pb-32">
+   841→          {/* Back button */}
+   842→          <Button variant="ghost" size="sm" className="mb-6 text-muted-foreground hover:text-foreground" onClick={() => navigate('home')}>
+   843→            <ArrowLeft className="w-4 h-4 mr-2" /> Back
+   844→          </Button>
+   845→
+   846→          {/* ── HERO: Large Album Cover + Track Info ── */}
+   847→          <div className="flex flex-col md:flex-row gap-8 mb-10">
+   848→            {/* Album Cover — Large */}
+   849→            <div className="flex-shrink-0 self-center">
+   850→              <div className={`w-72 h-72 lg:w-80 lg:h-80 rounded-2xl bg-gradient-to-br ${getCoverGradient(currentTrack.id)} shadow-2xl relative overflow-hidden group`}>
+   851→                {trackCoverArt ? (
+   852→                  <img src={trackCoverArt} alt={currentTrack.albumName} className="w-full h-full object-cover" />
+   853→                ) : null}
+   854→                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.12),transparent_70%)] pointer-events-none" />
+   855→                {/* Vinyl peek effect */}
+   856→                <div className="absolute -bottom-2 -right-2 w-48 h-48 rounded-full bg-zinc-900 border border-zinc-800 shadow-xl transition-transform duration-700 group-hover:translate-x-4 opacity-0 group-hover:opacity-80">
+   857→                  <div className="absolute inset-[20%] rounded-full border border-zinc-700/40" />
+   858→                  <div className="absolute inset-[35%] rounded-full border border-zinc-700/30" />
+   859→                  <div className="absolute inset-[48%] rounded-full bg-zinc-800 flex items-center justify-center">
+   860→                    <div className="w-2 h-2 rounded-full bg-zinc-600" />
+   861→                  </div>
+   862→                </div>
+   863→              </div>
+   864→            </div>
+   865→
+   866→            {/* Track Info + Controls — stacked vertically */}
+   867→            <div className="flex-1 min-w-0 flex flex-col justify-center">
+   868→              <div className="text-center md:text-left w-full max-w-md md:max-w-none">
+   869→                {/* ── Smart Controls: Crossfade + Bit-Perfect indicators ── */}
+   870→                <div className="flex items-center gap-2 mb-3 justify-center md:justify-start flex-wrap">
+   871→                  {gaplessPlayback && (
+   872→                    <Badge variant="outline" className="text-[10px] gap-1 bg-emerald-500/5 border-emerald-500/20 text-emerald-400">
+   873→                      <Zap className="w-2.5 h-2.5" /> Gapless
+   874→                    </Badge>
+   875→                  )}
+   876→                  {bitPerfectDefault && (
+   877→                    <Badge variant="outline" className="text-[10px] gap-1 bg-sky-500/5 border-sky-500/20 text-sky-400">
+   878→                      <Sparkles className="w-2.5 h-2.5" /> Bit-Perfect
+   879→                    </Badge>
+   880→                  )}
+   881→                </div>
+   882→
+   883→                {/* ── Audio format detail row with quality badge ── */}
+   884→                <div className="flex items-center gap-2 mb-3 justify-center md:justify-start flex-wrap">
+   885→                  <Badge variant="outline" className={`text-[10px] font-mono ${qualityBadge.className}`}>
+   886→                    {qualityBadge.label}
+   887→                  </Badge>
+   888→                  <span className="text-[11px] text-muted-foreground font-mono">
+   889→                    {formatDetailString}
+   890→                  </span>
+   891→                </div>
+   892→
+   893→                {/* Title */}
+   894→                <h1 className="text-3xl lg:text-4xl font-bold mb-2 leading-tight">{currentTrack.title}</h1>
+   895→
+   896→                {/* Artist — clickable → artist-detail */}
+   897→                <p
+   898→                  className="text-lg text-muted-foreground hover:text-primary transition-colors cursor-pointer inline-flex items-center gap-1.5"
+   899→                  onClick={() => navigate('artist-detail', { artistId: currentTrack.artistId })}
+   900→                >
+   901→                  {currentTrack.artistName}
+   902→                </p>
+   903→
+   904→                {/* Album — clickable → album-detail */}
+   905→                <p
+   906→                  className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer inline-flex items-center gap-1"
+   907→                  onClick={() => navigate('album-detail', { albumId: currentTrack.albumId })}
+   908→                >
+   909→                  <Disc3 className="w-3.5 h-3.5" /> {currentTrack.albumName}
+   910→                </p>
+   911→
+   912→                {/* ── Genre badge + Track/Disc info ── */}
+   913→                <div className="flex items-center gap-2 mt-2 flex-wrap justify-center md:justify-start">
+   914→                  {currentTrack.genre && (
+   915→                    <Badge
+   916→                      variant="secondary"
+   917→                      className="text-[10px] cursor-pointer hover:bg-primary/20"
+   918→                      onClick={() => navigate('genre-detail', { genreId: currentTrack.genre.toLowerCase().replace(/\s+/g, '-') })}
+   919→                    >
+   920→                      {currentTrack.genre}
+   921→                    </Badge>
+   922→                  )}
+   923→                  {currentTrack.trackNumber > 0 && (
+   924→                    <span className="text-[11px] text-muted-foreground/70">
+   925→                      Track {currentTrack.trackNumber}{currentTrack.discNumber > 1 ? ` · Disc ${currentTrack.discNumber}` : ''}
+   926→                    </span>
+   927→                  )}
+   928→                </div>
+   929→
+   930→                {/* ── File format details ── */}
+   931→                <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground/60 font-mono flex-wrap justify-center md:justify-start">
+   932→                  <span>{(currentTrack.bitrate / 1000).toFixed(0)} kbps</span>
+   933→                  {currentTrack.fileSize > 0 && <span>{formatFileSize(currentTrack.fileSize)}</span>}
+   934→                  <span className="text-muted-foreground/40">{currentTrack.source === 'local' ? 'Local' : currentTrack.source === 'tidal' ? 'TIDAL' : 'Qobuz'}</span>
+   935→                </div>
+   936→
+   937→                {/* Performer credits */}
+   938→                {currentTrack.performers.length > 0 && (
+   939→                  <div className="mt-3 flex flex-wrap gap-1.5 justify-center md:justify-start">
+   940→                    {currentTrack.performers.map((p, i) => (
+   941→                      <Badge key={i} variant="outline" className="text-[10px]">
+   942→                        <Mic2 className="w-2.5 h-2.5 mr-0.5" /> {p.name} — {p.instrument || p.role}
+   943→                      </Badge>
+   944→                    ))}
+   945→                  </div>
+   946→                )}
+   947→
+   948→                {/* Composer */}
+   949→                {currentTrack.composers.length > 0 && (
+   950→                  <p className="text-xs text-muted-foreground/70 mt-1">
+   951→                    Composer: {currentTrack.composers.join(', ')}
+   952→                  </p>
+   953→                )}
+   954→              </div>
+   955→
+   956→              {/* Full Controls */}
+   957→              <div className="w-full max-w-md md:max-w-lg mt-8 space-y-4 self-center md:self-start">
+   958→                {/* Progress */}
+   959→                <div className="space-y-1">
+   960→                  <Slider
+   961→                    value={[progress]}
+   962→                    min={0}
+   963→                    max={100}
+   964→                    step={0.1}
+   965→                    onValueChange={(v) => seek(v[0])}
+   966→                    className="w-full cursor-pointer [&_[role=slider]]:h-4 [&_[role=slider]]:w-4"
+   967→                  />
+   968→                  <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
+   969→                    <span>{formatDuration(currentTime)}</span>
+   970→                    <span>{formatDuration(currentTrack.duration)}</span>
+   971→                  </div>
+   972→                </div>
+   973→
+   974→                {/* Transport Buttons */}
+   975→                <div className="flex items-center justify-center gap-4">
+   976→                  <Button variant="ghost" size="icon" className={`h-10 w-10 ${isShuffle ? 'text-primary' : 'text-muted-foreground'}`} onClick={toggleShuffle}>
+   977→                    <Shuffle className="w-5 h-5" />
+   978→                  </Button>
+   979→                  <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" onClick={previous}>
+   980→                    <SkipBack className="w-5 h-5" />
+   981→                  </Button>
+   982→                  <Button variant="default" size="icon" className="h-14 w-14 rounded-full shadow-xl shadow-primary/20" onClick={togglePlay}>
+   983→                    {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7 ml-1" />}
+   984→                  </Button>
+   985→                  <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" onClick={next}>
+   986→                    <SkipForward className="w-5 h-5" />
+   987→                  </Button>
+   988→                  <Button variant="ghost" size="icon" className={`h-10 w-10 ${repeatMode !== 'off' ? 'text-primary' : 'text-muted-foreground'}`} onClick={toggleRepeat}>
+   989→                    {repeatMode === 'one' ? <Repeat1 className="w-5 h-5" /> : <Repeat className="w-5 h-5" />}
+   990→                  </Button>
+   991→                </div>
+   992→
+   993→                {/* Volume */}
+   994→                <div className="flex items-center gap-3 justify-center">
+   995→                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
+   996→                    {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-muted-foreground" /> : volume < 50 ? <Volume1 className="w-4 h-4 text-muted-foreground" /> : <Volume2 className="w-4 h-4 text-muted-foreground" />}
+   997→                  </Button>
+   998→                  <Slider value={[isMuted ? 0 : volume]} min={0} max={100} step={1} onValueChange={(v) => setVolume(v[0])} className="w-40" />
+   999→                  <span className="text-xs text-muted-foreground tabular-nums w-8 text-right">{volume}%</span>
+  1000→                </div>
+  1001→
+  1002→                {/* Action Buttons — including Add to Playlist */}
+  1003→                <div className="flex items-center justify-center gap-2 mt-1 flex-wrap">
+  1004→                  <Button variant="ghost" size="sm" className={`h-8 gap-1.5 ${isTrackLoved(currentTrack.id) ? 'text-red-500' : 'text-muted-foreground'}`} onClick={() => toggleLoveTrack(currentTrack.id)}>
+  1005→                    <Heart className={`w-4 h-4 ${isTrackLoved(currentTrack.id) ? 'fill-red-500 text-red-500' : ''}`} />
+  1006→                    {isTrackLoved(currentTrack.id) ? 'Loved' : 'Love'}
+  1007→                  </Button>
+  1008→
+  1009→                  {/* ── Add to Playlist Button ── */}
+  1010→                  <DropdownMenu>
+  1011→                    <DropdownMenuTrigger asChild>
+  1012→                      <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-muted-foreground">
+  1013→                        <ListPlus className="w-4 h-4" /> Add to Playlist
+  1014→                      </Button>
+  1015→                    </DropdownMenuTrigger>
+  1016→                    <DropdownMenuContent align="center" className="w-56">
+  1017→                      <DropdownMenuLabel className="text-xs text-muted-foreground">
+  1018→                        Add &ldquo;{currentTrack.title}&rdquo; to…
+  1019→                      </DropdownMenuLabel>
+  1020→                      <DropdownMenuSeparator />
+  1021→                      {playlists.length === 0 && (
+  1022→                        <div className="px-2 py-3 text-xs text-muted-foreground text-center">
+  1023→                          No playlists yet.
+  1024→                          <br />
+  1025→                          <button
+  1026→                            className="text-primary hover:underline mt-1"
+  1027→                            onClick={() => navigate('browse-playlists')}
+  1028→                          >
+  1029→                            Create one first
+  1030→                          </button>
+  1031→                        </div>
+  1032→                      )}
+  1033→                      {playlists.map(pl => {
+  1034→                        const alreadyIn = hasTrackInPlaylist(pl.id, currentTrack.id);
+  1035→                        return (
+  1036→                          <DropdownMenuItem
+  1037→                            key={pl.id}
+  1038→                            className="text-xs gap-2 cursor-pointer"
+  1039→                            disabled={alreadyIn}
+  1040→                            onClick={() => addToPlaylist(pl.id, currentTrack.id)}
+  1041→                          >
+  1042→                            <ListMusic className="w-3.5 h-3.5" />
+  1043→                            <span className="flex-1 truncate">{pl.name}</span>
+  1044→                            <span className="text-muted-foreground">{pl.trackCount}</span>
+  1045→                            {alreadyIn && <Badge variant="secondary" className="text-[9px] h-4 px-1.5">Added</Badge>}
+  1046→                          </DropdownMenuItem>
+  1047→                        );
+  1048→                      })}
+  1049→                    </DropdownMenuContent>
+  1050→                  </DropdownMenu>
+  1051→
+  1052→                  <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-muted-foreground" onClick={() => navigate('radio')}>
+  1053→                    <Radio className="w-4 h-4" /> Radio
+  1054→                  </Button>
+  1055→                  <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-muted-foreground" onClick={() => {
+  1056→                    const info = `${currentTrack.title} — ${currentTrack.artistName} (${currentTrack.albumName})`;
+  1057→                    navigator.clipboard.writeText(info).catch(() => {});
+  1058→                  }}>
+  1059→                    <Share2 className="w-4 h-4" /> Share
+  1060→                  </Button>
+  1061→                </div>
+  1062→              </div>
+  1063→            </div>
+  1064→          </div>
+  1065→
+  1066→          {/* ── AUDIO VISUALIZER — Prominent with glow effect ── */}
+  1067→          <div className="mb-8 relative">
+  1068→            {/* Glow backdrop */}
+  1069→            <div className="absolute inset-0 -m-4 rounded-2xl bg-primary/5 blur-2xl pointer-events-none" />
+  1070→            <AudioVisualizer
+  1071→              mode="bars"
+  1072→              width={900}
+  1073→              height={180}
+  1074→              barCount={96}
+  1075→              colorScheme="gold"
+  1076→              className="rounded-xl overflow-hidden relative z-10"
+  1077→            />
+  1078→          </div>
+  1079→
+  1080→          {/* ── VISUALIZER / LYRICS TOGGLE ── */}
+  1081→          <div className="flex items-center justify-center gap-2 mb-6">
+  1082→            <Button
+  1083→              variant={showVisualizer ? 'default' : 'ghost'}
+  1084→              size="sm"
+  1085→              className="h-7 text-xs gap-1.5"
+  1086→              onClick={() => setShowVisualizer(true)}
+  1087→            >
+  1088→              <Waves className="w-3.5 h-3.5" /> Visualizer
+  1089→            </Button>
+  1090→            <Button
+  1091→              variant={!showVisualizer ? 'default' : 'ghost'}
+  1092→              size="sm"
+  1093→              className="h-7 text-xs gap-1.5"
+  1094→              onClick={() => setShowVisualizer(false)}
+  1095→            >
+  1096→              <Music className="w-3.5 h-3.5" /> Lyrics
+  1097→            </Button>
+  1098→          </div>
+  1099→
+  1100→          {/* ── BOTTOM PANELS ── */}
+  1101→          <div className="grid md:grid-cols-[1fr_1fr] gap-6">
+  1102→            {/* Left Column */}
+  1103→            <div className="space-y-6">
+  1104→              {/* Lyrics Panel — visible when toggled */}
+  1105→              {!showVisualizer && <LyricsPanel />}
+  1106→
+  1107→              {/* Artist Info Card */}
+  1108→              <Card className="bg-card/80 backdrop-blur border-border overflow-hidden">
+  1109→                <CardContent className="p-0">
+  1110→                  <div className="flex items-center gap-4 p-4 cursor-pointer hover:bg-accent/20 transition-colors" onClick={() => navigate('artist-detail', { artistId: currentTrack.artistId })}>
+  1111→                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/30 to-primary/5 flex items-center justify-center flex-shrink-0 ring-1 ring-primary/20">
+  1112→                      {artistImageLoading ? (
+  1113→                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+  1114→                      ) : artistImage?.imageUrl ? (
+  1115→                        <div className="w-16 h-16 rounded-full bg-muted overflow-hidden">
+  1116→                          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+  1117→                            <User className="w-8 h-8 text-primary/40" />
+  1118→                          </div>
+  1119→                        </div>
+  1120→                      ) : (
+  1121→                        <User className="w-8 h-8 text-primary/40" />
+  1122→                      )}
+  1123→                    </div>
+  1124→                    <div className="flex-1 min-w-0">
+  1125→                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Now Playing Artist</p>
+  1126→                      <h3 className="text-base font-semibold truncate">{currentTrack.artistName}</h3>
+  1127→                      <p className="text-xs text-muted-foreground">View full artist profile</p>
+  1128→                    </div>
+  1129→                    <ArrowLeft className="w-4 h-4 text-muted-foreground rotate-180" />
+  1130→                  </div>
+  1131→                  {artistBio && !bioLoading && artistBio.summaries.length > 0 && (
+  1132→                    <div className="px-4 pb-4">
+  1133→                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
+  1134→                        {artistBio.summaries[0].snippet}
+  1135→                      </p>
+  1136→                      <a href={artistBio.summaries[0].url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline inline-flex items-center gap-0.5 mt-1">
+  1137→                        Read full bio on {artistBio.summaries[0].source} <ExternalLink className="w-2.5 h-2.5" />
+  1138→                      </a>
+  1139→                    </div>
+  1140→                  )}
+  1141→                  {bioLoading && (
+  1142→                    <div className="px-4 pb-3 flex items-center gap-2 text-xs text-muted-foreground">
+  1143→                      <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+  1144→                      Loading artist info...
+  1145→                    </div>
+  1146→                  )}
+  1147→                </CardContent>
+  1148→              </Card>
+  1149→
+  1150→              {/* Album Info Card */}
+  1151→              <Card className="bg-card/80 backdrop-blur border-border overflow-hidden">
+  1152→                <CardContent className="p-0">
+  1153→                  <div className="flex items-center gap-4 p-4 cursor-pointer hover:bg-accent/20 transition-colors" onClick={() => navigate('album-detail', { albumId: currentTrack.albumId })}>
+  1154→                    <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${getCoverGradient(currentTrack.albumId)} shadow-md flex-shrink-0 overflow-hidden`}>
+  1155→                      {trackCoverArt && <img src={trackCoverArt} alt="" className="w-full h-full object-cover" />}
+  1156→                    </div>
+  1157→                    <div className="flex-1 min-w-0">
+  1158→                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">From the Album</p>
+  1159→                      <h3 className="text-base font-semibold truncate">{currentTrack.albumName}</h3>
+  1160→                      <p className="text-xs text-muted-foreground">{currentTrack.artistName} · {formatDetailString}</p>
+  1161→                    </div>
+  1162→                    <ArrowLeft className="w-4 h-4 text-muted-foreground rotate-180" />
+  1163→                  </div>
+  1164→                  {albumInfoData && !albumInfoLoading && albumInfoData.summaries.length > 0 && (
+  1165→                    <div className="px-4 pb-4">
+  1166→                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
+  1167→                        {albumInfoData.summaries[0].snippet}
+  1168→                      </p>
+  1169→                      <a href={albumInfoData.summaries[0].url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline inline-flex items-center gap-0.5 mt-1">
+  1170→                        Read more on {albumInfoData.summaries[0].source} <ExternalLink className="w-2.5 h-2.5" />
+  1171→                      </a>
+  1172→                    </div>
+  1173→                  )}
+  1174→                  {albumInfoLoading && (
+  1175→                    <div className="px-4 pb-3 flex items-center gap-2 text-xs text-muted-foreground">
+  1176→                      <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+  1177→                      Loading album info...
+  1178→                    </div>
+  1179→                  )}
+  1180→                </CardContent>
+  1181→              </Card>
+  1182→            </div>
+  1183→
+  1184→            {/* Right Column */}
+  1185→            <div className="space-y-6">
+  1186→              {/* Signal Path */}
+  1187→              <Card className="bg-card/80 backdrop-blur border-border">
+  1188→                <CardContent className="p-4">
+  1189→                  <div className="flex items-center justify-between mb-3">
+  1190→                    <h3 className="text-sm font-semibold flex items-center gap-2">
+  1191→                      <Gauge className="w-4 h-4 text-primary" /> Signal Path
+  1192→                    </h3>
+  1193→                    <Badge
+  1194→                      variant="outline"
+  1195→                      className={`text-[10px] ${
+  1196→                        bitPerfectDefault
+  1197→                          ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/5'
+  1198→                          : 'text-signal-amber'
+  1199→                      }`}
+  1200→                    >
+  1201→                      {bitPerfectDefault ? (
+  1202→                        <><Sparkles className="w-3 h-3 mr-0.5" /> Bit-Perfect</>
+  1203→                      ) : (
+  1204→                        <><AlertCircle className="w-3 h-3 mr-0.5" /> Processing</>
+  1205→                      )}
+  1206→                    </Badge>
+  1207→                  </div>
+  1208→                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-2 flex-wrap">
+  1209→                    <Badge variant="secondary" className="text-[10px] font-mono">{currentTrack.format}</Badge>
+  1210→                    <span className="text-muted-foreground/50">→</span>
+  1211→                    <Badge variant="secondary" className="text-[10px] font-mono">{formatSampleRate(currentTrack.sampleRate)}</Badge>
+  1212→                    <span className="text-muted-foreground/50">→</span>
+  1213→                    <Badge variant="secondary" className="text-[10px] font-mono">{currentTrack.bitDepth}-bit</Badge>
+  1214→                    <span className="text-muted-foreground/50">→</span>
+  1215→                    <Badge variant="secondary" className="text-[10px] font-mono">{currentTrack.channels}-ch</Badge>
+  1216→                    <span className="text-muted-foreground/50">→</span>
+  1217→                    <Badge variant="secondary" className="text-[10px]">DAC Output</Badge>
+  1218→                  </div>
+  1219→                  {gaplessPlayback && (
+  1220→                    <div className="mt-2 flex items-center gap-1.5 text-[10px] text-emerald-400">
+  1221→                      <Zap className="w-3 h-3" /> Gapless crossfade active
+  1222→                    </div>
+  1223→                  )}
+  1224→                </CardContent>
+  1225→              </Card>
+  1226→
+  1227→              {/* Technical Details */}
+  1228→              <Card className="bg-card/80 backdrop-blur border-border">
+  1229→                <CardContent className="p-4">
+  1230→                  <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+  1231→                    <Disc3 className="w-4 h-4 text-muted-foreground" /> Technical Details
+  1232→                  </h3>
+  1233→                  <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+  1234→                    {[
+  1235→                      { label: 'Codec', value: currentTrack.format },
+  1236→                      { label: 'Sample Rate', value: formatSampleRate(currentTrack.sampleRate) },
+  1237→                      { label: 'Bit Depth', value: `${currentTrack.bitDepth}-bit` },
+  1238→                      { label: 'Channels', value: `${currentTrack.channels}-ch` },
+  1239→                      { label: 'Bitrate', value: `${(currentTrack.bitrate / 1000).toFixed(0)} kbps` },
+  1240→                      { label: 'File Size', value: formatFileSize(currentTrack.fileSize) },
+  1241→                      { label: 'Source', value: currentTrack.source === 'local' ? 'Local Library' : currentTrack.source === 'tidal' ? 'TIDAL' : 'Qobuz' },
+  1242→                      { label: 'Duration', value: formatDuration(currentTrack.duration) },
+  1243→                    ].map(item => (
+  1244→                      <div key={item.label}>
+  1245→                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</p>
+  1246→                        <p className="text-sm font-mono font-medium">{item.value}</p>
+  1247→                      </div>
+  1248→                    ))}
+  1249→                  </div>
+  1250→                </CardContent>
+  1251→              </Card>
+  1252→
+  1253→              {/* Zone Info */}
+  1254→              {activeZone && (
+  1255→                <Card className="bg-card/80 backdrop-blur border-border">
+  1256→                  <CardContent className="p-4">
+  1257→                    <div className="flex items-center justify-between mb-3">
+  1258→                      <h3 className="text-sm font-semibold flex items-center gap-2">
+  1259→                        <Gauge className="w-4 h-4 text-primary" /> {activeZone.name}
+  1260→                      </h3>
+  1261→                      <Badge variant="outline" className="text-[10px]">
+  1262→                        {activeZone.endpoints[0]?.dac || 'Unknown DAC'}
+  1263→                      </Badge>
+  1264→                    </div>
+  1265→                    <div className="space-y-2">
+  1266→                      {activeZone.dspEnabled && activeZone.dspChain && (
+  1267→                        <div>
+  1268→                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">DSP Chain</p>
+  1269→                          <div className="flex flex-wrap gap-1 mt-1">
+  1270→                            {activeZone.dspChain.map(dsp => (
+  1271→                              <Badge key={dsp} variant="secondary" className="text-[10px]">{dsp}</Badge>
+  1272→                            ))}
+  1273→                          </div>
+  1274→                        </div>
+  1275→                      )}
+  1276→                    </div>
+  1277→                  </CardContent>
+  1278→                </Card>
+  1279→              )}
+  1280→
+  1281→              {/* File Info */}
+  1282→              {currentTrack.filePath && (
+  1283→                <Card className="bg-card/80 backdrop-blur border-border">
+  1284→                  <CardContent className="p-4">
+  1285→                    <h3 className="text-sm font-semibold flex items-center gap-2 mb-2">
+  1286→                      <Clock className="w-4 h-4 text-muted-foreground" /> File Info
+  1287→                    </h3>
+  1288→                    <p className="text-xs font-mono text-muted-foreground break-all">{currentTrack.filePath}</p>
+  1289→                  </CardContent>
+  1290→                </Card>
+  1291→              )}
+  1292→            </div>
+  1293→          </div>
+  1294→
+  1295→          {/* ── QUEUE PEEK PANEL — Collapsible ── */}
+  1296→          <div className="mt-8">
+  1297→            <Collapsible open={queueOpen} onOpenChange={setQueueOpen}>
+  1298→              <CollapsibleTrigger asChild>
+  1299→                <Button
+  1300→                  variant="ghost"
+  1301→                  className="w-full h-auto py-3 px-4 flex items-center justify-between hover:bg-accent/10 rounded-xl transition-colors"
+  1302→                >
+  1303→                  <div className="flex items-center gap-2">
+  1304→                    <ListMusic className="w-4 h-4 text-muted-foreground" />
+  1305→                    <span className="text-sm font-semibold">Up Next</span>
+  1306→                    <Badge variant="secondary" className="text-[10px] font-mono">
+  1307→                      {queue.length - queueIndex - 1}
+  1308→                    </Badge>
+  1309→                  </div>
+  1310→                  <div className="flex items-center gap-2">
+  1311→                    <Button
+  1312→                      variant="ghost"
+  1313→                      size="sm"
+  1314→                      className="h-6 text-[11px] gap-1 text-muted-foreground hover:text-primary"
+  1315→                      onClick={(e) => {
+  1316→                        e.stopPropagation();
+  1317→                        toggleQueueDrawer();
+  1318→                      }}
+  1319→                    >
+  1320→                      <LayoutList className="w-3.5 h-3.5" /> Show Full Queue
+  1321→                    </Button>
+  1322→                    {queueOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+  1323→                  </div>
+  1324→                </Button>
+  1325→              </CollapsibleTrigger>
+  1326→              <CollapsibleContent>
+  1327→                <Card className="bg-card/60 backdrop-blur border-border mt-2">
+  1328→                  <CardContent className="p-2">
+  1329→                    {queuePeekTracks.length === 0 ? (
+  1330→                      <p className="text-xs text-muted-foreground text-center py-4">Queue is empty — add more tracks to keep the music going</p>
+  1331→                    ) : (
+  1332→                      <div className="space-y-0.5">
+  1333→                        {queuePeekTracks.map((track, idx) => {
+  1334→                          const nextCover = localTracks.find(lt => lt.id === track.id)?.coverArt;
+  1335→                          const globalIdx = queueIndex + 1 + idx;
+  1336→                          return (
+  1337→                            <div
+  1338→                              key={track.id}
+  1339→                              className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-accent/30 cursor-pointer transition-colors group"
+  1340→                              onClick={() => usePlayerStore.getState().play(track)}
+  1341→                            >
+  1342→                              {/* Queue index number */}
+  1343→                              <span className="text-[10px] text-muted-foreground/50 w-4 text-right tabular-nums font-mono">
+  1344→                                {globalIdx + 1}
+  1345→                              </span>
+  1346→                              {/* Cover art */}
+  1347→                              {nextCover ? (
+  1348→                                <img src={nextCover} alt="" className="w-10 h-10 rounded-md object-cover flex-shrink-0 shadow-sm" />
+  1349→                              ) : (
+  1350→                                <div className={`w-10 h-10 rounded-md bg-gradient-to-br ${getCoverGradient(track.id)} flex-shrink-0 shadow-sm`} />
+  1351→                              )}
+  1352→                              {/* Track info */}
+  1353→                              <div className="min-w-0 flex-1">
+  1354→                                <p className="text-xs font-medium truncate group-hover:text-primary transition-colors">{track.title}</p>
+  1355→                                <p className="text-[11px] text-muted-foreground truncate">{track.artistName}</p>
+  1356→                              </div>
+  1357→                              {/* Format + Duration */}
+  1358→                              <div className="flex items-center gap-2 flex-shrink-0">
+  1359→                                <Badge variant="outline" className="text-[9px] font-mono px-1.5 h-4 hidden sm:inline-flex">
+  1360→                                  {track.format}
+  1361→                                </Badge>
+  1362→                                <span className="text-[11px] text-muted-foreground tabular-nums w-10 text-right">
+  1363→                                  {formatDuration(track.duration)}
+  1364→                                </span>
+  1365→                              </div>
+  1366→                            </div>
+  1367→                          );
+  1368→                        })}
+  1369→                      </div>
+  1370→                    )}
+  1371→                  </CardContent>
+  1372→                </Card>
+  1373→              </CollapsibleContent>
+  1374→            </Collapsible>
+  1375→          </div>
+  1376→        </div>
+  1377→      </ScrollArea>
+  1378→    </div>
+  1379→  );
+  1380→}
+  1381→
