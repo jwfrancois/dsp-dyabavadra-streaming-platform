@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Home, Library, Search, Speaker, Play, Pause, SkipForward, SkipBack,
   Shuffle, Repeat, Repeat1, Volume2, VolumeX, Volume1, ChevronLeft,
-  ChevronRight, Music, Mic2, Radio, ListMusic, Settings, Disc3,
+  ChevronRight, ChevronDown, Music, Mic2, Radio, ListMusic, Settings, Disc3,
   Headphones, LayoutGrid, Grip, X, Heart, Podcast, FolderOpen,
   Newspaper, Globe, Clapperboard, Workflow, Server, MonitorSpeaker,
   Gauge, Sliders, Clock, User, Shield, Activity, Puzzle, Scale,
@@ -69,6 +69,8 @@ export function Sidebar() {
   const { isPlaying, currentTrack, activeZoneId, togglePlay } = usePlayerStore();
   const { getTotalNewEpisodes } = usePodcastStore();
   const newEpisodes = getTotalNewEpisodes();
+  const [systemCollapsed, setSystemCollapsed] = React.useState(true);
+  const [discoveryCollapsed, setDiscoveryCollapsed] = React.useState(true);
 
   // Fix 1: Active Zone — derive from player store's activeZoneId
   const zoneName = activeZoneId === 'zone-1' ? 'Main Listening Room' :
@@ -166,14 +168,20 @@ export function Sidebar() {
 
           <Separator className="bg-sidebar-border mx-3" />
 
-          {/* Discovery */}
+          {/* Discovery — collapsible */}
           <div className="p-2 mt-2">
-            {sidebarOpen && (
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 mb-2">
-                Discovery
-              </p>
-            )}
-            {discoveryItems.map(item => {
+            {sidebarOpen ? (
+              <button
+                className="flex items-center justify-between w-full px-3 mb-2 group"
+                onClick={() => setDiscoveryCollapsed(!discoveryCollapsed)}
+              >
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Discovery
+                </p>
+                <ChevronDown className={`w-3 h-3 text-muted-foreground/50 transition-transform duration-200 ${discoveryCollapsed ? '-rotate-90' : ''}`} />
+              </button>
+            ) : null}
+            {(!sidebarOpen || !discoveryCollapsed) && discoveryItems.map(item => {
               const Icon = item.icon;
               const isActive = currentView === item.view;
               return (
@@ -194,14 +202,20 @@ export function Sidebar() {
 
           <Separator className="bg-sidebar-border mx-3" />
 
-          {/* System / Architecture */}
+          {/* System / Architecture — collapsible */}
           <div className="p-2 mt-2">
-            {sidebarOpen && (
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 mb-2">
-                System
-              </p>
-            )}
-            {systemItems.map(item => {
+            {sidebarOpen ? (
+              <button
+                className="flex items-center justify-between w-full px-3 mb-2 group"
+                onClick={() => setSystemCollapsed(!systemCollapsed)}
+              >
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  System
+                </p>
+                <ChevronDown className={`w-3 h-3 text-muted-foreground/50 transition-transform duration-200 ${systemCollapsed ? '-rotate-90' : ''}`} />
+              </button>
+            ) : null}
+            {(!sidebarOpen || !systemCollapsed) && systemItems.map(item => {
               const Icon = item.icon;
               const isActive = currentView === item.view;
               return (
