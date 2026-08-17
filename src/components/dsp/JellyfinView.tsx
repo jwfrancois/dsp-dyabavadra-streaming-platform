@@ -406,7 +406,7 @@ function PodcastShowCard({ show, onClick }: { show: JellyfinPodcastShow; onClick
 
 // ─── Podcast Episode Row ───
 
-function PodcastEpisodeRow({ episode, onPlay, isPlaying, isCurrent }: { episode: JellyfinPodcastEpisode; onPlay: () => void; isPlaying: boolean; isCurrent: boolean }) {
+function PodcastEpisodeRow({ episode, index, onPlay, isPlaying, isCurrent }: { episode: JellyfinPodcastEpisode; index: number; onPlay: () => void; isPlaying: boolean; isCurrent: boolean }) {
   return (
     <div
       className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
@@ -419,7 +419,7 @@ function PodcastEpisodeRow({ episode, onPlay, isPlaying, isCurrent }: { episode:
         ) : isCurrent ? (
           <Play className="w-3.5 h-3.5 ml-auto text-primary" fill="currentColor" />
         ) : (
-          <Podcast className="w-3.5 h-3.5 ml-auto" />
+          <span>{index}</span>
         )}
       </span>
       <CoverArt url={episode.imageUrl} name={episode.showName} size="sm" rounded="sm" />
@@ -585,6 +585,44 @@ export function JellyfinView() {
     play(dspTrack);
   }, [store.config, play]);
 
+  const handlePlayAllPodcastEpisodes = useCallback((showId: string) => {
+    const episodes = store.podcastEpisodes;
+    if (episodes.length === 0) return;
+    const config = store.config;
+    if (!config) return;
+    const baseUrl = config.serverUrl.replace(/\/+$/, '');
+
+    const dspTracks = episodes.map((episode, index) => {
+      const streamUrl = `/api/proxy/jellyfin?url=${encodeURIComponent(`${baseUrl}/Audio/${episode.id}/stream?static=true&api_key=${config.accessToken}&UserId=${config.userId}`)}&token=${encodeURIComponent(config.accessToken)}`;
+      return {
+        id: `jf-${episode.id}`,
+        title: episode.name,
+        albumId: `jf-${episode.showId}`,
+        albumName: episode.showName,
+        artistId: '',
+        artistName: '',
+        trackNumber: index + 1,
+        discNumber: 1,
+        duration: episode.duration,
+        format: '',
+        bitDepth: 0,
+        sampleRate: 0,
+        channels: 0,
+        bitrate: 0,
+        filePath: streamUrl,
+        fileSize: 0,
+        composers: [],
+        performers: [],
+        genre: '',
+        loved: episode.isFavorite,
+        playCount: episode.playCount,
+        source: 'local',
+        isAvailable: true,
+      } as Track;
+    });
+    setQueue(dspTracks, 0);
+  }, [store.config, store.podcastEpisodes, setQueue]);
+
   const handleLoadMore = useCallback(() => {
     if (activeTab === 'albums') store.loadMoreAlbums();
     else if (activeTab === 'artists') store.loadMoreArtists();
@@ -714,10 +752,26 @@ export function JellyfinView() {
               {show && (
                 <div className="flex items-center gap-3 mb-4">
                   <CoverArt url={show.imageUrl} name={show.name} size="lg" rounded="lg" />
-                  <div>
-                    <h2 className="text-lg font-semibold">{show.name}</h2>
-                    <p className="text-xs text-muted-foreground">{store.podcastEpisodes.length} episode{store.podcastEpisodes.length !== 1 ? 's' : ''}</p>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-lg font-semibold truncate">{show.name}</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">{store.podcastEpisodes.length} episode{store.podcastEpisodes.length !== 1 ? 's' : ''}</p>
+                    {show.genres.length > 0 && (
+                      <div className="flex gap-1.5 mt-1.5">
+                        {show.genres.slice(0, 3).map(g => (
+                          <Badge key={g} variant="secondary" className="text-[9px] px-1.5 py-0">{g}</Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
+                  {store.podcastEpisodes.length > 0 && (
+                    <Button
+                      size="sm"
+                      className="h-8 gap-1.5 flex-shrink-0"
+                      onClick={() => handlePlayAllPodcastEpisodes(selectedPodcastShow)}
+                    >
+                      <Play className="w-3.5 h-3.5" fill="currentColor" /> Play All
+                    </Button>
+                  )}
                 </div>
               )}
               {isLoadingTracks ? (
@@ -729,10 +783,11 @@ export function JellyfinView() {
                 <EmptyState icon={Podcast} title="No episodes" description="No episodes found for this podcast" />
               ) : (
                 <div className="space-y-1">
-                  {store.podcastEpisodes.map(episode => (
+                  {store.podcastEpisodes.map((episode, index) => (
                     <PodcastEpisodeRow
                       key={episode.id}
                       episode={episode}
+                      index={index + 1}
                       onPlay={() => handlePlayPodcastEpisode(episode)}
                       isPlaying={isPlaying}
                       isCurrent={isEpisodePlaying(episode)}
@@ -747,6 +802,11 @@ export function JellyfinView() {
           <>
             {store.podcastShows.length === 0 && !isLoadingPodcasts ? (
               <EmptyState icon={Podcast} title="No podcasts" description="Podcasts from your Jellyfin library will appear here" />
+            ) : isLoadingPodcasts ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading podcasts...</span>
+              </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 {store.podcastShows.map(show => (

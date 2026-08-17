@@ -755,7 +755,7 @@ export const useJellyfinStore = create<JellyfinState>((set, get) => ({
       const response = await jellyfinClient.getPodcasts();
       console.log(`[Jellyfin Store] fetchPodcasts: got ${response.Items.length} items, TotalRecordCount=${response.TotalRecordCount}`);
       if (response.Items.length > 0) {
-        console.log(`[Jellyfin Store] First few items types:`, response.Items.slice(0, 5).map(i => ({ name: i.Name, type: i.Type, id: i.Id })));
+        console.log(`[Jellyfin Store] First few items:`, response.Items.slice(0, 5).map(i => ({ name: i.Name, type: i.Type, id: i.Id, childCount: i.ChildCount })));
       }
       const mapped = response.Items.map(mapPodcastShow);
       set({ podcastShows: mapped, totalPodcastShows: response.TotalRecordCount, isLoadingPodcasts: false });
