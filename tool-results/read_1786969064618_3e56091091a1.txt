@@ -1,0 +1,1051 @@
+     1→// ═══════════════════════════════════════════════════════
+     2→// JELLYFIN STORE — DSP Streaming Platform
+     3→// Manages all Jellyfin connection state, browse caches,
+     4→// search, and type-conversion for the UI layer.
+     5→// ═══════════════════════════════════════════════════════
+     6→
+     7→import { create } from 'zustand';
+     8→import {
+     9→  jellyfinClient,
+    10→  JellyfinApiError,
+    11→  ticksToSeconds,
+    12→  type JellyfinConfig,
+    13→  type JellyfinItem,
+    14→  type JellyfinItemsResponse,
+    15→} from '@/lib/jellyfin';
+    16→import type { Track } from '@/lib/data';
+    17→
+    18→// ── Types ──────────────────────────────────────────────────
+    19→
+    20→export type JellyfinConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
+    21→
+    22→export interface JellyfinArtist {
+    23→  id: string;
+    24→  name: string;
+    25→  imageUrl: string;
+    26→  albumCount: number;
+    27→}
+    28→
+    29→export interface JellyfinAlbum {
+    30→  id: string;
+    31→  name: string;
+    32→  artistName: string;
+    33→  artistId: string;
+    34→  year: number;
+    35→  genre: string;
+    36→  imageUrl: string;
+    37→  duration: number;
+    38→  trackCount: number;
+    39→  communityRating: number;
+    40→  isFavorite: boolean;
+    41→  overview?: string;
+    42→}
+    43→
+    44→export interface JellyfinTrack {
+    45→  id: string;
+    46→  name: string;
+    47→  albumId: string;
+    48→  albumName: string;
+    49→  artistName: string;
+    50→  artistId: string;
+    51→  trackNumber: number;
+    52→  duration: number;
+    53→  format: string;
+    54→  bitrate: number;
+    55→  sampleRate: number;
+    56→  bitDepth: number;
+    57→  channels: number;
+    58→  imageUrl: string;
+    59→  isFavorite: boolean;
+    60→  playCount: number;
+    61→}
+    62→
+    63→export interface JellyfinPlaylist {
+    64→  id: string;
+    65→  name: string;
+    66→  imageUrl: string;
+    67→  itemCount: number;
+    68→}
+    69→
+    70→export interface JellyfinPodcastShow {
+    71→  id: string;
+    72→  name: string;
+    73→  imageUrl: string;
+    74→  description: string;
+    75→  episodeCount: number;
+    76→  year: number;
+    77→ genres: string[];
+    78→}
+    79→
+    80→export interface JellyfinPodcastEpisode {
+    81→  id: string;
+    82→  name: string;
+    83→  showId: string;
+    84→  showName: string;
+    85→  duration: number;
+    86→  releaseDate: string;
+    87→  description: string;
+    88→  imageUrl: string;
+    89→  playCount: number;
+    90→  isFavorite: boolean;
+    91→}
+    92→
+    93→export interface JellyfinSearchResults {
+    94→  artists: JellyfinArtist[];
+    95→  albums: JellyfinAlbum[];
+    96→  tracks: JellyfinTrack[];
+    97→  playlists: JellyfinPlaylist[];
+    98→  podcasts: JellyfinPodcastShow[];
+    99→  podcastEpisodes: JellyfinPodcastEpisode[];
+   100→}
+   101→
+   102→// ── Constants ──────────────────────────────────────────────
+   103→
+   104→const PAGE_SIZE = 40;
+   105→const AUTO_FETCH_CONCURRENCY = 3; // Max parallel page fetches for bulk loading
+   106→
+   107→// ── Mapper Helpers ─────────────────────────────────────────
+   108→
+   109→/** Map a Jellyfin Container string to a human-readable format name */
+   110→function getFormatName(container?: string): string {
+   111→  if (!container) return '';
+   112→  const lower = container.toLowerCase();
+   113→  const map: Record<string, string> = {
+   114→    flac: 'FLAC',
+   115→    mp3: 'MP3',
+   116→    wav: 'WAV',
+   117→    m4a: 'AAC',
+   118→    aac: 'AAC',
+   119→    ogg: 'OGG',
+   120→    opus: 'OPUS',
+   121→    wma: 'WMA',
+   122→    aiff: 'AIFF',
+   123→    dsd: 'DSD',
+   124→    dsf: 'DSD',
+   125→   dff: 'DSD',
+   126→  };
+   127→  return map[lower] || upperFirst(lower);
+   128→}
+   129→
+   130→function upperFirst(s: string): string {
+   131→  return s.charAt(0).toUpperCase() + s.slice(1);
+   132→}
+   133→
+   134→/** Safely get an image URL from the Jellyfin client, returning an empty string on failure */
+   135→function safeGetImageUrl(
+   136→  itemId: string,
+   137→  maxWidth?: number,
+   138→  maxHeight?: number
+   139→): string {
+   140→  try {
+   141→    return jellyfinClient.getImageUrl(itemId, 'Primary', maxWidth, maxHeight);
+   142→  } catch {
+   143→    return '';
+   144→  }
+   145→}
+   146→
+   147→/** Map a JellyfinItem (MusicArtist) → JellyfinArtist */
+   148→function mapArtist(item: JellyfinItem): JellyfinArtist {
+   149→  return {
+   150→    id: item.Id,
+   151→    name: item.Name,
+   152→    imageUrl: safeGetImageUrl(item.Id, 300, 300),
+   153→    albumCount: item.ChildCount ?? 0,
+   154→  };
+   155→}
+   156→
+   157→/** Map a JellyfinItem (MusicAlbum) → JellyfinAlbum */
+   158→function mapAlbum(item: JellyfinItem): JellyfinAlbum {
+   159→  const artistObj = item.AlbumArtists?.[0];
+   160→  return {
+   161→    id: item.Id,
+   162→    name: item.Name,
+   163→    artistName: artistObj?.Name ?? item.AlbumArtist ?? 'Unknown Artist',
+   164→    artistId: artistObj?.Id ?? '',
+   165→    year: item.ProductionYear ?? 0,
+   166→    genre: item.Genres?.[0] ?? '',
+   167→    imageUrl: safeGetImageUrl(item.Id, 300, 300),
+   168→    duration: ticksToSeconds(item.RunTimeTicks),
+   169→    trackCount: item.ChildCount ?? 0,
+   170→    communityRating: item.CommunityRating ?? 0,
+   171→    isFavorite: item.UserData?.IsFavorite ?? false,
+   172→    overview: item.Overview,
+   173→  };
+   174→}
+   175→
+   176→/** Map a JellyfinItem (Audio) → JellyfinTrack */
+   177→function mapTrack(item: JellyfinItem): JellyfinTrack {
+   178→  const artistObj = item.AlbumArtists?.[0];
+   179→  const albumArtist = artistObj?.Name ?? item.Artists?.[0] ?? 'Unknown Artist';
+   180→  const albumArtistId = artistObj?.Id ?? '';
+   181→
+   182→  return {
+   183→    id: item.Id,
+   184→    name: item.Name,
+   185→    albumId: item.AlbumId ?? item.ParentId ?? '',
+   186→    albumName: '', // populated from parent context when available
+   187→    artistName: albumArtist,
+   188→    artistId: albumArtistId,
+   189→    trackNumber: 0, // Jellyfin SortName is typically "disc-track name"; use index from list
+   190→    duration: ticksToSeconds(item.RunTimeTicks),
+   191→    format: getFormatName(item.Container),
+   192→    bitrate: item.BitRate ?? 0,
+   193→    sampleRate: item.SampleRate ?? 0,
+   194→    bitDepth: item.BitsPerSample ?? 0,
+   195→    channels: item.Channels ?? 0,
+   196→    imageUrl: safeGetImageUrl(item.AlbumId ?? item.ParentId ?? item.Id, 300, 300),
+   197→    isFavorite: item.UserData?.IsFavorite ?? false,
+   198→    playCount: item.UserData?.PlayCount ?? 0,
+   199→  };
+   200→}
+   201→
+   202→/** Map a JellyfinItem (Playlist) → JellyfinPlaylist */
+   203→function mapPlaylist(item: JellyfinItem): JellyfinPlaylist {
+   204→  return {
+   205→    id: item.Id,
+   206→    name: item.Name,
+   207→    imageUrl: safeGetImageUrl(item.Id, 300, 300),
+   208→    itemCount: item.ChildCount ?? item.UserData?.UnplayedItemCount ?? 0,
+   209→  };
+   210→}
+   211→
+   212→/** Enrich a mapped track with album name from the album item (or parent) */
+   213→function enrichTrackWithAlbumName(track: JellyfinTrack, albumName: string): JellyfinTrack {
+   214→  return { ...track, albumName };
+   215→}
+   216→
+   217→/** Build a static Jellyfin stream URL for a given item ID (synchronous) */
+   218→function buildStreamUrl(itemId: string, config: JellyfinConfig): string {
+   219→  const baseUrl = config.serverUrl.replace(/\/+$/, '');
+   220→  return `${baseUrl}/Audio/${itemId}/stream?static=true&api_key=${config.accessToken}&UserId=${config.userId}`;
+   221→}
+   222→
+   223→/** Map a JellyfinItem (BoxSet for Podcast shows in Jellyfin) → JellyfinPodcastShow */
+   224→function mapPodcastShow(item: JellyfinItem): JellyfinPodcastShow {
+   225→  return {
+   226→    id: item.Id,
+   227→    name: item.Name || 'Unknown Podcast',
+   228→    imageUrl: safeGetImageUrl(item.Id, 300, 300),
+   229→    description: item.Overview || '',
+   230→    episodeCount: item.ChildCount ?? 0,
+   231→    year: item.ProductionYear ?? 0,
+   232→    genres: item.Genres ?? [],
+   233→  };
+   234→}
+   235→
+   236→/** Map a JellyfinItem (Audio in podcast context) → JellyfinPodcastEpisode */
+   237→function mapPodcastEpisode(item: JellyfinItem, showName: string): JellyfinPodcastEpisode {
+   238→  return {
+   239→    id: item.Id,
+   240→    name: item.Name || 'Unknown Episode',
+   241→    showId: item.ParentId ?? item.AlbumId ?? '',
+   242→    showName,
+   243→    duration: ticksToSeconds(item.RunTimeTicks),
+   244→    releaseDate: item.PremiereDate ?? item.DateCreated ?? '',
+   245→    description: item.Overview || '',
+   246→    imageUrl: safeGetImageUrl(item.ParentId ?? item.AlbumId ?? item.Id, 300, 300),
+   247→    playCount: item.UserData?.PlayCount ?? 0,
+   248→    isFavorite: item.UserData?.IsFavorite ?? false,
+   249→  };
+   250→}
+   251→
+   252→/** Fetch the total track count and update the store (fire-and-forget helper) */
+   253→async function refreshTotalTrackCount(): Promise<void> {
+   254→  try {
+   255→    const state = useJellyfinStore.getState();
+   256→    if (state.connectionStatus !== 'connected') return;
+   257→    const response = await jellyfinClient.getItems({
+   258→      includeItemTypes: ['Audio'],
+   259→      recursive: true,
+   260→      limit: 1,
+   261→    });
+   262→    useJellyfinStore.setState({ totalTracks: response.TotalRecordCount });
+   263→  } catch {
+   264→    // Non-critical; ignore
+   265→  }
+   266→}
+   267→
+   268→// ── State Interface ────────────────────────────────────────
+   269→
+   270→interface JellyfinState {
+   271→  // Connection
+   272→  connectionStatus: JellyfinConnectionStatus;
+   273→  config: JellyfinConfig | null;
+   274→  error: string | null;
+   275→
+   276→  // Browse cache
+   277→  artists: JellyfinArtist[];
+   278→  albums: JellyfinAlbum[];
+   279→  recentAlbums: JellyfinAlbum[];
+   280→  playlists: JellyfinPlaylist[];
+   281→  podcastShows: JellyfinPodcastShow[];
+   282→  podcastEpisodes: JellyfinPodcastEpisode[];
+   283→  totalArtists: number;
+   284→  totalAlbums: number;
+   285→  totalTracks: number;
+   286→  totalPodcastShows: number;
+   287→
+   288→  // Detail cache
+   289→  currentArtistAlbums: JellyfinAlbum[];
+   290→  currentArtistTracks: JellyfinTrack[];
+   291→  currentAlbumTracks: JellyfinTrack[];
+   292→  currentPlaylistTracks: JellyfinTrack[];
+   293→
+   294→  // Loading states
+   295→  isLoadingArtists: boolean;
+   296→  isLoadingAlbums: boolean;
+   297→  isLoadingTracks: boolean;
+   298→  isLoadingRecent: boolean;
+   299→  isLoadingPodcasts: boolean;
+   300→  isLoadingAllAlbums: boolean;
+   301→  isLoadingAllArtists: boolean;
+   302→
+   303→  // Pagination
+   304→  artistsPage: number;
+   305→  albumsPage: number;
+   306→
+   307→  // Actions — Connection
+   308→  connect: (serverUrl: string, username: string, password: string) => Promise<boolean>;
+   309→  connectWithApiKey: (serverUrl: string, apiKey: string) => Promise<boolean>;
+   310→  disconnect: () => Promise<void>;
+   311→  clearError: () => void;
+   312→
+   313→  // Actions — Browse
+   314→  fetchArtists: (reset?: boolean) => Promise<void>;
+   315→  fetchAlbums: (reset?: boolean) => Promise<void>;
+   316→  fetchAllAlbums: () => Promise<void>;
+   317→  fetchAllArtists: () => Promise<void>;
+   318→  fetchAllPodcasts: () => Promise<void>;
+   319→  fetchRecentAlbums: () => Promise<void>;
+   320→  fetchPlaylists: () => Promise<void>;
+   321→  fetchPodcasts: () => Promise<void>;
+   322→  fetchPodcastEpisodes: (showId: string) => Promise<void>;
+   323→  loadMoreArtists: () => Promise<void>;
+   324→  loadMoreAlbums: () => Promise<void>;
+   325→
+   326→  // Actions — Detail
+   327→  fetchArtistDetail: (artistId: string) => Promise<void>;
+   328→  fetchAlbumTracks: (albumId: string) => Promise<void>;
+   329→  fetchPlaylistTracks: (playlistId: string) => Promise<void>;
+   330→
+   331→  // Actions — Search
+   332→  search: (query: string) => Promise<JellyfinSearchResults>;
+   333→
+   334→  // Actions — Convert
+   335→  convertToTrack: (jfTrack: JellyfinTrack) => Track;
+   336→
+   337→  // Actions — Helpers
+   338→  getArtistImageUrl: (itemId: string, imageTag?: string) => string;
+   339→  getAlbumImageUrl: (itemId: string, imageTag?: string) => string;
+   340→}
+   341→
+   342→// ── Store ──────────────────────────────────────────────────
+   343→
+   344→export const useJellyfinStore = create<JellyfinState>((set, get) => ({
+   345→  // ── Initial State ──
+   346→
+   347→  connectionStatus:
+   348→    typeof window !== 'undefined' && jellyfinClient.isAuthenticated()
+   349→      ? 'connected'
+   350→      : 'disconnected',
+   351→  config: typeof window !== 'undefined' ? jellyfinClient.getConfig() : null,
+   352→  error: null,
+   353→
+   354→  // Browse cache
+   355→  artists: [],
+   356→  albums: [],
+   357→  recentAlbums: [],
+   358→  playlists: [],
+   359→  podcastShows: [],
+   360→  podcastEpisodes: [],
+   361→  totalArtists: 0,
+   362→  totalAlbums: 0,
+   363→  totalTracks: 0,
+   364→  totalPodcastShows: 0,
+   365→
+   366→  // Detail cache
+   367→  currentArtistAlbums: [],
+   368→  currentArtistTracks: [],
+   369→  currentAlbumTracks: [],
+   370→  currentPlaylistTracks: [],
+   371→
+   372→  // Loading states
+   373→  isLoadingArtists: false,
+   374→  isLoadingAlbums: false,
+   375→  isLoadingTracks: false,
+   376→  isLoadingRecent: false,
+   377→  isLoadingPodcasts: false,
+   378→  isLoadingAllAlbums: false,
+   379→  isLoadingAllArtists: false,
+   380→
+   381→  // Pagination
+   382→  artistsPage: 0,
+   383→  albumsPage: 0,
+   384→
+   385→  // ═══════════════════════════════════════════════════════
+   386→  // Connection
+   387→  // ═══════════════════════════════════════════════════════
+   388→
+   389→  connect: async (serverUrl, username, password) => {
+   390→    set({ connectionStatus: 'connecting', error: null });
+   391→    try {
+   392→      const config = await jellyfinClient.connect(serverUrl, username, password);
+   393→      set({
+   394→        connectionStatus: 'connected',
+   395→        config,
+   396→        error: null,
+   397→      });
+   398→      // Auto-fetch recent albums after successful connection
+   399→      get().fetchRecentAlbums();
+   400→      return true;
+   401→    } catch (err) {
+   402→      let message: string;
+   403→      if (err instanceof JellyfinApiError) {
+   404→        if (err.statusCode === 0) {
+   405→          message = 'Could not reach the Jellyfin server. Check the server URL and ensure the server is running and accessible.';
+   406→        } else if (err.statusCode === 401) {
+   407→          message = 'Authentication failed. Please check your username and password.';
+   408→        } else if (err.statusCode === 404) {
+   409→          message = 'Jellyfin server found but the API endpoint was not available. Ensure you are running Jellyfin 10.7+.';
+   410→        } else {
+   411→          message = err.message;
+   412→        }
+   413→      } else if (err instanceof Error) {
+   414→        message = err.message;
+   415→      } else {
+   416→        message = 'Connection failed';
+   417→      }
+   418→      set({ connectionStatus: 'error', error: message });
+   419→      return false;
+   420→    }
+   421→  },
+   422→
+   423→  connectWithApiKey: async (serverUrl, apiKey) => {
+   424→    set({ connectionStatus: 'connecting', error: null });
+   425→    try {
+   426→      const config = await jellyfinClient.connectWithApiKey(serverUrl, apiKey);
+   427→      set({
+   428→        connectionStatus: 'connected',
+   429→        config,
+   430→        error: null,
+   431→      });
+   432→      get().fetchRecentAlbums();
+   433→      return true;
+   434→    } catch (err) {
+   435→      let message: string;
+   436→      if (err instanceof JellyfinApiError) {
+   437→        if (err.statusCode === 0) {
+   438→          message = 'Could not reach the Jellyfin server. Check the server URL and ensure the server is running and accessible.';
+   439→        } else if (err.statusCode === 401) {
+   440→          message = 'API key authentication failed. Please check your API key.';
+   441→        } else {
+   442→          message = err.message;
+   443→        }
+   444→      } else if (err instanceof Error) {
+   445→        message = err.message;
+   446→      } else {
+   447→        message = 'Connection failed';
+   448→      }
+   449→      set({ connectionStatus: 'error', error: message });
+   450→      return false;
+   451→    }
+   452→  },
+   453→
+   454→  disconnect: async () => {
+   455→    try {
+   456→      await jellyfinClient.disconnect();
+   457→    } catch {
+   458→      // Best-effort disconnect
+   459→    }
+   460→    set({
+   461→      connectionStatus: 'disconnected',
+   462→      config: null,
+   463→      error: null,
+   464→      artists: [],
+   465→      albums: [],
+   466→      recentAlbums: [],
+   467→      playlists: [],
+   468→      podcastShows: [],
+   469→      podcastEpisodes: [],
+   470→      totalArtists: 0,
+   471→      totalAlbums: 0,
+   472→      totalTracks: 0,
+   473→      totalPodcastShows: 0,
+   474→      currentArtistAlbums: [],
+   475→      currentArtistTracks: [],
+   476→      currentAlbumTracks: [],
+   477→      currentPlaylistTracks: [],
+   478→      isLoadingArtists: false,
+   479→      isLoadingAlbums: false,
+   480→      isLoadingTracks: false,
+   481→      isLoadingRecent: false,
+   482→      isLoadingPodcasts: false,
+   483→      isLoadingAllAlbums: false,
+   484→      isLoadingAllArtists: false,
+   485→      artistsPage: 0,
+   486→      albumsPage: 0,
+   487→    });
+   488→  },
+   489→
+   490→  clearError: () => set({ error: null }),
+   491→
+   492→  // ═══════════════════════════════════════════════════════
+   493→  // Browse
+   494→  // ═══════════════════════════════════════════════════════
+   495→
+   496→  fetchArtists: async (reset = false) => {
+   497→    const { connectionStatus, artistsPage } = get();
+   498→    if (connectionStatus !== 'connected') return;
+   499→
+   500→    const page = reset ? 0 : artistsPage;
+   501→    set({ isLoadingArtists: true });
+   502→
+   503→    try {
+   504→      const response = await jellyfinClient.getArtists({
+   505→        limit: PAGE_SIZE,
+   506→        startIndex: page * PAGE_SIZE,
+   507→      });
+   508→
+   509→      const mapped = response.Items.map(mapArtist);
+   510→      set({
+   511→        artists: reset ? mapped : [...get().artists, ...mapped],
+   512→        totalArtists: response.TotalRecordCount,
+   513→        artistsPage: page + 1,
+   514→        isLoadingArtists: false,
+   515→      });
+   516→
+   517→      // Also fetch total track count in the background
+   518→      if (get().totalTracks === 0) {
+   519→        refreshTotalTrackCount();
+   520→      }
+   521→    } catch (err) {
+   522→      const message =
+   523→        err instanceof JellyfinApiError
+   524→          ? err.message
+   525→          : err instanceof Error
+   526→            ? err.message
+   527→            : 'Failed to fetch artists';
+   528→      set({ isLoadingArtists: false, error: message });
+   529→    }
+   530→  },
+   531→
+   532→  fetchAlbums: async (reset = false) => {
+   533→    const { connectionStatus, albumsPage } = get();
+   534→    if (connectionStatus !== 'connected') return;
+   535→
+   536→    const page = reset ? 0 : albumsPage;
+   537→    set({ isLoadingAlbums: true });
+   538→
+   539→    try {
+   540→      const response = await jellyfinClient.getAlbums({
+   541→        limit: PAGE_SIZE,
+   542→        startIndex: page * PAGE_SIZE,
+   543→      });
+   544→
+   545→      const mapped = response.Items.map(mapAlbum);
+   546→      set({
+   547→        albums: reset ? mapped : [...get().albums, ...mapped],
+   548→        totalAlbums: response.TotalRecordCount,
+   549→        albumsPage: page + 1,
+   550→        isLoadingAlbums: false,
+   551→      });
+   552→
+   553→      // Also fetch total track count in the background
+   554→      if (get().totalTracks === 0) {
+   555→        refreshTotalTrackCount();
+   556→      }
+   557→    } catch (err) {
+   558→      const message =
+   559→        err instanceof JellyfinApiError
+   560→          ? err.message
+   561→          : err instanceof Error
+   562→            ? err.message
+   563→            : 'Failed to fetch albums';
+   564→      set({ isLoadingAlbums: false, error: message });
+   565→    }
+   566→  },
+   567→
+   568→  fetchRecentAlbums: async () => {
+   569→    const { connectionStatus } = get();
+   570→    if (connectionStatus !== 'connected') return;
+   571→
+   572→    set({ isLoadingRecent: true });
+   573→
+   574→    try {
+   575→      const response = await jellyfinClient.getRecentItems(20);
+   576→      // Recent items may include non-album types; filter to albums only
+   577→      const albumItems = response.Items.filter(
+   578→        item => item.Type === 'MusicAlbum'
+   579→      );
+   580→      const mapped = albumItems.map(mapAlbum);
+   581→      set({ recentAlbums: mapped, isLoadingRecent: false });
+   582→    } catch (err) {
+   583→      const message =
+   584→        err instanceof JellyfinApiError
+   585→          ? err.message
+   586→          : err instanceof Error
+   587→            ? err.message
+   588→            : 'Failed to fetch recent albums';
+   589→      set({ isLoadingRecent: false, error: message });
+   590→    }
+   591→  },
+   592→
+   593→  fetchPlaylists: async () => {
+   594→    const { connectionStatus } = get();
+   595→    if (connectionStatus !== 'connected') return;
+   596→
+   597→    try {
+   598→      const response = await jellyfinClient.getPlaylists();
+   599→      const mapped = response.Items.map(mapPlaylist);
+   600→      set({ playlists: mapped });
+   601→    } catch (err) {
+   602→      const message =
+   603→        err instanceof JellyfinApiError
+   604→          ? err.message
+   605→          : err instanceof Error
+   606→            ? err.message
+   607→            : 'Failed to fetch playlists';
+   608→      set({ error: message });
+   609→    }
+   610→  },
+   611→
+   612→  loadMoreArtists: async () => {
+   613→    const { isLoadingArtists, artists, totalArtists } = get();
+   614→    if (isLoadingArtists || artists.length >= totalArtists) return;
+   615→    get().fetchArtists(false);
+   616→  },
+   617→
+   618→  loadMoreAlbums: async () => {
+   619→    const { isLoadingAlbums, albums, totalAlbums } = get();
+   620→    if (isLoadingAlbums || albums.length >= totalAlbums) return;
+   621→    get().fetchAlbums(false);
+   622→  },
+   623→
+   624→  // ── Bulk Fetch All (auto-pagination) ──
+   625→
+   626→  fetchAllAlbums: async () => {
+   627→    const { connectionStatus } = get();
+   628→    if (connectionStatus !== 'connected') return;
+   629→
+   630→    set({ isLoadingAllAlbums: true });
+   631→
+   632→    try {
+   633→      // First fetch to get total count
+   634→      const first = await jellyfinClient.getAlbums({ limit: PAGE_SIZE, startIndex: 0 });
+   635→      const allAlbums = [...first.Items.map(mapAlbum)];
+   636→      const totalCount = first.TotalRecordCount;
+   637→      set({ albums: allAlbums, totalAlbums: totalCount, albumsPage: 1 });
+   638→
+   639→      // If there are more pages, fetch them concurrently
+   640→      if (allAlbums.length < totalCount) {
+   641→        const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+   642→        const remainingPages: number[] = [];
+   643→
+   644→        for (let p = 1; p < totalPages; p++) {
+   645→          remainingPages.push(p);
+   646→        }
+   647→
+   648→        // Fetch in batches of AUTO_FETCH_CONCURRENCY
+   649→        for (let i = 0; i < remainingPages.length; i += AUTO_FETCH_CONCURRENCY) {
+   650→          const batch = remainingPages.slice(i, i + AUTO_FETCH_CONCURRENCY);
+   651→          const results = await Promise.all(
+   652→            batch.map(page =>
+   653→              jellyfinClient.getAlbums({ limit: PAGE_SIZE, startIndex: page * PAGE_SIZE })
+   654→                .then(r => r.Items.map(mapAlbum))
+   655→                .catch(() => [] as JellyfinAlbum[])
+   656→            )
+   657→          );
+   658→
+   659→          const current = useJellyfinStore.getState();
+   660→          // Check if we got disconnected or tab changed mid-fetch
+   661→          if (current.connectionStatus !== 'connected') break;
+   662→
+   663→          const newAlbums = results.flat();
+   664→          set(prev => ({
+   665→            albums: [...prev.albums, ...newAlbums],
+   666→            albumsPage: Math.max(batch[batch.length - 1] + 1, prev.albumsPage),
+   667→          }));
+   668→        }
+   669→      }
+   670→
+   671→      // Also fetch total track count in the background
+   672→      if (get().totalTracks === 0) {
+   673→        refreshTotalTrackCount();
+   674→      }
+   675→
+   676→      set({ isLoadingAllAlbums: false });
+   677→    } catch (err) {
+   678→      const message =
+   679→        err instanceof JellyfinApiError
+   680→          ? err.message
+   681→          : err instanceof Error
+   682→            ? err.message
+   683→            : 'Failed to fetch all albums';
+   684→      set({ isLoadingAllAlbums: false, error: message });
+   685→    }
+   686→  },
+   687→
+   688→  fetchAllArtists: async () => {
+   689→    const { connectionStatus } = get();
+   690→    if (connectionStatus !== 'connected') return;
+   691→
+   692→    set({ isLoadingAllArtists: true });
+   693→
+   694→    try {
+   695→      const first = await jellyfinClient.getArtists({ limit: PAGE_SIZE, startIndex: 0 });
+   696→      const allArtists = [...first.Items.map(mapArtist)];
+   697→      const totalCount = first.TotalRecordCount;
+   698→      set({ artists: allArtists, totalArtists: totalCount, artistsPage: 1 });
+   699→
+   700→      if (allArtists.length < totalCount) {
+   701→        const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+   702→        const remainingPages: number[] = [];
+   703→
+   704→        for (let p = 1; p < totalPages; p++) {
+   705→          remainingPages.push(p);
+   706→        }
+   707→
+   708→        for (let i = 0; i < remainingPages.length; i += AUTO_FETCH_CONCURRENCY) {
+   709→          const batch = remainingPages.slice(i, i + AUTO_FETCH_CONCURRENCY);
+   710→          const results = await Promise.all(
+   711→            batch.map(page =>
+   712→              jellyfinClient.getArtists({ limit: PAGE_SIZE, startIndex: page * PAGE_SIZE })
+   713→                .then(r => r.Items.map(mapArtist))
+   714→                .catch(() => [] as JellyfinArtist[])
+   715→            )
+   716→          );
+   717→
+   718→          const current = useJellyfinStore.getState();
+   719→          if (current.connectionStatus !== 'connected') break;
+   720→
+   721→          const newArtists = results.flat();
+   722→          set(prev => ({
+   723→            artists: [...prev.artists, ...newArtists],
+   724→            artistsPage: Math.max(batch[batch.length - 1] + 1, prev.artistsPage),
+   725→          }));
+   726→        }
+   727→      }
+   728→
+   729→      if (get().totalTracks === 0) {
+   730→        refreshTotalTrackCount();
+   731→      }
+   732→
+   733→      set({ isLoadingAllArtists: false });
+   734→    } catch (err) {
+   735→      const message =
+   736→        err instanceof JellyfinApiError
+   737→          ? err.message
+   738→          : err instanceof Error
+   739→            ? err.message
+   740→            : 'Failed to fetch all artists';
+   741→      set({ isLoadingAllArtists: false, error: message });
+   742→    }
+   743→  },
+   744→
+   745→  // ═══════════════════════════════════════════════════════
+   746→  // Podcasts
+   747→  // ═══════════════════════════════════════════════════════
+   748→
+   749→  fetchPodcasts: async () => {
+   750→    // Use fetchAllPodcasts for complete results (auto-pagination)
+   751→    get().fetchAllPodcasts();
+   752→  },
+   753→
+   754→  fetchAllPodcasts: async () => {
+   755→    const { connectionStatus } = get();
+   756→    if (connectionStatus !== 'connected') return;
+   757→
+   758→    set({ isLoadingPodcasts: true });
+   759→
+   760→    try {
+   761→      // First call to get total count
+   762→      const first = await jellyfinClient.getPodcasts({ limit: 200, startIndex: 0 });
+   763→      const mapped = first.Items.map(mapPodcastShow);
+   764→      const totalCount = first.TotalRecordCount;
+   765→      console.log(`[Jellyfin Store] fetchAllPodcasts: first batch ${mapped.length}, total=${totalCount}`);
+   766→      set({ podcastShows: mapped, totalPodcastShows: totalCount, isLoadingPodcasts: false });
+   767→
+   768→      // If the first call already returned everything (getPodcasts combines all strategies
+   769→      // with limit=1000 internally), no need for further pagination
+   770→      // The pagination here handles the client-side slice if totalCount > 200
+   771→      if (mapped.length < totalCount) {
+   772→        set({ isLoadingPodcasts: true });
+   773→        // Fetch remaining pages
+   774→        const remaining = Math.ceil((totalCount - mapped.length) / 200);
+   775→        const batches: Promise<JellyfinPodcastShow[]>[] = [];
+   776→        for (let i = 1; i <= remaining; i++) {
+   777→          const startIdx = i * 200;
+   778→          batches.push(
+   779→            jellyfinClient.getPodcasts({ limit: 200, startIndex: startIdx })
+   780→              .then(r => r.Items.map(mapPodcastShow))
+   781→              .catch(() => [] as JellyfinPodcastShow[])
+   782→          );
+   783→        }
+   784→        const results = await Promise.all(batches);
+   785→ const current = useJellyfinStore.getState();
+   786→        if (current.connectionStatus !== 'connected') return;
+   787→        const newShows = results.flat();
+   788→        set(prev => ({
+   789→          podcastShows: [...prev.podcastShows, ...newShows],
+   790→          isLoadingPodcasts: false,
+   791→        }));
+   792→      }
+   793→    } catch (err) {
+   794→      const message =
+   795→        err instanceof JellyfinApiError
+   796→          ? err.message
+   797→          : err instanceof Error
+   798→            ? err.message
+   799→            : 'Failed to fetch podcasts';
+   800→      console.error('[Jellyfin Store] fetchAllPodcasts error:', message, err);
+   801→      set({ isLoadingPodcasts: false, error: message });
+   802→    }
+   803→  },
+   804→
+   805→  fetchPodcastEpisodes: async (showId: string) => {
+   806→    const { connectionStatus } = get();
+   807→    if (connectionStatus !== 'connected') return;
+   808→
+   809→    set({ isLoadingTracks: true });
+   810→
+   811→    try {
+   812→      const response = await jellyfinClient.getPodcastEpisodes(showId);
+   813→      const show = useJellyfinStore.getState().podcastShows.find(s => s.id === showId);
+   814→      const showName = show?.name ?? 'Unknown Podcast';
+   815→
+   816→      const mapped = response.Items.map(item => mapPodcastEpisode(item, showName));
+   817→      set({ podcastEpisodes: mapped, isLoadingTracks: false });
+   818→    } catch (err) {
+   819→      const message =
+   820→        err instanceof JellyfinApiError
+   821→          ? err.message
+   822→          : err instanceof Error
+   823→            ? err.message
+   824→            : 'Failed to fetch podcast episodes';
+   825→      set({ isLoadingTracks: false, error: message });
+   826→    }
+   827→  },
+   828→
+   829→  // ═══════════════════════════════════════════════════════
+   830→  // Detail
+   831→  // ═══════════════════════════════════════════════════════
+   832→
+   833→  fetchArtistDetail: async (artistId: string) => {
+   834→    const { connectionStatus } = get();
+   835→    if (connectionStatus !== 'connected') return;
+   836→
+   837→    set({ isLoadingAlbums: true, isLoadingTracks: true });
+   838→
+   839→    try {
+   840→      // Fetch albums by this artist
+   841→      const albumResponse = await jellyfinClient.getArtistItems(artistId, ['MusicAlbum']);
+   842→      const mappedAlbums = albumResponse.Items.map(mapAlbum);
+   843→
+   844→      // Fetch tracks by this artist
+   845→      const trackResponse = await jellyfinClient.getItems({
+   846→        albumArtistIds: [artistId],
+   847→        includeItemTypes: ['Audio'],
+   848→        sortBy: 'Album,SortName',
+   849→        sortOrder: 'Ascending',
+   850→        recursive: true,
+   851→      });
+   852→      const mappedTracks = trackResponse.Items.map(item => mapTrack(item));
+   853→
+   854→      // Enrich tracks with album names from the album items we just fetched
+   855→      const albumNameMap = new Map(mappedAlbums.map(a => [a.id, a.name]));
+   856→      const enrichedTracks = mappedTracks.map(t =>
+   857→        albumNameMap.has(t.albumId)
+   858→          ? enrichTrackWithAlbumName(t, albumNameMap.get(t.albumId)!)
+   859→          : t
+   860→      );
+   861→
+   862→      set({
+   863→        currentArtistAlbums: mappedAlbums,
+   864→        currentArtistTracks: enrichedTracks,
+   865→        isLoadingAlbums: false,
+   866→        isLoadingTracks: false,
+   867→      });
+   868→    } catch (err) {
+   869→      const message =
+   870→        err instanceof JellyfinApiError
+   871→          ? err.message
+   872→          : err instanceof Error
+   873→            ? err.message
+   874→            : 'Failed to fetch artist detail';
+   875→      set({ isLoadingAlbums: false, isLoadingTracks: false, error: message });
+   876→    }
+   877→  },
+   878→
+   879→  fetchAlbumTracks: async (albumId: string) => {
+   880→    const { connectionStatus } = get();
+   881→    if (connectionStatus !== 'connected') return;
+   882→
+   883→    set({ isLoadingTracks: true });
+   884→
+   885→    try {
+   886→      // Fetch the album item for name/artist info
+   887→      let albumName = '';
+   888→      try {
+   889→        const albumItem = await jellyfinClient.getItem(albumId);
+   890→        albumName = albumItem.Name;
+   891→      } catch {
+   892→        // Continue without album name
+   893→      }
+   894→
+   895→      const response = await jellyfinClient.getAlbumTracks(albumId);
+   896→      const mapped = response.Items.map((item, index) => {
+   897→        const track = mapTrack(item);
+   898→        return {
+   899→          ...track,
+   900→          trackNumber: index + 1,
+   901→          albumName,
+   902→        };
+   903→      });
+   904→
+   905→      set({ currentAlbumTracks: mapped, isLoadingTracks: false });
+   906→    } catch (err) {
+   907→      const message =
+   908→        err instanceof JellyfinApiError
+   909→          ? err.message
+   910→          : err instanceof Error
+   911→            ? err.message
+   912→            : 'Failed to fetch album tracks';
+   913→      set({ isLoadingTracks: false, error: message });
+   914→    }
+   915→  },
+   916→
+   917→  fetchPlaylistTracks: async (playlistId: string) => {
+   918→    const { connectionStatus } = get();
+   919→    if (connectionStatus !== 'connected') return;
+   920→
+   921→    set({ isLoadingTracks: true });
+   922→
+   923→    try {
+   924→      const response = await jellyfinClient.getPlaylistItems(playlistId);
+   925→      const mapped = response.Items.map((item, index) => {
+   926→        const track = mapTrack(item);
+   927→        return {
+   928→          ...track,
+   929→          trackNumber: index + 1,
+   930→        };
+   931→      });
+   932→
+   933→      set({ currentPlaylistTracks: mapped, isLoadingTracks: false });
+   934→    } catch (err) {
+   935→      const message =
+   936→        err instanceof JellyfinApiError
+   937→          ? err.message
+   938→          : err instanceof Error
+   939→            ? err.message
+   940→            : 'Failed to fetch playlist tracks';
+   941→      set({ isLoadingTracks: false, error: message });
+   942→    }
+   943→  },
+   944→
+   945→  // ═══════════════════════════════════════════════════════
+   946→  // Search
+   947→  // ═══════════════════════════════════════════════════════
+   948→
+   949→  search: async (query: string) => {
+   950→    const { connectionStatus } = get();
+   951→    if (connectionStatus !== 'connected') {
+   952→      return { artists: [], albums: [], tracks: [], playlists: [], podcasts: [], podcastEpisodes: [] };
+   953→    }
+   954→
+   955→    try {
+   956→      const response = await jellyfinClient.search(query);
+   957→
+   958→      const artists: JellyfinArtist[] = [];
+   959→      const albums: JellyfinAlbum[] = [];
+   960→      const tracks: JellyfinTrack[] = [];
+   961→      const playlists: JellyfinPlaylist[] = [];
+   962→      const podcasts: JellyfinPodcastShow[] = [];
+   963→      const podcastEpisodes: JellyfinPodcastEpisode[] = [];
+   964→
+   965→      for (const item of response.Items) {
+   966→        switch (item.Type) {
+   967→          case 'MusicArtist':
+   968→            artists.push(mapArtist(item));
+   969→            break;
+   970→          case 'MusicAlbum':
+   971→            albums.push(mapAlbum(item));
+   972→            break;
+   973→          case 'Audio':
+   974→            tracks.push(mapTrack(item));
+   975→            break;
+   976→          case 'Playlist':
+   977→            playlists.push(mapPlaylist(item));
+   978→            break;
+   979→          case 'BoxSet':
+   980→            // Jellyfin stores some podcasts as BoxSet type
+   981→            if (item.Tags?.some(t => t.toLowerCase().includes('podcast')) ||
+   982→                item.Genres?.some(g => g.toLowerCase().includes('podcast'))) {
+   983→              podcasts.push(mapPodcastShow(item));
+   984→            }
+   985→            break;
+   986→        }
+   987→      }
+   988→
+   989→      return { artists, albums, tracks, playlists, podcasts, podcastEpisodes };
+   990→    } catch (err) {
+   991→      const message =
+   992→        err instanceof JellyfinApiError
+   993→          ? err.message
+   994→          : err instanceof Error
+   995→            ? err.message
+   996→            : 'Search failed';
+   997→      set({ error: message });
+   998→      return { artists: [], albums: [], tracks: [], playlists: [], podcasts: [], podcastEpisodes: [] };
+   999→    }
+  1000→  },
+  1001→
+  1002→  // ═══════════════════════════════════════════════════════
+  1003→  // Convert
+  1004→  // ═══════════════════════════════════════════════════════
+  1005→
+  1006→  convertToTrack: (jfTrack: JellyfinTrack): Track => {
+  1007→    const config = get().config;
+  1008→    const filePath = config
+  1009→      ? buildStreamUrl(jfTrack.id, config)
+  1010→      : `jellyfin://${jfTrack.id}`;
+  1011→
+  1012→    return {
+  1013→      id: `jf-${jfTrack.id}`,
+  1014→      title: jfTrack.name,
+  1015→      albumId: `jf-${jfTrack.albumId}`,
+  1016→      albumName: jfTrack.albumName,
+  1017→      artistId: `jf-${jfTrack.artistId}`,
+  1018→      artistName: jfTrack.artistName,
+  1019→      trackNumber: jfTrack.trackNumber,
+  1020→      discNumber: 1,
+  1021→      duration: jfTrack.duration,
+  1022→      format: jfTrack.format,
+  1023→      bitDepth: jfTrack.bitDepth,
+  1024→      sampleRate: jfTrack.sampleRate,
+  1025→      channels: jfTrack.channels,
+  1026→      bitrate: jfTrack.bitrate,
+  1027→      filePath,
+  1028→      fileSize: 0,
+  1029→      composers: [],
+  1030→      performers: [],
+  1031→      genre: '',
+  1032→      loved: jfTrack.isFavorite,
+  1033→      playCount: jfTrack.playCount,
+  1034→      source: 'local',
+  1035→      isAvailable: true,
+  1036→    };
+  1037→  },
+  1038→
+  1039→  // ═══════════════════════════════════════════════════════
+  1040→  // Helpers
+  1041→  // ═══════════════════════════════════════════════════════
+  1042→
+  1043→  getArtistImageUrl: (itemId: string, _imageTag?: string): string => {
+  1044→    return safeGetImageUrl(itemId, 300, 300);
+  1045→  },
+  1046→
+  1047→  getAlbumImageUrl: (itemId: string, _imageTag?: string): string => {
+  1048→    return safeGetImageUrl(itemId, 300, 300);
+  1049→  },
+  1050→}));
+  1051→

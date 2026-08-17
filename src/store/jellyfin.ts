@@ -747,8 +747,8 @@ export const useJellyfinStore = create<JellyfinState>((set, get) => ({
   // ═══════════════════════════════════════════════════════
 
   fetchPodcasts: async () => {
-    // Use fetchAllPodcasts for complete results (auto-pagination)
-    get().fetchAllPodcasts();
+    // Delegate to fetchAllPodcasts for complete results (auto-pagination)
+    await get().fetchAllPodcasts();
   },
 
   fetchAllPodcasts: async () => {
@@ -782,7 +782,7 @@ export const useJellyfinStore = create<JellyfinState>((set, get) => ({
           );
         }
         const results = await Promise.all(batches);
- const current = useJellyfinStore.getState();
+        const current = useJellyfinStore.getState();
         if (current.connectionStatus !== 'connected') return;
         const newShows = results.flat();
         set(prev => ({
